@@ -2,6 +2,11 @@ import twilio from 'twilio'
 import { env, isTwilioConfigured } from '@/lib/env'
 import type { InlineKeyboardButton } from '@/types/telegram'
 import { buildNumberedChoices, type WaChoiceMap } from '@/lib/whatsapp/buttons'
+import {
+  flattenButtons,
+  getOrCreateListPickerContent,
+  getOrCreateQuickReplyContent,
+} from '@/lib/whatsapp/content'
 
 function requireTwilio() {
   if (!isTwilioConfigured()) {
@@ -72,13 +77,47 @@ export async function sendWhatsAppVideo(
   }
 }
 
-/** Send keyboard as numbered text; returns choice map for pendingWaChoices. */
+/**
+ * Prefer native WhatsApp quick-reply (≤3) or list-picker (4–10).
+ * Falls back to numbered text if Content API fails.
+ */
 export async function sendWhatsAppKeyboard(
   channelUserId: string,
   text: string,
   buttons: InlineKeyboardButton[][],
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
-  const { bodySuffix, choices } = buildNumberedChoices(buttons)
-  const sid = await sendWhatsAppText(channelUserId, `${text}${bodySuffix}`)
-  return { sid, choices }
+  const flat = flattenButtons(buttons)
+  const { choices } = buildNumberedChoices(buttons)
+  const to = toWhatsAppAddress(channelUserId)
+
+  try {
+    requireTwilio()
+    let contentSid: string
+    if (flat.length > 0 && flat.length <= 3) {
+      contentSid = await getOrCreateQuickReplyContent(text, flat)
+      console.info('[whatsapp:out]', { to, type: 'quick-reply', contentSid, n: flat.length })
+    } else if (flat.length <= 10) {
+      contentSid = await getOrCreateListPickerContent(text, flat)
+      console.info('[whatsapp:out]', { to, type: 'list-picker', contentSid, n: flat.length })
+    } else {
+      const { bodySuffix } = buildNumberedChoices(buttons)
+      const sid = await sendWhatsAppText(channelUserId, `${text}${bodySuffix}`)
+      return { sid, choices }
+    }
+
+    const msg = await client().messages.create({
+      contentSid,
+      from: env.TWILIO_WHATSAPP_FROM!,
+      to,
+    })
+    console.info('[whatsapp:out] ok', { to, sid: msg.sid, contentSid })
+    return { sid: msg.sid, choices }
+  } catch (err) {
+    console.warn('[whatsapp:out] interactive failed — numbered fallback', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+    const { bodySuffix } = buildNumberedChoices(buttons)
+    const sid = await sendWhatsAppText(channelUserId, `${text}${bodySuffix}`)
+    return { sid, choices }
+  }
 }

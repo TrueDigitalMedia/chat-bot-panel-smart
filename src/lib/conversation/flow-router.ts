@@ -23,8 +23,17 @@ const BUTTON_PREFIXES = [
   'correct:',
 ]
 
-const RESTART_PATTERN =
-  /^\/start\b|^reiniciar$|^empezar( de nuevo)?$|^comenzar( de nuevo)?$|^hola\!?$|^buenas?$/i
+/** WhatsApp-friendly: /start, hola, reiniciar, empezar de nuevo, reiniciar flujo, etc. */
+function isRestartRequest(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (!t) return false
+  if (/^\/start\b/.test(t)) return true
+  if (/^(hola|buenas|buen[oa]s)\b[!?.]*$/.test(t)) return true
+  if (/^(reiniciar|reset|restart)\b/.test(t)) return true
+  if (/^(empezar|comenzar)(\s+de\s+nuevo)?(\s+(el\s+)?flujo)?\b/.test(t)) return true
+  if (/^(de\s+nuevo|otra\s+vez)\b/.test(t)) return true
+  return false
+}
 
 function isExpectedAnswer(
   _lead: Lead,
@@ -35,10 +44,6 @@ function isExpectedAnswer(
     return BUTTON_PREFIXES.some((p) => callbackData.startsWith(p))
   }
   return messageText.trim().length > 0
-}
-
-function isRestartRequest(text: string): boolean {
-  return RESTART_PATTERN.test(text.trim())
 }
 
 export async function routeMessage(

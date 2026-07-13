@@ -33,11 +33,12 @@ export function normalizeTwilioInbound(
   let callbackData: string | undefined
   if (buttonPayload) {
     callbackData = buttonPayload
-  } else if (pendingChoices && body) {
-    const key = body.trim().toLowerCase()
+  } else if (pendingChoices && (body || buttonText)) {
+    const key = (buttonText || body).trim().toLowerCase()
     callbackData =
       pendingChoices[key] ||
       pendingChoices[body.trim()] ||
+      pendingChoices[body.trim().toLowerCase()] ||
       pendingChoices[buttonText.toLowerCase()]
   }
 
