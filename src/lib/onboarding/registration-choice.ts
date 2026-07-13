@@ -1,0 +1,35 @@
+import { transitionLead } from '@/lib/state-machine'
+import { handlePhase3Success, handlePhase3Failure } from '@/lib/conversation/phases/phase-3'
+import { sendText } from '@/lib/messaging/send'
+import type { Lead } from '@/types/lead'
+
+export const REGISTER_CALLBACK_YES = 'register:yes'
+export const REGISTER_CALLBACK_NO = 'register:no'
+
+export function isRegistrationCallback(callbackData: string | undefined): boolean {
+  return callbackData === REGISTER_CALLBACK_YES || callbackData === REGISTER_CALLBACK_NO
+}
+
+/**
+ * Handles the user's mock registration choice from inline buttons.
+ */
+export async function handleRegistrationChoice(
+  lead: Lead,
+  callbackData: string,
+  correlationId: string,
+): Promise<void> {
+  if (lead.leadStatus !== 'waiting_for_code') {
+    await sendText(lead, 'Este paso de registro ya no está pendiente.')
+    return
+  }
+
+  if (callbackData === REGISTER_CALLBACK_YES) {
+    await sendText(lead, '✅ ¡Genial! Confirmamos tu registro.')
+    await transitionLead(lead.id, 'code_delivered_registered', 'registration_user_confirm', correlationId)
+    await handlePhase3Success(lead, correlationId)
+    return
+  }
+
+  await transitionLead(lead.id, 'code_delivered_not_registered', 'registration_user_decline', correlationId)
+  await handlePhase3Failure(lead)
+}

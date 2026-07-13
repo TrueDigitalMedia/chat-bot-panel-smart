@@ -1,0 +1,203 @@
+import {
+  pgTable,
+  uuid,
+  varchar,
+  smallint,
+  boolean,
+  text,
+  jsonb,
+  timestamp,
+  pgEnum,
+  integer,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
+
+export const leadStatusEnum = pgEnum('lead_status', [
+  'incomplete',
+  'not_qualified',
+  'quota_exhausted',
+  'link_sent',
+  'waiting_for_code',
+  'code_delivered_registered',
+  'code_delivered_not_registered',
+  'code_delivered_no_response',
+  'ficha_hogar_completada',
+  'abandono',
+])
+
+export const channelEnum = pgEnum('channel', ['telegram', 'whatsapp', 'web'])
+
+export const leads = pgTable(
+  'leads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    channel: channelEnum('channel').notNull().default('telegram'),
+    channelUserId: varchar('channel_user_id', { length: 128 }).notNull(),
+    channelUsername: varchar('channel_username', { length: 100 }),
+    phoneNumber: varchar('phone_number', { length: 32 }),
+    leadStatus: leadStatusEnum('lead_status').notNull().default('incomplete'),
+    currentPhase: smallint('current_phase').notNull().default(1),
+    surveyQuestionIndex: smallint('survey_question_index').notNull().default(0),
+    quotaSegment: varchar('quota_segment', { length: 50 }),
+    score: smallint('score'),
+    d1Accepted: boolean('d1_accepted').notNull().default(false),
+    d2Accepted: boolean('d2_accepted'),
+    d3IsShopper: boolean('d3_is_shopper'),
+    conversationSummary: text('conversation_summary'),
+    reEngagementCount: smallint('re_engagement_count').notNull().default(0),
+    lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
+)
+
+export const surveyProfiles = pgTable('survey_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  leadId: uuid('lead_id')
+    .notNull()
+    .references(() => leads.id),
+  fullName: varchar('full_name', { length: 200 }),
+  country: varchar('country', { length: 50 }),
+  stateProvince: varchar('state_province', { length: 100 }),
+  municipality: varchar('municipality', { length: 100 }),
+  neighborhood: varchar('neighborhood', { length: 100 }),
+  email: varchar('email', { length: 200 }),
+  gender: varchar('gender', { length: 20 }),
+  educationPsh: varchar('education_psh', { length: 50 }),
+  cars: varchar('cars', { length: 10 }),
+  domesticHelp: boolean('domestic_help'),
+  householdSize: smallint('household_size'),
+  bedrooms: smallint('bedrooms'),
+  shoppingFrequency: varchar('shopping_frequency', { length: 30 }),
+  shoppingCategories: jsonb('shopping_categories').$type<number[]>(),
+  contactChannel: varchar('contact_channel', { length: 20 }),
+  contactSchedule: varchar('contact_schedule', { length: 30 }),
+  rawFreeTextJson: jsonb('raw_free_text_json'),
+  extractionModel: varchar('extraction_model', { length: 100 }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+})
+
+export const flowStates = pgTable('flow_states', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  leadId: uuid('lead_id')
+    .notNull()
+    .references(() => leads.id),
+  currentPhase: smallint('current_phase').notNull().default(1),
+  decisionPoint: varchar('decision_point', { length: 10 }),
+  surveyQuestionIndex: smallint('survey_question_index').notNull().default(0),
+  isInFaqDigression: boolean('is_in_faq_digression').notNull().default(false),
+  digressionResumeIndex: smallint('digression_resume_index'),
+  isCorrecting: boolean('is_correcting').notNull().default(false),
+  correctingField: varchar('correcting_field', { length: 50 }),
+  correctionResumeIndex: smallint('correction_resume_index'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const reEngagementSchedules = pgTable(
+  're_engagement_schedules',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id),
+    phase: smallint('phase').notNull(),
+    attemptNumber: smallint('attempt_number').notNull(),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    outcome: varchar('outcome', { length: 20 }),
+    qstashMessageId: varchar('qstash_message_id', { length: 100 }),
+  },
+  (t) => [uniqueIndex('re_engagement_unique_idx').on(t.leadId, t.phase, t.attemptNumber)],
+)
+
+// Note: faq_entries uses a vector column added in the initial migration SQL
+export const faqEntries = pgTable('faq_entries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  question: text('question').notNull(),
+  answer: text('answer').notNull(),
+  // embedding vector(1536) is added via raw SQL in migration
+  category: varchar('category', { length: 50 }),
+  questionHash: varchar('question_hash', { length: 64 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Treinta-owned panelist snapshot (JSONB). Not sent to PanelSmart. */
+export const treintaPanelistRecords = pgTable(
+  'treinta_panelist_records',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id),
+    data: jsonb('data').$type<Record<string, unknown>>().notNull(),
+    summary: text('summary'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('treinta_panelist_records_lead_id_idx').on(t.leadId)],
+)
+
+/**
+ * Embedding for a Treinta panelist record.
+ * `embedding vector(1536)` is added via raw SQL in migration 0002.
+ */
+export const treintaPanelistEmbeddings = pgTable(
+  'treinta_panelist_embeddings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    recordId: uuid('record_id')
+      .notNull()
+      .references(() => treintaPanelistRecords.id),
+    // embedding vector(1536) is added via raw SQL in migration
+    embeddingModel: varchar('embedding_model', { length: 100 }).notNull(),
+    sourceText: text('source_text').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('treinta_panelist_embeddings_record_id_idx').on(t.recordId)],
+)
+
+export const systemCallLogs = pgTable(
+  'system_call_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id').references(() => leads.id),
+    callType: varchar('call_type', { length: 50 }).notNull(),
+    model: varchar('model', { length: 100 }),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    latencyMs: integer('latency_ms'),
+    correlationId: uuid('correlation_id').notNull(),
+    calledAt: timestamp('called_at', { withTimezone: true }).notNull().defaultNow(),
+    error: text('error'),
+  },
+  (t) => [index('system_call_logs_lead_id_idx').on(t.leadId)],
+)
+
+export const messageDirectionEnum = pgEnum('message_direction', ['in', 'out'])
+export const messageContentTypeEnum = pgEnum('message_content_type', [
+  'text',
+  'callback',
+  'contact',
+  'keyboard',
+  'video',
+  'system',
+])
+
+export const conversationMessages = pgTable(
+  'conversation_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    direction: messageDirectionEnum('direction').notNull(),
+    channel: channelEnum('channel').notNull(),
+    contentType: messageContentTypeEnum('content_type').notNull().default('text'),
+    body: text('body').notNull(),
+    meta: jsonb('meta').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('conversation_messages_lead_created_idx').on(t.leadId, t.createdAt)],
+)
