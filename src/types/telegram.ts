@@ -18,6 +18,15 @@ export interface TelegramContact {
   user_id?: number
 }
 
+export interface TelegramLocation {
+  latitude: number
+  longitude: number
+  horizontal_accuracy?: number
+  live_period?: number
+  heading?: number
+  proximity_alert_radius?: number
+}
+
 export interface TelegramMessage {
   message_id: number
   from?: TelegramUser
@@ -25,6 +34,7 @@ export interface TelegramMessage {
   date: number
   text?: string
   contact?: TelegramContact
+  location?: TelegramLocation
 }
 
 export interface TelegramCallbackQuery {
@@ -49,10 +59,11 @@ export interface InlineKeyboardMarkup {
   inline_keyboard: InlineKeyboardButton[][]
 }
 
-/** Reply keyboard button (e.g. request_contact) */
+/** Reply keyboard button (e.g. request_contact / request_location) */
 export interface ReplyKeyboardButton {
   text: string
   request_contact?: boolean
+  request_location?: boolean
 }
 
 export interface ReplyKeyboardMarkup {

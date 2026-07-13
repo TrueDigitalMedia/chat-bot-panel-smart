@@ -36,6 +36,24 @@ export async function persistSurveyFieldAndAdvance(
 
   if (field === 'municipality') {
     await sendText(to, `He entendido que tu municipio es ${value}.`)
+    const [profile] = await db
+      .select()
+      .from(surveyProfiles)
+      .where(eq(surveyProfiles.leadId, lead.id))
+      .limit(1)
+    if (profile?.country && profile.stateProvince) {
+      const { applyManualMunicipalityAllowlist } = await import(
+        '@/lib/conversation/gps-capture'
+      )
+      const result = await applyManualMunicipalityAllowlist(lead, {
+        country: profile.country,
+        stateProvince: profile.stateProvince,
+        municipality: String(value),
+        geoSource: 'text_fuzzy',
+        correlationId,
+      })
+      if (!result.ok) return
+    }
   }
 
   const nextIdx = currentIdx + 1
@@ -47,6 +65,12 @@ export async function persistSurveyFieldAndAdvance(
     .update(flowStates)
     .set({ surveyQuestionIndex: nextIdx, updatedAt: new Date() })
     .where(eq(flowStates.leadId, lead.id))
+
+  if (nextIdx === 2) {
+    const { requestGps } = await import('@/lib/conversation/gps-capture')
+    await requestGps({ ...lead, surveyQuestionIndex: nextIdx })
+    return
+  }
 
   if (nextIdx <= 16) {
     await sendSurveyQuestion(to, nextIdx, lead.id)

@@ -209,6 +209,27 @@ export async function handlePhase1(
     .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
     .where(eq(surveyProfiles.leadId, lead.id))
 
+  // Manual path: NSE allowlist after municipality (before neighborhood)
+  if (question.fieldName === 'municipality') {
+    const [profile] = await db
+      .select()
+      .from(surveyProfiles)
+      .where(eq(surveyProfiles.leadId, lead.id))
+      .limit(1)
+    if (profile?.country && profile.stateProvince) {
+      const { applyManualMunicipalityAllowlist } = await import('../gps-capture')
+      const fuzzyUsed = false // exact path here; fuzzy goes through geo confirm
+      const result = await applyManualMunicipalityAllowlist(lead, {
+        country: profile.country,
+        stateProvince: profile.stateProvince,
+        municipality: String(fieldValue),
+        geoSource: fuzzyUsed ? 'text_fuzzy' : 'text_exact',
+        correlationId,
+      })
+      if (!result.ok) return
+    }
+  }
+
   const nextIdx = idx + 1
   await db
     .update(leads)
@@ -218,6 +239,13 @@ export async function handlePhase1(
     .update(flowStates)
     .set({ surveyQuestionIndex: nextIdx, updatedAt: new Date() })
     .where(eq(flowStates.leadId, lead.id))
+
+  // Enter GPS gate before manual country questions
+  if (nextIdx === 2) {
+    const { requestGps } = await import('../gps-capture')
+    await requestGps({ ...lead, surveyQuestionIndex: nextIdx })
+    return
+  }
 
   if (nextIdx <= 16) {
     await sendSurveyQuestion(to, nextIdx, lead.id)

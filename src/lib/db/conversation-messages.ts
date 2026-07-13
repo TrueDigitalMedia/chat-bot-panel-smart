@@ -131,6 +131,9 @@ export async function getConversationDetail(leadId: string) {
       stateProvince: surveyProfiles.stateProvince,
       municipality: surveyProfiles.municipality,
       neighborhood: surveyProfiles.neighborhood,
+      nseRegion: surveyProfiles.nseRegion,
+      geoSource: surveyProfiles.geoSource,
+      inQuotaGeo: surveyProfiles.inQuotaGeo,
       email: surveyProfiles.email,
       gender: surveyProfiles.gender,
     })

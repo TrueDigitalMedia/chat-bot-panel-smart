@@ -33,6 +33,9 @@ type LeadDetail = {
   stateProvince: string | null
   municipality: string | null
   neighborhood: string | null
+  nseRegion: string | null
+  geoSource: string | null
+  inQuotaGeo: boolean | null
   email: string | null
   gender: string | null
 }
@@ -119,6 +122,20 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
               {[lead.neighborhood, lead.municipality, lead.stateProvince, lead.country]
                 .filter(Boolean)
                 .join(', ') || '—'}
+            </strong>
+          </li>
+          <li>
+            <span>Región NSE</span>
+            <strong>{lead.nseRegion || '—'}</strong>
+          </li>
+          <li>
+            <span>Fuente GEO</span>
+            <strong>{lead.geoSource || '—'}</strong>
+          </li>
+          <li>
+            <span>Cupo geo</span>
+            <strong>
+              {lead.inQuotaGeo === true ? 'Sí' : lead.inQuotaGeo === false ? 'No' : '—'}
             </strong>
           </li>
           <li>

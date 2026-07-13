@@ -130,3 +130,46 @@ export async function confirmPhoneSaved(to: ChannelRecipient, phone: string): Pr
   }
   await logOut(to, 'text', msg)
 }
+
+/** Ask user to share GPS — Telegram reply keyboard; WhatsApp reserved. */
+export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
+  const prompt =
+    '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS.\n\n' +
+    (to.channel === 'telegram'
+      ? 'Toca «Compartir ubicación» o «Escribir mi ubicación» si prefieres responder a mano.'
+      : 'Comparte tu ubicación cuando el canal lo permita.')
+
+  switch (to.channel) {
+    case 'telegram':
+      await telegram.sendLocationRequest(BigInt(to.channelUserId), prompt)
+      break
+    case 'whatsapp':
+    case 'web':
+      throw new Error(`Location request not implemented for channel: ${to.channel}`)
+    default: {
+      const _exhaustive: never = to.channel
+      throw new Error(`Unknown channel: ${_exhaustive}`)
+    }
+  }
+  await logOut(to, 'keyboard', prompt, { type: 'location_request' })
+}
+
+export async function confirmLocationKeyboardRemoved(
+  to: ChannelRecipient,
+  text: string,
+): Promise<void> {
+  switch (to.channel) {
+    case 'telegram':
+      await telegram.removeReplyKeyboard(BigInt(to.channelUserId), text)
+      break
+    case 'whatsapp':
+    case 'web':
+      await sendText(to, text)
+      return
+    default: {
+      const _exhaustive: never = to.channel
+      throw new Error(`Unknown channel: ${_exhaustive}`)
+    }
+  }
+  await logOut(to, 'text', text)
+}

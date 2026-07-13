@@ -33,6 +33,7 @@
     "drizzle-kit": "^0.31.10",
     "playwright": "^1.61.1",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "xlsx": "^0.18.5"
   }
 }

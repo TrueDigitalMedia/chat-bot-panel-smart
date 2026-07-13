@@ -103,6 +103,9 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
       stateProvince: null,
       municipality: null,
       neighborhood: null,
+      nseRegion: null,
+      geoSource: null,
+      inQuotaGeo: null,
       email: null,
       gender: null,
       educationPsh: null,
@@ -131,6 +134,8 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
       isCorrecting: false,
       correctingField: null,
       correctionResumeIndex: null,
+      gpsGateStatus: null,
+      gpsProposal: null,
       updatedAt: now,
     })
     .where(eq(flowStates.leadId, leadId))

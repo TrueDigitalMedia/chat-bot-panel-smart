@@ -1,0 +1,5660 @@
+{
+  "version": "2026-07-13",
+  "source": "Muestra Regiones NSE CAM .xlsx",
+  "countries": {
+    "Panamá": [
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "ALANJE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "BARU"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "HERRERA",
+        "municipality": "CHITRE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "ATALAYA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "BOQUERON"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "BOQUETE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "CALOBRE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "CAÑAZAS"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "LA MESA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "LAS PALMAS"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "MONTIJO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "SAN FRANCISCO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "BUGABA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "DAVID"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "BOCAS DEL TORO",
+        "municipality": "BOCAS DEL TORO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "BOCAS DEL TORO",
+        "municipality": "CHANGUINOLA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "BOCAS DEL TORO",
+        "municipality": "CHIRIQUI GRANDE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "DOLEGA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "GUALACA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "RENACIMIENTO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "CHIRIQUÍ",
+        "municipality": "TOLE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "HERRERA",
+        "municipality": "OCU"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "HERRERA",
+        "municipality": "PESE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "SANTA FÉ"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "SANTIAGO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "VERAGUAS",
+        "municipality": "SONA"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "COLÓN",
+        "municipality": "COLON"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "DARIÉN",
+        "municipality": "PINOGANA"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "DARIÉN",
+        "municipality": "CHEPIGANA"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "COLÓN",
+        "municipality": "PORTOBELO"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "COLÓN",
+        "municipality": "CHAGRES"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "COLÓN",
+        "municipality": "DONOSO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COCLÉ",
+        "municipality": "AGUADULCE"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "SAN MIGUELITO"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "LA CHORRERA"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "CHEPO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "LOS SANTOS",
+        "municipality": "LAS TABLAS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "LOS SANTOS",
+        "municipality": "LOS SANTOS"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "ARRAIJAN"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "CAPIRA"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "CHAME"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "SAN CARLOS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COCLÉ",
+        "municipality": "ANTON"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "LOS SANTOS",
+        "municipality": "GUARARE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COCLÉ",
+        "municipality": "LA PINTADA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COCLÉ",
+        "municipality": "NATA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COCLÉ",
+        "municipality": "PENONOME"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "LOS SANTOS",
+        "municipality": "TONOSI"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "PANAMÁ",
+        "municipality": "PANAMA"
+      }
+    ],
+    "Guatemala": [
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Guatemala"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "San Pedro Sacatepéquez"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Chuarrancho"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Santa María de Jesús"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "San Juan Alotenango"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Santa Catarina Barahona"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Santo Domingo Xenacoj"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Sumpango"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "San Juan Sacatepéquez"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Chinautla"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Palencia"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Magdalena Milpas Altas"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Santiago Sacatepéquez"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Pastores"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "San Raymundo"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Ciudad Vieja"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Villa Nueva"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "San Antonio Aguas Calientes"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "San Miguel Dueñas"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Villa Canales"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Amatitlán"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Santa Lucía Milpas Altas"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "San Bartolomé Milpas Altas"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Antigua Guatemala"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "Guatemala",
+        "municipality": "San Pedro Ayampuc"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Mixco"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Fraijanes"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "Jocotenango"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "San José Pinula"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "San Miguel Petapa"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "Guatemala",
+        "municipality": "Santa Catarina Pinula"
+      },
+      {
+        "nseRegion": "Resto Centro",
+        "stateProvince": "Sacatepéquez",
+        "municipality": "San Lucas Sacatepéquez"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Panzós"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "San Agustín Lanquín"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Santa Catalina La Tinta"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Senahú"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Chisec"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Fray Bartolomé de las Casas"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Raxruhá"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Cobán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "San Miguel Tucurú"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Chahal"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Tamahú"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Santa María Cahabón"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "San Cristóbal Verapaz"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Tactic"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "Santa Cruz Verapaz"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "San Pedro Carchá"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Alta Verapaz",
+        "municipality": "San Juan Chamelco"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Salamá"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "San Jerónimo"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Purulhá"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "San Miguel Chicaj"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Granados"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Cubulco"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Rabinal"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Baja Verapaz",
+        "municipality": "Santa Cruz El Chol"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "San José la Arada"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "San Jacinto"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Camotán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Chiquimula"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Olopa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Quezaltepeque"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Esquipulas"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Concepción las Minas"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Jocotán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "Ipala"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Chiquimula",
+        "municipality": "San Juan Ermita"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "San Antonio la Paz"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "San Agustín Acasaguastlán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "Sansare"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "El Jícaro"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "Morazán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "San Cristóbal Acasaguastlán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "Sanarate"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "El Progreso",
+        "municipality": "Guastatoya"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Izabal",
+        "municipality": "Livingston"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Izabal",
+        "municipality": "Morales"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Izabal",
+        "municipality": "El Estor"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Izabal",
+        "municipality": "Los Amates"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Izabal",
+        "municipality": "Puerto Barrios"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "San Carlos Alzatate"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "San Manuel Chaparrón"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "San Luis Jilotepeque"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "San Pedro Pinula"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "Jalapa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "Monjas"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jalapa",
+        "municipality": "Mataquescuintla"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Jutiapa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "San José Acatempa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "El Adelanto"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Jerez"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Pasaco"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Conguaco"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Zapotitlán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Yupiltepeque"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Atescatempa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Santa Catarina Mita"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Jalpatagua"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Comapa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Agua Blanca"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Asunción Mita"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Moyuta"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "El Progreso"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Jutiapa",
+        "municipality": "Quesada"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "San Jorge"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Cabañas"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Gualán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Huité"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Usumatlán"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Río Hondo"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "La Unión"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Estanzuela"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Zacapa"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "Teculután"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "Zacapa",
+        "municipality": "San Diego"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Sipacate"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Masagua"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Guanagazapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Iztapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "San José"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "La Gomera"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Nueva Concepción"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Tiquisate"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "San Vicente Pacaya"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "La Democracia"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Escuintla"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Siquinalá"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Palín"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Escuintla",
+        "municipality": "Santa Lucía Cotzumalguapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "San Andrés Villa Seca"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "El Asintal"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "Champerico"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "Nuevo San Carlos"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "San Sebastián"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "San Martín Zapotitlán"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "Santa Cruz Muluá"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "Retalhuleu"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Retalhuleu",
+        "municipality": "San Felipe"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Taxisco"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "San Rafael las Flores"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Casillas"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Oratorio"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Nueva Santa Rosa"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Barberena"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Pueblo Nuevo Viñas"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Santa Cruz Naranjo"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Cuilapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Santa María Ixhuatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Guazacapán"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Santa Rosa de Lima"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "San Juan Tecuaco"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Santa Rosa",
+        "municipality": "Chiquimulilla"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Santa Bárbara"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Miguel Panán"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Lorenzo"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Río Bravo"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Pablo Jocopilas"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Chicacao"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San José La Máquina"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Juan Bautista"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Zunilito"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San José el Ídolo"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Santo Domingo Suchitepéquez"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Patulul"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Bernardino"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Samayac"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Pueblo Nuevo"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Antonio Suchitepéquez"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Francisco Zapotitlán"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "San Gabriel"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Cuyotenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Santo Tomas la Unión"
+      },
+      {
+        "nseRegion": "Sur Occidente Chico",
+        "stateProvince": "Suchitepéquez",
+        "municipality": "Mazatenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Francisco la Unión"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa Catarina Palopó"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Bartolomé Jocotenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Almolonga"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Santiago Chimaltenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Juan Atitán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Concepción"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa Cruz la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Antonio Palopó"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Gaspar Ixchil"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Ocós"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "San Francisco el Alto"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "Santa María Chiquimula"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Cajolá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Santa Bárbara"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "El Quetzal"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Patzité"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "San Andrés Xecul"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Mateo Ixtatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Santo Tomás Chichicastenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Zunil"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santiago Atitlán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "La Blanca"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Miguel Siguilá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San José Ojetenam"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Chajul"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa Catarina Ixtahuacán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "La Democracia"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Nahualá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Cristóbal Cucho"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Martín Sacatepéquez"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Colomba Costa Cuca"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Nentón"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Miguel Acatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Antonio Ilotenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San Pedro Yepocapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "La Libertad"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Ayutla"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Sololá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Palestina de los Altos"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Sibinal"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "La Reforma"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Flores Costa Cuca"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Unión Cantinil"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "Santa Lucía la Reforma"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Colotenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Rafael Petzal"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Acatenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "El Tumbador"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Pablo la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Concepción Huista"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Pablo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Concepción Chiquirichapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Juan Cotzal"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Esquipulas Palo Gordo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Canillá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San José Poaquil"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "El Palmar"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Petatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Zacualpa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Carlos Sija"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Pedro Soloma"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San José Chacayá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Lucas Tolimán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Génova"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Cabricán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Sacapulas"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "San Bartolo Aguas Calientes"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Patzicía"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Sibilia"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San Miguel Pochuta"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Parramos"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Tajumulco"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Rafael La Independencia"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Marcos la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Cantel"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Huitán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San José el Rodeo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Tecpán Guatemala"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San Andrés Itzapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "Totonicapán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "Momostenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Tacaná"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Joyabaj"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Sebastián Coatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Pedro Jocopilas"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa Clara la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Patzún"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Chiché"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Sebastián Huehuetenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Tectitán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Santa Apolonia"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Pajapita"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Juan Ostuncalco"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Lorenzo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Antonio Huista"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Santa Eulalia"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Juan Ixcoy"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Santa María Nebaj"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San Juan Comalapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "San Martín Jilotepeque"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Santa Cruz del Quiché"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Santa Cruz Balanyá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Concepción Tutuapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Todos Santos Cuchumatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Santa Cruz Barillas"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Totonicapán",
+        "municipality": "San Cristóbal Totonicapán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Pachalum"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Rafael Pie de la Cuesta"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa Lucía Utatlán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Ildefonso Ixtahuacán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Nuevo Progreso"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "El Tejar"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Chiantla"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Chicamán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Huehuetenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Marcos"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Quetzaltenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Juan la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Zaragoza"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Chimaltenango",
+        "municipality": "Chimaltenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Cunén"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Mateo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Río Blanco"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Chinique"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "Playa Grande Ixcán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Catarina"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Pedro la Laguna"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Sipacapa"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Comitancillo"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Andrés Sajcabajá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "San Pedro Necta"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Aguacatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Coatepeque"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Cuilco"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Jacaltenango"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Tejutla"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quiché",
+        "municipality": "San Miguel Uspantán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Ixchiguán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "San Andrés Semetabaj"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "Malacatán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Panajachel"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Malacatancito"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "Salcajá"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Miguel Ixtahuacán"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Antonio Sacatepéquez"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "San Marcos",
+        "municipality": "San Pedro Sacatepéquez"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "La Esperanza"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Quetzaltenango",
+        "municipality": "San Juan Olintepeque"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Sololá",
+        "municipality": "Santa María Visitación"
+      },
+      {
+        "nseRegion": "Sur Occidente Grande",
+        "stateProvince": "Huehuetenango",
+        "municipality": "Santa Ana Huista"
+      }
+    ],
+    "Costa Rica": [
+      {
+        "nseRegion": "Area metropolitana I",
+        "stateProvince": "San Jose",
+        "municipality": "Goicoechea"
+      },
+      {
+        "nseRegion": "Area metropolitana I",
+        "stateProvince": "San Jose",
+        "municipality": "San Jose"
+      },
+      {
+        "nseRegion": "Area metropolitana I",
+        "stateProvince": "San Jose",
+        "municipality": "Curridabat"
+      },
+      {
+        "nseRegion": "Area metropolitana I",
+        "stateProvince": "San Jose",
+        "municipality": "Moravia"
+      },
+      {
+        "nseRegion": "Area metropolitana I",
+        "stateProvince": "San Jose",
+        "municipality": "Vazquez de Coronado"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "San Jose",
+        "municipality": "Desamparados"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "Cartago",
+        "municipality": "Alvarado"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "San Jose",
+        "municipality": "Tarrazu"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "San Jose",
+        "municipality": "Leon Cortes Castro"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "Cartago",
+        "municipality": "Cartago"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "Cartago",
+        "municipality": "Jimenez"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "San Jose",
+        "municipality": "Perez Zeledon"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "Cartago",
+        "municipality": "Oreamuno"
+      },
+      {
+        "nseRegion": "Area metropolitana II",
+        "stateProvince": "Heredia",
+        "municipality": "Heredia"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Cartago",
+        "municipality": "Paraiso"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Acosta"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Alajuelita"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Alajuela"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Atenas"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Grecia"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Guatuso"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Los Chiles"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Barva"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Naranjo"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Aserri"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Orotina"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Palmares"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Poas"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "San Carlos"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Cartago",
+        "municipality": "Turrialba"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Belen"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "San Ramon"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Escazu"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Upala"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Valverde Vega"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Alajuela",
+        "municipality": "Zarcero"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Cartago",
+        "municipality": "El Guarco"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Cartago",
+        "municipality": "La Union"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Flores"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "San Isidro"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Montes de Oca"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "San Pablo"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "San Rafael"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Mora"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Puriscal"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Santa Ana"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "San Jose",
+        "municipality": "Tibas"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Santa Barbara"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Santo Domingo"
+      },
+      {
+        "nseRegion": "Area metropolitana III",
+        "stateProvince": "Heredia",
+        "municipality": "Sarapiqui"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Abangares"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Bagaces"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Canas"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Carrillo"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "La Cruz"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Liberia"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Nandayure"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Nicoya"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Santa Cruz"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Guanacaste",
+        "municipality": "Tilaran"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Guacimo"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Matina"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Siquirres"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Talamanca"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Pococi"
+      },
+      {
+        "nseRegion": "Norte",
+        "stateProvince": "Limon",
+        "municipality": "Limon"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Aguirre"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Buenos Aires"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Corredores"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Coto Brus"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Esparza"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Garabito"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Golfito"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Montes de Oro"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Osa"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Parrita"
+      },
+      {
+        "nseRegion": "Sur occidente",
+        "stateProvince": "Puntarenas",
+        "municipality": "Puntarenas"
+      }
+    ],
+    "El Salvador": [
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "TACUBA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "JUJUTLA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "SAN FRANCISCO MENENDEZ"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "EL PORVENIR"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "SANTA ROSA GUACHIPILIN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "SANTIAGO DE LA FRONTERA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "ACAJUTLA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "ARMENIA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "CALUCO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "CUISNAHUAT"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "GUAYMANGO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "SAN LORENZO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "SAN PEDRO PUXTLA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "MASAHUAT"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "CANDELARIA DE LA FRONTERA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "COATEPEQUE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "TEXISTEPEQUE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "IZALCO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "JUAYUA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "NAHUIZALCO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "CONCEPCION DE ATACO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "EL REFUGIO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "EL CONGO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "METAPAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "SAN ANTONIO PAJONAL"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "NAHULINGO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SALCOATITAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SAN ANTONIO DEL MONTE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SAN JULIAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SANTA CATARINA MASAHUAT"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "ATIQUIZAYA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "SANTA ANA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SANTA ISABEL ISHUATAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "APANECA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "AHUACHAPAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "AHUACHAPAN",
+        "municipality": "TURIN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "CHALCHUAPA"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SANTA ANA",
+        "municipality": "SAN SEBASTIAN SALITRILLO"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SANTO DOMINGO DE GUZMAN"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SONSONATE"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "SONSONATE",
+        "municipality": "SONZACATE"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "HUIZUCAR"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "LA LIBERTAD"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SAN JOSE VILLANUEVA"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "CUSCATANCINGO"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "DELGADO"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "ZARAGOZA"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "AYUTUXTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "MEJICANOS"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SANTA TECLA"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SAN SALVADOR"
+      },
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "ANTIGUO CUSCATLAN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "ROSARIO DE MORA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "CANDELARIA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "EL CARMEN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "ORATORIO DE CONCEPCION"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "MONTE SAN JUAN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN CRISTOBAL"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN JOSE GUAYABAL"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN PEDRO PERULAPAN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SANTA CRUZ MICHAPA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN RAMON"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "TENANCINGO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SUCHITOTO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SANTIAGO TEXACUANGOS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "PANCHIMALCO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SAN MARTIN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SANTO TOMAS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SANTA CRUZ ANALQUITO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "APOPA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SAN MARCOS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "SOYAPANGO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "TONACATEPEQUE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "ILOPANGO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN BARTOLOME PERULAPIA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "COJUTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "COMASAGUA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "TAMANIQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "TEOTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "TEPECOYO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "EL ROSARIO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "EL PAISNAL"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN LUIS LA HERRADURA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN ILDEFONSO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN LORENZO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SANTA CLARA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "JICALAPA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SAN MATIAS"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "TALNIQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN PEDRO NONUALCO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "CHILTIUPAN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SAN PABLO TACACHICO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SACACOYO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN PEDRO MASAHUAT"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "EL ROSARIO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN LUIS TALPA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "GUADALUPE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "TECOLUCA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN ANTONIO MASAHUAT"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN JUAN TEPEZONTES"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "TAPALHUACA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "JERUSALEN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN EMIGDIO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN FRANCISCO CHINAMECA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "CIUDAD ARCE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "JAYAQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "GUAZAPA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTIAGO NONUALCO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN RAFAEL OBRAJUELO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "APASTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN CAYETANO ISTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SANTO DOMINGO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "TEPETITAN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "VERAPAZ"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "MERCEDES LA CEIBA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN JUAN TALPA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN MIGUEL TEPEZONTES"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTA MARIA OSTUMA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "CUSCATLAN",
+        "municipality": "SAN RAFAEL CEDROS"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "AGUILARES"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN SALVADOR",
+        "municipality": "NEJAPA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "QUEZALTEPEQUE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "COLON"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "SAN JUAN OPICO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "OLOCUILTA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN JUAN NONUALCO"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "ZACATECOLUCA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN ESTEBAN CATARINA"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN SEBASTIAN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "SAN VICENTE",
+        "municipality": "SAN VICENTE"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA LIBERTAD",
+        "municipality": "NUEVO CUSCATLAN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "CUYULTITAN"
+      },
+      {
+        "nseRegion": "Centro III",
+        "stateProvince": "LA PAZ",
+        "municipality": "PARAISO DE OSORIO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "CINQUERA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "DOLORES"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "GUACOTECTI"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "ILOBASCO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "JUTIAPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "SAN ISIDRO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "SENSUNTEPEQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "TEJUTEPEQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CABAÑAS",
+        "municipality": "VICTORIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "AGUA CALIENTE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "ARCATAO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "AZACUALPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "CANCASQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "CHALATENANGO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "CITALA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "COMALAPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "CONCEPCION QUEZALTEPEQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "DULCE NOMBRE DE MARIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "EL CARRIZAL"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "EL PARAISO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "LA LAGUNA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "LA PALMA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "LA REINA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "LAS FLORES"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "LAS VUELTAS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "NOMBRE DE JESUS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "NUEVA CONCEPCION"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "NUEVA TRINIDAD"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "OJOS DE AGUA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "POTONICO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN ANTONIO DE LA CRUZ"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN ANTONIO LOS RANCHOS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN FERNANDO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN FRANCISCO LEMPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN FRANCISCO MORAZAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN IGNACIO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN ISIDRO LABRADOR"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN LUIS DEL CARMEN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN MIGUEL DE MERCEDES"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SAN RAFAEL"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "SANTA RITA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "CHALATENANGO",
+        "municipality": "TEJUTLA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "ANAMORÓS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "BOLIVAR"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "CONCEPCION DE ORIENTE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "CONCHAGUA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "EL CARMEN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "EL SAUCE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "INTIPUCA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "LA UNION"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "LISLIQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "MEANGUERA DEL GOLFO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "NUEVA ESPARTA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "PASAQUINA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "POLOROS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "SAN ALEJO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "SAN JOSE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "SANTA ROSA DE LIMA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "YAYANTIQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "LA UNION",
+        "municipality": "YUCUAIQUIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "ARAMBALA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "CACAOPERA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "CHILANGA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "CORINTO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "DELICIAS DE CONCEPCION"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "EL DIVISADERO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "EL ROSARIO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "GUALOCOCTI"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "GUATAJIAGUA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "JOATECA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "JOCOAITIQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "JOCORO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "LOLOTIQUILLO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "MEANGUERA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "OSICALA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "PERQUIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SAN CARLOS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SAN FERNANDO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SAN FRANCISCO GOTERA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SAN ISIDRO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SAN SIMON"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SENSEMBRA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "SOCIEDAD"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "TOROLA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "YAMABAL"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "MORAZÁN",
+        "municipality": "YOLOAIQUIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "CAROLINA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "CHAPELTIQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "CHINAMECA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "CHIRILAGUA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "CIUDAD BARRIOS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "COMACARAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "EL TRANSITO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "LOLOTIQUE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "MONCAGUA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "NUEVA GUADALUPE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "NUEVO EDEN DE SAN JUAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "QUELEPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN ANTONIO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN GERARDO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN JORGE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN LUIS DE LA REINA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN MIGUEL"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SAN RAFAEL ORIENTE"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "SESORI"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "SAN MIGUEL",
+        "municipality": "ULUAZAPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "ALEGRIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "BERLIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "CALIFORNIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "CONCEPCION BATRES"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "EL TRIUNFO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "EREGUAYQUIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "ESTANZUELAS"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "JIQUILISCO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "JUCUAPA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "JUCUARAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "MERCEDES UMAÑA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "NUEVA GRANADA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "OZATLAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "PUERTO EL TRIUNFO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SAN AGUSTIN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SAN BUENAVENTURA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SAN DIONISIO"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SAN FRANCISCO JAVIER"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SANTA ELENA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SANTA MARIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "SANTIAGO DE MARIA"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "TECAPAN"
+      },
+      {
+        "nseRegion": "NorOriente",
+        "stateProvince": "USULUTAN",
+        "municipality": "USULUTAN"
+      }
+    ],
+    "Nicaragua": [
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Ciudad Darío"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "El Tuma - La Dalia"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Esquipulas"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Matagalpa"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Matiguás"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Muy Muy"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Rancho Grande"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Río Blanco"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Boaco",
+        "municipality": "Boaco"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Boaco",
+        "municipality": "Camoapa"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Boaco",
+        "municipality": "San Lorenzo"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Boaco",
+        "municipality": "Teustepe"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Chontales",
+        "municipality": "Acoyapa"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Chontales",
+        "municipality": "Comalapa"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Chontales",
+        "municipality": "Juigalpa"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "El Cuá"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "Jinotega"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "San José de Bocay"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "San Rafael del Norte"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "San Sebastián de Yalí"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Rio San Juan",
+        "municipality": "El Castillo"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Rio San Juan",
+        "municipality": "San Carlos"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Chontales",
+        "municipality": "Santo Tomás"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "Santa María de Pantasma"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "San Dionisio"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "San Isidro"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Jinotega",
+        "municipality": "Wiwilí de Jinotega"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "San Ramón"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Matagalpa",
+        "municipality": "Sébaco"
+      },
+      {
+        "nseRegion": "Norcentral",
+        "stateProvince": "Rio San Juan",
+        "municipality": "San Miguelito"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "El Viejo"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Puerto Morazán"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Somotillo"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Villanueva"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Posoltega"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Chinandega"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Chichigalpa"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Chinandega",
+        "municipality": "Corinto"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Esteli",
+        "municipality": "Pueblo Nuevo"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Esteli",
+        "municipality": "Condega"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Esteli",
+        "municipality": "La Trinidad"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Esteli",
+        "municipality": "Estelí"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "El Sauce"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "La Paz Centro"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "Larreynaga"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "León"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "Nagarote"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Leon",
+        "municipality": "Telica"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "Totogalpa"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "San Juan de Río Coco"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "San Lucas"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "Telpaneca"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "Palacagüina"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Madriz",
+        "municipality": "Somoto"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "Murra"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "Wiwili de Nueva Segovia"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "Quilalí"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "Ocotal"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "Jalapa"
+      },
+      {
+        "nseRegion": "Occidente",
+        "stateProvince": "Nueva Segovia",
+        "municipality": "El Jícaro"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Villa Carlos Fonseca (Villa El Carmen)"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "El Crucero"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "San Rafael del Sur"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Tipitapa"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Carazo",
+        "municipality": "San Marcos"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Mateare"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Ciudad Sandino"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Carazo",
+        "municipality": "Diriamba"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Carazo",
+        "municipality": "Santa Teresa"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Managua"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Managua",
+        "municipality": "Ticuantepe"
+      },
+      {
+        "nseRegion": "Sur I",
+        "stateProvince": "Carazo",
+        "municipality": "Jinotepe"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Masaya",
+        "municipality": "Niquinohomo"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Rivas",
+        "municipality": "Tola"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Rivas",
+        "municipality": "Altagracia"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Granada",
+        "municipality": "Nandaime"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Granada",
+        "municipality": "Diriomo"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Rivas",
+        "municipality": "Belén"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Granada",
+        "municipality": "Granada"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Masaya",
+        "municipality": "Masatepe"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Masaya",
+        "municipality": "La Concepción"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Masaya",
+        "municipality": "Masaya"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Rivas",
+        "municipality": "Rivas"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Masaya",
+        "municipality": "Nindirí"
+      },
+      {
+        "nseRegion": "Sur II",
+        "stateProvince": "Rivas",
+        "municipality": "San Juan del Sur"
+      }
+    ],
+    "Honduras": [
+      {
+        "nseRegion": "Centro I",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "TEGUCIGALPA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "CEDROS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "AJUTERIQUE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "COMAYAGUA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "EL ROSARIO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "ESQUIAS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "HUMUYA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "LA LIBERTAD"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "CURAREN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "EL PORVENIR"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "LA TRINIDAD"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "GUAIMACA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "LEPATERIQUE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "LAMANI"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "OJOJONA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "ORICA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "REITOCA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "LAS LAJAS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "LEJAMANI"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "MEAMBAR"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "MINAS DE ORO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "OJOS DE AGUA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SAN JERONIMO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SAN JOSE DE COMAYAGUA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "SABANAGRANDE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SAN JOSE DEL POTRERO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SAN LUIS"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SAN SEBASTIAN"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "SAN ANTONIO DE ORIENTE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "SIGUATEPEQUE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "SAN JUAN DE FLORES"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "TAULABE"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "COMAYAGUA",
+        "municipality": "VILLA DE SAN ANTONIO"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "SANTA ANA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "SANTA LUCIA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "TALANGA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "VALLE DE ANGELES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "AGUANQUETERIQUE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "ARADA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "ARENAL"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "ATIMA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "AZACUALPA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "BELEN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "BELEN GUALCHO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "CABAÑAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "CABAÑAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "CAMASCA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "CANDELARIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "CANE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "CEGUACA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "CHINACLA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "CHINDA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "CHOLOMA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "COLOLACA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "COLOMONCAGUA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "CONCEPCION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "CONCEPCION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "CONCEPCION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "CONCEPCION DEL NORTE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "CONCEPCION DEL SUR"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "COPAN RUINAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "CORQUIN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "CUCUYAGUA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "DOLORES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "DOLORES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "DOLORES MERENDON"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "DULCE NOMBRE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "EL NEGRITO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "EL NISPERO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "EL PARAISO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "EL PROGRESO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "ERANDIQUE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "FLORIDA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "FRATERNIDAD"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "GRACIAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "GUAJIQUIRO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "GUALALA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "GUALCINCE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "ISLAS DE LA BAHIA",
+        "municipality": "GUANAJA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "GUARITA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "ILAMA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "INTIBUCA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "JESUS DE OTORO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "JOCON"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "ISLAS DE LA BAHIA",
+        "municipality": "JOSE SANTOS GUARDIOLA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LA CAMPA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "LA ENCARNACION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "LA ESPERANZA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LA IGUALA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "LA JIGUA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "LA LABOR"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "LA LIMA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "LA PAZ"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LA UNION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "LA UNION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LA VIRTUD"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LAS FLORES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "LAS VEGAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "LAUTERIQUE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "LEPAERA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "LUCERNA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "MACUELIZO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "MAGDALENA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "MAPULACA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "MARCALA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "MASAGUARA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "MERCEDES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "MERCEDES DE ORIENTE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "MORAZAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "NARANJITO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "NUEVA ARCADIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "NUEVA FRONTERA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "NUEVO CELILAC"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "NUEVO OCOTEPEQUE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "OLANCHITO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "OMOA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "OPATORO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "PETOA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "PIMIENTA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "PIRAERA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "POTRERILLOS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "PROTECCION"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "PUERTO CORTES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "QUIMISTAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "ISLAS DE LA BAHIA",
+        "municipality": "ROATAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN AGUSTIN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN ANDRES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN ANTONIO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN ANTONIO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "SAN ANTONIO DE CORTES"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN ANTONIO DEL NORTE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SAN FERNANDO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN FRANCISCO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN FRANCISCO DE OJUERA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN FRANCISCO DE OPALACA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "SAN FRANCISCO DE YOJOA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SAN FRANCISCO DEL VALLE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN ISIDRO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN JERONIMO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SAN JORGE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN JOSE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN JOSE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN JOSE DE COLINAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN JUAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN JUAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN JUAN DE OPOA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN JUAN GUARITA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN LUIS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "SAN MANUEL"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN MANUEL COLOHETE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN MARCOS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SAN MARCOS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN MARCOS DE CAIQUIN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN MARCOS DE LA SIERRA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SAN MIGUELITO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN NICOLAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN NICOLAS"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SAN PEDRO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SAN PEDRO DE TUTULE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "SAN PEDRO SULA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN PEDRO ZACAPA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN RAFAEL"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SAN SEBASTIAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SAN VICENTE CENTENARIO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTA ANA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SANTA BARBARA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "SANTA CRUZ"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "SANTA CRUZ DE YOJOA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTA ELENA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SANTA FE"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "SANTA LUCIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTA MARIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "SANTA RITA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "SANTA RITA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SANTA RITA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "SANTA ROSA DE COPAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "SANTIAGO DE PURINGLA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SENSENTI"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "OCOTEPEQUE",
+        "municipality": "SINUAPA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "SULACO"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "TALGUA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "TAMBLA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "TOMALA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "SANTA BARBARA",
+        "municipality": "TRINIDAD"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "TRINIDAD DE COPAN"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "ISLAS DE LA BAHIA",
+        "municipality": "UTILA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "VALLADOLID"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "COPAN",
+        "municipality": "VERACRUZ"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "VICTORIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "CORTES",
+        "municipality": "VILLANUEVA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LEMPIRA",
+        "municipality": "VIRGINIA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "INTIBUCA",
+        "municipality": "YAMARANGUILA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "LA PAZ",
+        "municipality": "YARULA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "YORITO"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "ESPARTA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "SANTA FE"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "IRIONA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "LIMON"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "SANTA ROSA DE AGUAN"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "ARIZONA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "BONITO ORIENTAL"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "BALFATE"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "LA MASICA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "TOCOA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "TRUJILLO"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "SABA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "TELA"
+      },
+      {
+        "nseRegion": "Nor Occidente I",
+        "stateProvince": "YORO",
+        "municipality": "YORO"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "LA CEIBA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "COLON",
+        "municipality": "SONAGUERA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "JUTIAPA"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "EL PORVENIR"
+      },
+      {
+        "nseRegion": "Nor Occidente II",
+        "stateProvince": "ATLANTIDA",
+        "municipality": "SAN FRANCISCO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "APACILAGUA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "CONCEPCION DE MARIA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "EL CORPUS"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "MOROLICA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "SAN ANTONIO DE FLORES"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "SAN ISIDRO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "SAN JOSE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "ALAUCA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "LIURE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "OROPOLI"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "POTRERILLOS"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "SAN ANTONIO DE FLORES"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "SAN MATIAS"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "SOLEDAD"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "TEXIGUAT"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "VADO ANCHO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "YAUYUPE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "EL ROSARIO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "ESQUIPULAS DEL NORTE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "GUATA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "JANO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "MANTO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SILCA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "YOCON"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "ALIANZA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "ARAMECINA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "CARIDAD"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "NAMASIGUE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "MARCOVIA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "EL TRIUNFO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "SAN FRANCISCO DE CORAY"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "SANTA ANA DE YUSGUARE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "SAN LUCAS"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SAN FRANCISCO DE BECERRA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "SAN LORENZO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "GUAYAPE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "GUARIZAMA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "MOROCELI"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "AMAPALA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SANTA MARIA DEL REAL"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "DUYURE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "CONCORDIA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "DULCE NOMBRE DE CULMI"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "NACAOME"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SALAMA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "LA UNION"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "YUSCARAN"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "Campamento"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "MANGULILE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SAN FRANCISCO DE LA PAZ"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "PATUCA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "TROJES"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "GUINOPE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "CATACAMAS"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "SAN ESTEBAN"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "JUTICALPA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "CHOLUTECA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "EL PARAISO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "LANGUE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "SAN MARCOS DE COLON"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "OLANCHO",
+        "municipality": "GUALACO"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "JACALEAPA"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "TEUPASENTI"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "EL PARAISO",
+        "municipality": "DANLI"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "VALLE",
+        "municipality": "GOASCORAN"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "PESPIRE"
+      },
+      {
+        "nseRegion": "Sur Oriente",
+        "stateProvince": "CHOLUTECA",
+        "municipality": "OROCUINA"
+      },
+      {
+        "nseRegion": "Centro II",
+        "stateProvince": "FRANCISCO MORAZAN",
+        "municipality": "VILLA DE SAN FRANCISCO"
+      }
+    ],
+    "Rep. Dominicana": [
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Duarte",
+        "municipality": "San Francisco de Macorís"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Espaillat",
+        "municipality": "Moca"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "La Veja",
+        "municipality": "La Vega"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "La Veja",
+        "municipality": "Constanza"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "La Veja",
+        "municipality": "Jarabacoa"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "María Trinidad Sánchez",
+        "municipality": "Nagua"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Monseñor Nouel",
+        "municipality": "Bonao"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Monseñor Nouel",
+        "municipality": "Maimón"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Puerto Plata",
+        "municipality": "Puerto Plata"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Sánchez Ramírez",
+        "municipality": "Cotuí"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Santiago Rodríguez",
+        "municipality": "San Ignacio de Sabaneta"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Valverde",
+        "municipality": "Mao"
+      },
+      {
+        "nseRegion": "Cibao sin Santiago",
+        "stateProvince": "Valverde",
+        "municipality": "Esperanza"
+      },
+      {
+        "nseRegion": "Santiago",
+        "stateProvince": "Santiago",
+        "municipality": "Bisonó"
+      },
+      {
+        "nseRegion": "Santiago",
+        "stateProvince": "Santiago",
+        "municipality": "Hato del Yaque (D.M.)"
+      },
+      {
+        "nseRegion": "Santiago",
+        "stateProvince": "Santiago",
+        "municipality": "Santiago"
+      },
+      {
+        "nseRegion": "Santiago",
+        "stateProvince": "Santiago",
+        "municipality": "Tamboril"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Distrito Nacional",
+        "municipality": "Santo Domingo de Guzmán"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Santo Domingo Este"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "San Luis (D.M.)"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Santo Domingo Oeste"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Santo Domingo Norte"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "La Victoria (D.M.)"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Boca Chica"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "La Caleta (D.M.)"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Los Alcarrizos"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Pantoja (D.M.)"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "Pedro Brand"
+      },
+      {
+        "nseRegion": "Santo Domingo + Distrito Nacional",
+        "stateProvince": "Santo Domingo",
+        "municipality": "La Guáyiga (D.M.)"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "La Altagracia",
+        "municipality": "Higüey"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "La Altagracia",
+        "municipality": "Verón Punta Cana (D.M.)"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "La Romana",
+        "municipality": "La Romana"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "La Romana",
+        "municipality": "Villa Hermosa"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "San Pedro de Macorís",
+        "municipality": "San Pedro de Macorís"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "San Pedro de Macorís",
+        "municipality": "Consuelo"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "San Pedro de Macorís",
+        "municipality": "Quisqueya"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "Monte Plata",
+        "municipality": "Monte Plata"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "Monte Plata",
+        "municipality": "Bayaguana"
+      },
+      {
+        "nseRegion": "Sureste sin Santo Domingo y DN",
+        "stateProvince": "Monte Plata",
+        "municipality": "Sabana Grande de Boyá"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "Azua",
+        "municipality": "Azua"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "Peravia",
+        "municipality": "Baní"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San Cristóbal",
+        "municipality": "San Cristóbal"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San Cristóbal",
+        "municipality": "Bajos de Haina"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San Cristóbal",
+        "municipality": "Villa Altagracia"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San José de Ocoa",
+        "municipality": "San José de Ocoa"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "Barohona",
+        "municipality": "Barahona"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "Barohona",
+        "municipality": "Villa Central (D.M.)"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San Juan",
+        "municipality": "San Juan"
+      },
+      {
+        "nseRegion": "Suroeste",
+        "stateProvince": "San Juan",
+        "municipality": "Las Matas de Farfán"
+      }
+    ]
+  }
+}

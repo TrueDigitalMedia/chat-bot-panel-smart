@@ -63,6 +63,9 @@ export const surveyProfiles = pgTable('survey_profiles', {
   stateProvince: varchar('state_province', { length: 100 }),
   municipality: varchar('municipality', { length: 100 }),
   neighborhood: varchar('neighborhood', { length: 100 }),
+  nseRegion: varchar('nse_region', { length: 100 }),
+  geoSource: varchar('geo_source', { length: 20 }),
+  inQuotaGeo: boolean('in_quota_geo'),
   email: varchar('email', { length: 200 }),
   gender: varchar('gender', { length: 20 }),
   educationPsh: varchar('education_psh', { length: 50 }),
@@ -92,6 +95,13 @@ export const flowStates = pgTable('flow_states', {
   isCorrecting: boolean('is_correcting').notNull().default(false),
   correctingField: varchar('correcting_field', { length: 50 }),
   correctionResumeIndex: smallint('correction_resume_index'),
+  gpsGateStatus: varchar('gps_gate_status', { length: 30 }),
+  gpsProposal: jsonb('gps_proposal').$type<{
+    country: string
+    stateProvince: string
+    municipality: string
+    neighborhood: string | null
+  }>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

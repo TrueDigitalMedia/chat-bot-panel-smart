@@ -102,6 +102,27 @@ export async function sendContactRequest(chatId: bigint | number, text: string):
   })
 }
 
+export async function sendLocationRequest(chatId: bigint | number, text: string): Promise<void> {
+  console.info('[telegram:out]', {
+    chatId: chatId.toString(),
+    type: 'location_request',
+    text: preview(text),
+  })
+  const reply_markup: ReplyKeyboardMarkup = {
+    keyboard: [
+      [{ text: '📍 Compartir ubicación', request_location: true }],
+      [{ text: 'Escribir mi ubicación' }],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: true,
+  }
+  await telegramPost('sendMessage', {
+    chat_id: chatId.toString(),
+    text,
+    reply_markup,
+  })
+}
+
 export async function removeReplyKeyboard(chatId: bigint | number, text: string): Promise<void> {
   const reply_markup: ReplyKeyboardRemove = { remove_keyboard: true }
   await telegramPost('sendMessage', {

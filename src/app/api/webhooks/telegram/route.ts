@@ -49,6 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     type: update.callback_query ? 'callback' : 'message',
     text: inboundText ?? null,
     callback: callbackData ?? null,
+    hasLocation: Boolean(update.message?.location),
   })
 
   // Rate limiting
@@ -63,13 +64,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const channelUserId = chatId.toString()
       const lead = await upsertLead('telegram', channelUserId, username)
+      const contactPhone = update.message?.contact?.phone_number
+      const loc = update.message?.location
       const inbound = {
         channel: 'telegram' as const,
         channelUserId,
         channelUsername: username,
         text: inboundText ?? '',
         callbackData,
-        contactPhone: update.message?.contact?.phone_number,
+        contactPhone,
+        location: loc
+          ? { latitude: loc.latitude, longitude: loc.longitude }
+          : undefined,
       }
 
       if (callbackData) {
@@ -87,6 +93,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           channel: 'telegram',
           contentType: 'contact',
           body: inbound.contactPhone,
+        })
+      } else if (inbound.location) {
+        await logConversationMessage({
+          leadId: lead.id,
+          direction: 'in',
+          channel: 'telegram',
+          contentType: 'system',
+          body: 'location_shared',
+          meta: { hasLocation: true },
         })
       } else if (inbound.text) {
         await logConversationMessage({

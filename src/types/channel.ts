@@ -16,6 +16,8 @@ export interface ChannelInbound {
   callbackData?: string
   /** Shared contact phone (Telegram request_contact), E.164-ish raw */
   contactPhone?: string
+  /** Ephemeral GPS from Telegram location share — do not persist */
+  location?: { latitude: number; longitude: number }
 }
 
 export function isChannel(value: string): value is Channel {

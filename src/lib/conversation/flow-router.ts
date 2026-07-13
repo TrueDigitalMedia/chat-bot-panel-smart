@@ -104,6 +104,23 @@ export async function routeMessage(
       }
     }
 
+    // GPS gate before manual country (NSE CAM quota)
+    if (lead.d3IsShopper === true) {
+      const { handleGpsCapture, needsGpsCapture } = await import('./gps-capture')
+      if (await needsGpsCapture(lead)) {
+        if (
+          await handleGpsCapture(lead, {
+            text: messageText,
+            location: inbound.location,
+            callbackData,
+            correlationId,
+          })
+        ) {
+          return
+        }
+      }
+    }
+
     // Fuzzy geo confirmation (¿Quisiste decir Mixco?)
     if (callbackData) {
       const { handleGeoConfirmCallback } = await import('@/lib/geo/handle-confirm')
