@@ -23,7 +23,8 @@ const BUTTON_PREFIXES = [
   'correct:',
 ]
 
-const RESTART_PATTERN = /^\/start\b|^reiniciar$|^empezar( de nuevo)?$|^comenzar( de nuevo)?$/i
+const RESTART_PATTERN =
+  /^\/start\b|^reiniciar$|^empezar( de nuevo)?$|^comenzar( de nuevo)?$|^hola\!?$|^buenas?$/i
 
 function isExpectedAnswer(
   _lead: Lead,

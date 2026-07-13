@@ -22,6 +22,7 @@
     "next": "16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "twilio": "^6.0.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/twilio": "^3.19.2",
     "@vitejs/plugin-react-swc": "^4.3.1",
     "drizzle-kit": "^0.31.10",
     "playwright": "^1.61.1",

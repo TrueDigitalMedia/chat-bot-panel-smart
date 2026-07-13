@@ -27,6 +27,8 @@ export type GpsGateStatus =
   | null
 
 const SKIP_TEXT = /^escribir mi ubicaci[oó]n$/i
+/** Button label with or without leading emoji — if Telegram sends text instead of location. */
+const SHARE_LOCATION_TEXT = /^(?:📍\s*)?compartir ubicaci[oó]n$/i
 
 async function getGpsState(leadId: string): Promise<{
   gpsGateStatus: string | null
@@ -173,13 +175,25 @@ export async function handleGpsCapture(
     }
 
     const text = opts.text?.trim() ?? ''
-    if (SKIP_TEXT.test(text) || text.length > 0) {
-      // Any text while awaiting location → treat as skip to manual (incl. button label)
+    if (SKIP_TEXT.test(text)) {
       await confirmLocationKeyboardRemoved(
         lead,
         'De acuerdo, continuamos con las preguntas de ubicación.',
       )
       await beginManualGeo(lead)
+      return true
+    }
+
+    // User tapped/typed the GPS button label but Telegram did not attach coordinates
+    // (common on Desktop/Web). Re-show the native location keyboard; do NOT skip to manual.
+    if (SHARE_LOCATION_TEXT.test(text) || text.length > 0) {
+      await sendText(
+        lead,
+        SHARE_LOCATION_TEXT.test(text)
+          ? 'Para compartir GPS usa el botón del teclado de Telegram (📍). Funciona mejor en la app móvil.\n\nSi no aparece, toca «Escribir mi ubicación».'
+          : 'Aún necesitamos tu ubicación. Usa el botón 📍 del teclado, o «Escribir mi ubicación» para continuar a mano.',
+      )
+      await sendLocationRequest(lead)
       return true
     }
 

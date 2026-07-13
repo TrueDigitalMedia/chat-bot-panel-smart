@@ -1,6 +1,12 @@
+/**
+ * Channel-agnostic outbound messaging.
+ * Domain / conversation code should import from here — never from a channel SDK.
+ */
 import type { ChannelRecipient } from '@/types/channel'
 import type { InlineKeyboardButton } from '@/types/telegram'
 import * as telegram from '@/lib/telegram/send'
+import * as whatsapp from '@/lib/whatsapp/send'
+import { setPendingWaChoices } from '@/lib/whatsapp/pending-choices'
 import { logConversationMessage } from '@/lib/db/conversation-messages'
 
 function leadIdOf(to: ChannelRecipient): string | undefined {
@@ -26,16 +32,14 @@ async function logOut(
   })
 }
 
-/**
- * Channel-agnostic outbound messaging.
- * Domain / conversation code should import from here — never from a channel SDK.
- */
 export async function sendText(to: ChannelRecipient, text: string): Promise<void> {
   switch (to.channel) {
     case 'telegram':
       await telegram.sendText(BigInt(to.channelUserId), text)
       break
     case 'whatsapp':
+      await whatsapp.sendWhatsAppText(to.channelUserId, text)
+      break
     case 'web':
       throw new Error(`Outbound messaging not implemented for channel: ${to.channel}`)
     default: {
@@ -56,6 +60,8 @@ export async function sendVideo(
       await telegram.sendVideo(BigInt(to.channelUserId), video, caption)
       break
     case 'whatsapp':
+      await whatsapp.sendWhatsAppVideo(to.channelUserId, video, caption)
+      break
     case 'web':
       throw new Error(`Outbound video not implemented for channel: ${to.channel}`)
     default: {
@@ -75,7 +81,16 @@ export async function sendInlineKeyboard(
     case 'telegram':
       await telegram.sendInlineKeyboard(BigInt(to.channelUserId), text, buttons)
       break
-    case 'whatsapp':
+    case 'whatsapp': {
+      const { choices } = await whatsapp.sendWhatsAppKeyboard(
+        to.channelUserId,
+        text,
+        buttons,
+      )
+      const leadId = leadIdOf(to)
+      if (leadId) await setPendingWaChoices(leadId, choices)
+      break
+    }
     case 'web':
       throw new Error(`Outbound keyboard not implemented for channel: ${to.channel}`)
     default: {
@@ -88,7 +103,7 @@ export async function sendInlineKeyboard(
   })
 }
 
-/** Ask user for phone — Telegram uses native contact share; web uses typed number. */
+/** Ask user for phone — Telegram uses native contact share; WhatsApp skips (id = phone). */
 export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
   const prompt =
     'Para continuar necesitamos tu número de teléfono.\n\n' +
@@ -131,19 +146,24 @@ export async function confirmPhoneSaved(to: ChannelRecipient, phone: string): Pr
   await logOut(to, 'text', msg)
 }
 
-/** Ask user to share GPS — Telegram reply keyboard; WhatsApp reserved. */
+/** Ask user to share GPS — Telegram reply keyboard; WhatsApp text prompt. */
 export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
-  const prompt =
-    '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS.\n\n' +
-    (to.channel === 'telegram'
-      ? 'Toca «Compartir ubicación» o «Escribir mi ubicación» si prefieres responder a mano.'
-      : 'Comparte tu ubicación cuando el canal lo permita.')
-
   switch (to.channel) {
-    case 'telegram':
+    case 'telegram': {
+      const prompt =
+        '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS.\n\n' +
+        'Toca el botón 📍 del teclado (abajo) — Telegram pedirá permiso de ubicación (app móvil recomendada).\nSi no puedes compartir GPS, toca «Escribir mi ubicación».'
       await telegram.sendLocationRequest(BigInt(to.channelUserId), prompt)
+      await logOut(to, 'keyboard', prompt, { type: 'location_request' })
       break
-    case 'whatsapp':
+    }
+    case 'whatsapp': {
+      const prompt =
+        '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS (pin de WhatsApp) o escribe «Escribir mi ubicación» para continuar a mano.'
+      await whatsapp.sendWhatsAppText(to.channelUserId, prompt)
+      await logOut(to, 'text', prompt, { type: 'location_request' })
+      break
+    }
     case 'web':
       throw new Error(`Location request not implemented for channel: ${to.channel}`)
     default: {
@@ -151,7 +171,6 @@ export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
       throw new Error(`Unknown channel: ${_exhaustive}`)
     }
   }
-  await logOut(to, 'keyboard', prompt, { type: 'location_request' })
 }
 
 export async function confirmLocationKeyboardRemoved(

@@ -102,6 +102,8 @@ export const flowStates = pgTable('flow_states', {
     municipality: string
     neighborhood: string | null
   }>(),
+  /** Numbered/quick-reply map for WhatsApp button fallback: token → callback_data */
+  pendingWaChoices: jsonb('pending_wa_choices').$type<Record<string, string>>(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

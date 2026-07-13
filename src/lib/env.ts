@@ -12,6 +12,12 @@ const envSchema = z.object({
   /** Secret for local mock registration webhook. Defaults for local/dev. */
   REGISTRATION_WEBHOOK_SECRET: z.string().default('dev-registration-secret'),
   APP_BASE_URL: z.string().url().optional(),
+  // Twilio WhatsApp Sandbox (optional — Telegram works without these)
+  TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+  TWILIO_WHATSAPP_FROM: z.string().min(1).optional(),
+  /** Absolute webhook URL for signature validation if behind proxy */
+  TWILIO_WEBHOOK_URL: z.string().url().optional(),
   // Test overrides
   RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS: z.coerce.number().optional(),
   RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS: z.string().optional(),
@@ -29,3 +35,7 @@ function validateEnv() {
 
 export const env = validateEnv()
 export type Env = z.infer<typeof envSchema>
+
+export function isTwilioConfigured(): boolean {
+  return Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM)
+}

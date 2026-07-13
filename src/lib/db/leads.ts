@@ -136,6 +136,7 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
       correctionResumeIndex: null,
       gpsGateStatus: null,
       gpsProposal: null,
+      pendingWaChoices: null,
       updatedAt: now,
     })
     .where(eq(flowStates.leadId, leadId))
