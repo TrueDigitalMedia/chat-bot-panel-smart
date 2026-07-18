@@ -120,17 +120,17 @@ describe('runQualificationEval', () => {
       municipality: 'Guatemala',
       inQuotaGeo: true,
       nseRegion: 'Centro II',
-      educationPsh: 'Posgrado',
+      educationPsh: 'Pos Grado Completo',
       cars: '2 o más',
       domesticHelp: true,
       householdSize: 2,
       bedrooms: 4,
-      score: 70,
-      quotaSegment: 'A/B',
+      score: 1000,
+      quotaSegment: 'Nivel 1',
     })
     const result = runQualificationEval('survey_complete_quota_available', actual)
-    expect(result.recalculatedScore).toBe(70)
-    expect(result.recalculatedSegment).toBe('A/B')
+    expect(result.recalculatedScore).toBe(1000)
+    expect(result.recalculatedSegment).toBe('Nivel 1')
     expect(result.checks.socioeconomic_score_correct).toBe(true)
     expect(result.checks.segment_correct).toBe(true)
     expect(result.checks.geo_quota_correct).toBe(true)
@@ -149,13 +149,13 @@ describe('runQualificationEval', () => {
       municipality: 'Guatemala',
       inQuotaGeo: true,
       nseRegion: 'Centro II',
-      educationPsh: 'Posgrado',
+      educationPsh: 'Pos Grado Completo',
       cars: '2 o más',
       domesticHelp: true,
       householdSize: 2,
       bedrooms: 4,
       score: 99,
-      quotaSegment: 'A/B',
+      quotaSegment: 'Nivel 1',
     })
     const result = runQualificationEval('survey_complete_quota_available', actual)
     expect(result.checks.socioeconomic_score_correct).toBe(false)
@@ -173,13 +173,13 @@ describe('runQualificationEval', () => {
       municipality: 'Guatemala',
       inQuotaGeo: true,
       nseRegion: 'Centro II',
-      educationPsh: 'Sin instrucción formal',
+      educationPsh: 'No alfabetizado',
       cars: '0',
       domesticHelp: false,
       householdSize: 8,
       bedrooms: 1,
-      score: 2,
-      quotaSegment: 'D/E',
+      score: 0,
+      quotaSegment: 'Nivel 4',
     })
     const result = runQualificationEval('survey_complete_no_quota', actual)
     expect(result.expected.leadStatus).toBe('quota_exhausted')
@@ -192,7 +192,7 @@ describe('deriveExpected', () => {
     const expected = deriveExpected(
       'survey_complete_quota_available',
       baseActual({
-        educationPsh: 'Posgrado',
+        educationPsh: 'Pos Grado Completo',
         cars: '2 o más',
         domesticHelp: true,
         householdSize: 2,
@@ -203,8 +203,8 @@ describe('deriveExpected', () => {
       }),
     )
     expect(expected.leadStatus).toBe('link_sent')
-    expect(expected.score).toBe(70)
-    expect(expected.quotaSegment).toBe('A/B')
+    expect(expected.score).toBe(1000)
+    expect(expected.quotaSegment).toBe('Nivel 1')
     expect(expected.nseRegion).toBe('Centro II')
   })
 })

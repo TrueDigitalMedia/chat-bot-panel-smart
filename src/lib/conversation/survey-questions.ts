@@ -67,8 +67,8 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     inputType: 'button',
     buttons: [
       [
-        { text: 'Hombre', callback_data: 'gender:Hombre' },
-        { text: 'Mujer', callback_data: 'gender:Mujer' },
+        { text: 'Masculino', callback_data: 'gender:Masculino' },
+        { text: 'Femenino', callback_data: 'gender:Femenino' },
       ],
     ],
   },
@@ -79,24 +79,31 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     inputType: 'button',
     buttons: [
       [
-        { text: 'Sin instrucción formal', callback_data: 'educationPsh:Sin instrucción formal' },
+        { text: 'No alfabetizado', callback_data: 'educationPsh:No alfabetizado' },
+        {
+          text: 'Alfabetizado (sin escuela)',
+          callback_data: 'educationPsh:Alfabetizado pero no en escuela normal',
+        },
+      ],
+      [
         { text: 'Primaria Incompleta', callback_data: 'educationPsh:Primaria Incompleta' },
-      ],
-      [
         { text: 'Primaria Completa', callback_data: 'educationPsh:Primaria Completa' },
-        { text: 'Sec. Incompleta', callback_data: 'educationPsh:Sec. Incompleta' },
       ],
       [
+        { text: 'Secundaria Incompleta', callback_data: 'educationPsh:Secundaria Incompleta' },
         { text: 'Secundaria Completa', callback_data: 'educationPsh:Secundaria Completa' },
-        { text: 'Bach. Incompleto', callback_data: 'educationPsh:Bach. Incompleto' },
       ],
       [
-        { text: 'Bach. Completo', callback_data: 'educationPsh:Bach. Completo' },
-        { text: 'Univ. Incompleta', callback_data: 'educationPsh:Univ. Incompleta' },
+        { text: 'Bachillerato Incompleto', callback_data: 'educationPsh:Bachillerato Incompleto' },
+        { text: 'Bachillerato Completo', callback_data: 'educationPsh:Bachillerato Completo' },
       ],
       [
+        { text: 'Universidad Incompleta', callback_data: 'educationPsh:Universidad Incompleta' },
         { text: 'Universidad Completa', callback_data: 'educationPsh:Universidad Completa' },
-        { text: 'Posgrado', callback_data: 'educationPsh:Posgrado' },
+      ],
+      [
+        { text: 'Pos Grado Incompleto', callback_data: 'educationPsh:Pos Grado Incompleto' },
+        { text: 'Pos Grado Completo', callback_data: 'educationPsh:Pos Grado Completo' },
       ],
     ],
   },

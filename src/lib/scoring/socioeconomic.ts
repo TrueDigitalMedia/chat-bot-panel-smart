@@ -1,52 +1,57 @@
 import type { ScoringFields } from '@/types/lead'
 
-// Education PSH scoring weights (provided by Treinta — placeholder values)
-const EDUCATION_SCORES: Record<string, number> = {
-  'Sin instrucción formal': 0,
-  'Primaria Incompleta': 1,
-  'Primaria Completa': 2,
-  'Sec. Incompleta': 3,
-  'Secundaria Completa': 4,
-  'Bach. Incompleto': 5,
-  'Bach. Completo': 6,
-  'Univ. Incompleta': 7,
-  'Universidad Completa': 8,
-  Posgrado: 9,
+// Official Kantar Worldpanel SCL-CAM formula (docs/SCL-CAM.pdf, transcribed in docs/WIKI.md §6).
+// NiPSH — nivel educativo del Principal Sostén del Hogar (12 official levels).
+// Exported so callers (e.g. survey-questions.ts button labels) can be tested against
+// the same source of truth instead of duplicating the list.
+export const NIPSH_SCORES: Record<string, number> = {
+  'No alfabetizado': 0,
+  'Alfabetizado pero no en escuela normal': 0,
+  'Primaria Incompleta': 0,
+  'Primaria Completa': 0,
+  'Secundaria Incompleta': 250,
+  'Secundaria Completa': 250,
+  'Bachillerato Incompleto': 250,
+  'Bachillerato Completo': 400,
+  'Universidad Incompleta': 900,
+  'Universidad Completa': 1000,
+  'Pos Grado Incompleto': 1000,
+  'Pos Grado Completo': 1000,
 }
 
-const CAR_SCORES: Record<string, number> = {
+// AUTO — número de automóviles particulares.
+const AUTO_SCORES: Record<string, number> = {
   '0': 0,
-  '1': 3,
-  '2 o más': 5,
+  '1': 650,
+  '2 o más': 1000,
+}
+
+/**
+ * HACI — hacinamiento: (10 × personas en el hogar) / dormitorios exclusivos.
+ * Sin dormitorios exclusivos → HACI = 99 (muy hacinado).
+ */
+function calculateHaciPoints(householdSize: number | null, bedrooms: number | null): number {
+  const size = householdSize ?? 0
+  const haci = !bedrooms || bedrooms <= 0 ? 99 : (10 * size) / bedrooms
+
+  if (haci >= 25) return 0
+  if (haci > 15) return 250
+  if (haci >= 10) return 500
+  return 1000
 }
 
 export function calculateScore(fields: ScoringFields): number {
-  let score = 0
+  const nipsh = NIPSH_SCORES[fields.educationPsh ?? ''] ?? 0
+  const haci = calculateHaciPoints(fields.householdSize, fields.bedrooms)
+  const auto = AUTO_SCORES[fields.cars ?? '0'] ?? 0
+  const sd = fields.domesticHelp ? 1000 : 0
 
-  // Education (0-9 → 0-36 points)
-  score += (EDUCATION_SCORES[fields.educationPsh ?? ''] ?? 0) * 4
-
-  // Cars (0-5 points)
-  score += CAR_SCORES[fields.cars ?? '0'] ?? 0
-
-  // Domestic help (0 or 10 points)
-  score += fields.domesticHelp ? 10 : 0
-
-  // Household size inverse (smaller = higher SES, max 15 pts)
-  const size = fields.householdSize ?? 4
-  score += Math.max(0, 15 - size * 2)
-
-  // Bedrooms (1 point each, max 10)
-  score += Math.min(10, (fields.bedrooms ?? 0) * 2)
-
-  // Clamp 0-100
-  return Math.max(0, Math.min(100, score))
+  return Math.round((45 * nipsh + 18 * haci + 28 * auto + 9 * sd) / 100)
 }
 
 export function getQuotaSegment(score: number): string {
-  if (score >= 70) return 'A/B'
-  if (score >= 50) return 'C+'
-  if (score >= 30) return 'C'
-  if (score >= 15) return 'D+'
-  return 'D/E'
+  if (score >= 540) return 'Nivel 1'
+  if (score > 325) return 'Nivel 2'
+  if (score > 180) return 'Nivel 3'
+  return 'Nivel 4'
 }
