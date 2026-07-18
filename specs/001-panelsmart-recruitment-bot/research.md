@@ -2,7 +2,7 @@
 
 **Feature**: `001-panelsmart-recruitment-bot`
 **Date**: 2026-07-07
-**Status**: Complete — all unknowns resolved
+**Status**: Complete — Decision 6 updated 2026-07-17 (client MySQL; DDL map still pending from TDM)
 
 ---
 
@@ -128,21 +128,39 @@ key operational bottleneck of the WhatsApp path.
 
 ---
 
-## Decision 6: PanelSmart Registration Code API Call (PATCH with Retry)
+## Decision 6: Client MySQL Lead Sync + Registration Code Lookup (supersedes PATCH/GPM)
 
-**Decision**: Native `fetch()` with exponential backoff and jitter (3 retries, 500ms→1s→2s).
+**Decision (2026-07-17)**: On qualification with quota, the bot **upserts lead data into the
+client MySQL database**. A **client-owned internal process** creates the panelist and writes
+the registration code (panelist ID) into MySQL. After the user **confirms app download**, the
+bot **SELECTs** that code and sends it on Telegram. Feature-flagged via
+`CLIENT_MYSQL_SYNC_ENABLED`. Driver: `mysql2` pool.
 
-**Rationale**: For a single-step PATCH call to trigger registration code delivery, native
-`fetch` with a small retry utility is sufficient and keeps the dependency footprint minimal.
-The call is placed inside Next.js 15's `after()` so the `200 OK` is returned to Meta before
-the PATCH executes — preventing Meta from retrying the inbound webhook. A stable lead ID is
-used as the idempotency key on the PanelSmart side to make retries safe.
+**Rationale**: TDM/client confirmed they will not expose CreatePanelist (GPM/AES) or a
+PanelSmart PATCH for code delivery to this bot. The operational flow is: bot writes lead →
+internal process registers → bot reads code after download confirmation. Keeping the bot as
+a MySQL reader/writer avoids owning CRM crypto/APIs and matches the client's existing
+pipeline.
 
 **Alternatives considered**:
-- **axios**: ~50KB dependency with no advantage over native `fetch` in Node.js 18+ runtime.
-  Rejected.
-- **Custom SDK wrapper**: Useful for a multi-endpoint client; overkill for a single PATCH
-  endpoint. ~20 lines of utility code is sufficient. Rejected.
-- **Queue-backed (Hookdeck, BullMQ)**: Appropriate for multi-step workflows requiring
-  crash-recovery across deployments. For one fire-and-forget call with retry, queue
-  infrastructure overhead is unjustified. Rejected.
+- **CreatePanelist AES/GPM HTTP API**: Documented in a vendor PDF but explicitly dropped for
+  this project in favor of MySQL sync. Rejected.
+- **PanelSmart PATCH `/panelists/{id}/registration-code`**: Original spec Decision 6; no longer
+  the integration path. Rejected for production; local `MOCK-…` codes remain only when the
+  MySQL flag is off.
+- **Bot generates codes itself**: Would diverge from the client's panelist registry. Rejected.
+
+**Open dependency**: Official MySQL DDL / column map from TDM/client (table name, lead key,
+code column). Until delivered, mapper uses documented placeholders.
+
+---
+
+## Decision 8: Registration Outcome Signal
+
+**Decision**: v1 uses **user confirmation buttons** after code delivery
+(“Ya me registré” / “No pude registrarme”) to transition to
+`code_delivered_registered` / `code_delivered_not_registered`. Optional later: client webhook
+or MySQL status-column polling (see `contracts/client-mysql-integration.md`).
+
+**Rationale**: No PanelSmart registration webhook is required for the MySQL path; user
+confirm keeps Phase 3 testable without an external push.

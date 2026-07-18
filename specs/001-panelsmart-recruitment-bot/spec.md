@@ -97,29 +97,32 @@ and verify the correct exit message and `lead_status` in the database for each p
 
 ### User Story 2 - App Download & Registration Code Delivery (Priority: P2)
 
-Once a lead is fully qualified with an available quota slot, the bot sends iOS and Android
-download links for the PanelSmart app. It opens a 10-minute waiting window. If the user
-has not activated their account within that window, the system triggers an external API call
-to force-deliver the registration code via Telegram and initiates an onboarding video sequence.
+Once a lead is fully qualified with an available quota slot, the bot **writes the lead data
+into the client MySQL database**. An internal client process creates the panelist and stores
+the registration code (panelist ID) in that MySQL database. The bot then sends iOS/Android
+download links for the PanelSmart app. After the user **confirms they downloaded the app**,
+the bot **reads the registration code from MySQL** and sends it to the user (and may start
+the onboarding video sequence).
 
 **Why this priority**: This is the conversion step — turning a qualified lead into an
 installed app user. Drop-off here means lost recruitment.
 
-**Independent Test**: Can be tested by simulating a qualified lead and verifying the bot sends
-links, waits the correct duration, and triggers the API call if activation is not detected.
+**Independent Test**: Simulate a qualified lead: verify MySQL sync on qualify, download links
+sent (`link_sent`), download confirmation, code lookup from MySQL, and code delivered to the
+user (`waiting_for_code`).
 
 **Acceptance Scenarios**:
 
 1. **Given** a lead is fully qualified with quota available, **When** the system transitions
-   to Phase 2, **Then** the bot sends platform-appropriate download links and the lead status
-   becomes `link_sent`.
+   to Phase 2, **Then** the lead row is synced to client MySQL, the bot sends
+   platform-appropriate download links, and the lead status becomes `link_sent`.
 
-2. **Given** the bot has sent download links, **When** 10 minutes elapse without account
-   activation, **Then** the system executes a PATCH API call to trigger registration code
-   delivery via Telegram and begins the onboarding video flow.
+2. **Given** the bot has sent download links, **When** the user confirms they downloaded the
+   app and the client process has written the code in MySQL, **Then** the bot reads that
+   registration code from MySQL and sends it to the user via Telegram.
 
-3. **Given** the PATCH API call is executed, **When** the system is waiting for the code to
-   be confirmed, **Then** the lead status is set to `waiting_for_code`.
+3. **Given** the registration code was sent to the user, **When** the system is waiting for
+   registration confirmation, **Then** the lead status is set to `waiting_for_code`.
 
 ---
 
@@ -245,7 +248,8 @@ pending question is re-sent unchanged, (b) if a FAQ match exists, it is delivere
 ### Edge Cases
 
 - What happens when the external scoring API is unavailable at qualification time?
-- What happens if the PATCH API call to force registration code delivery fails?
+- What happens if the client MySQL sync fails at qualification time?
+- What happens if the user confirms download but the registration code is not yet written in MySQL?
 - What happens if a user responds to a re-engagement message while a timer is still active?
 - What happens if a user attempts to restart the flow after being marked `abandono`?
 - What happens if a user provides conflicting demographic data across multiple turns?
@@ -273,13 +277,17 @@ pending question is re-sent unchanged, (b) if a FAQ match exists, it is delivere
 - **FR-005**: The system MUST track the current survey question index in `FlowState` so that
   if a user abandons and returns, the bot resumes from the exact unanswered question without
   re-asking answered ones.
-- **FR-006**: When quota slots are available and the lead is complete, the system MUST send
-  platform-specific download links (iOS and Android) for the PanelSmart app.
-- **FR-007**: After sending download links, the system MUST open a 10-minute monitoring window
-  and set the lead status to `link_sent`.
-- **FR-008**: If the user does not activate their account within 10 minutes, the system MUST
-  execute a PATCH API call to an external endpoint to trigger registration code delivery
-  via Telegram.
+- **FR-006**: When quota slots are available and the lead is complete, the system MUST
+  upsert the lead's survey/contact data into the **client MySQL** database, then send
+  platform-specific download links (iOS and Android) for the PanelSmart app, and set
+  `lead_status = link_sent`.
+- **FR-007**: After sending download links, the system MUST wait for the user to confirm
+  they downloaded the app (primary path) before delivering the registration code.
+- **FR-008**: After download confirmation, the system MUST look up the registration code
+  (panelist ID) written by the client's internal process in MySQL and send that code to the
+  user via Telegram. The bot MUST NOT invent codes or call CreatePanelist/GPM/PATCH APIs
+  for this purpose. If the code is not yet available, the system MUST retry briefly and then
+  follow the failure/handoff policy.
 - **FR-009**: The system MUST track the registration outcome and route the lead to one of:
   Phase 4 (success), human agent handoff (technical failure), or inactivity freeze
   (no response after 20 hours).
@@ -351,8 +359,10 @@ pending question is re-sent unchanged, (b) if a FAQ match exists, it is delivere
   (`asistente-demo.plataforma-ia.com`). The demo always returns EXIT_B (quota full) because
   it uses a fixed demo backend — the real system will check live quota and advance to Phase 2
   when slots are available.
-- The PanelSmart app and its external registration API already exist; this system integrates
-  with them but does not build them.
+- The PanelSmart app and the client's internal process that creates panelists/codes in MySQL
+  already exist (or are owned by TDM/client); this system integrates by writing leads and
+  reading codes from that MySQL database — it does not build CreatePanelist/GPM or the
+  internal registration process.
 - Quota availability is exposed via a real-time API or Google Sheets integration that returns
   current slot counts per demographic segment. Source to be confirmed with Treinta.
 - Telegram is the communication channel for this phase. WhatsApp integration is paused and

@@ -1,62 +1,52 @@
-# Contract: WhatsApp Webhook Handler
+# Contract: WhatsApp Webhook Handler (Meta Cloud API — primary)
 
-> ⚠️ **PAUSED** — WhatsApp integration is paused. Active channel is now Telegram.
-> See [`telegram-webhook.md`](telegram-webhook.md). This file is preserved for
-> reference when WhatsApp is re-enabled.
+**Primary transport**: WhatsApp Business Platform (Meta Cloud API).  
+**Alternative**: Twilio WhatsApp — see `POST /api/webhooks/whatsapp/twilio` and
+[`specs/003-whatsapp-twilio-provider/`](../../003-whatsapp-twilio-provider/).
 
-**Endpoint**: `POST /api/webhooks/whatsapp`
-**Also handles**: `GET /api/webhooks/whatsapp` (Meta hub verification)
+**Endpoints**:
+- `GET /api/webhooks/whatsapp` — Meta hub verification
+- `POST /api/webhooks/whatsapp` — Meta inbound (when `WHATSAPP_PROVIDER=meta`, default)
+- `POST /api/webhooks/whatsapp/twilio` — Twilio inbound (alternative)
+
+Switch: `WHATSAPP_PROVIDER=meta|twilio` (default `meta`).
+
+Domain code always uses `@/lib/messaging/send` — never Meta/Twilio SDKs directly.
 
 ---
 
-## GET — Hub Verification
+## GET — Hub Verification (Meta)
 
-Used by Meta to verify webhook ownership during setup.
-
-**Query parameters**:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `hub.mode` | string | Always `"subscribe"` |
-| `hub.verify_token` | string | Must match `WHATSAPP_VERIFY_TOKEN` env var |
+| `hub.verify_token` | string | Must match `WHATSAPP_VERIFY_TOKEN` |
 | `hub.challenge` | string | Echo back to confirm |
 
-**Response (200 OK)**:
-```
-hub.challenge value (plain text)
-```
-
-**Response (403 Forbidden)**: Token mismatch.
+**200**: plain text `hub.challenge`  
+**403**: token mismatch / Meta not configured
 
 ---
 
-## POST — Inbound Message
+## POST — Inbound Message (Meta)
 
-Meta delivers incoming WhatsApp messages to this endpoint.
+**Security**: Validate HMAC-SHA256 over raw body with `X-Hub-Signature-256` using
+`WHATSAPP_APP_SECRET`. Reject `403` on failure.
 
-**Security**: Every request MUST be validated with HMAC-SHA256 over the raw body bytes
-using `X-Hub-Signature-256` header before JSON parsing. Reject with `403` on failure.
+**Meta requires `200 OK` within ~5s.** Processing runs in `after()`.
 
-**Meta requires a `200 OK` response within 5 seconds.** Processing is deferred via
-`after()` / `waitUntil` to avoid timeout.
-
-**Request body** (Meta Cloud API format, simplified to relevant fields):
+**Body** (simplified):
 ```json
 {
   "object": "whatsapp_business_account",
   "entry": [{
-    "id": "<WABA_ID>",
     "changes": [{
       "value": {
         "messages": [{
-          "from": "<phone_e164>",
+          "from": "<phone_digits>",
           "id": "<message_id>",
-          "timestamp": "<unix_ts>",
           "type": "text",
           "text": { "body": "<user_message_text>" }
-        }],
-        "contacts": [{
-          "profile": { "name": "<display_name>" },
-          "wa_id": "<phone_e164>"
         }]
       }
     }]
@@ -64,59 +54,47 @@ using `X-Hub-Signature-256` header before JSON parsing. Reject with `403` on fai
 }
 ```
 
-**Response (200 OK)**: Always `{ "status": "received" }` — returned immediately.
+Supported inbound types: `text`, `interactive` (button_reply / list_reply), `location`,
+legacy `button`.
 
-**Processing pipeline** (runs via `after()`):
-1. Extract `phone_number` and `message_text` from payload.
-2. Upsert Lead record (create on first contact, update `last_activity_at`).
-3. Cancel any pending re-engagement timers for this lead.
-4. Route to the appropriate phase handler based on `lead_status`.
-5. Call LLM layer if extraction is needed.
-6. Update `lead_status` and `FlowState`.
-7. Send outbound reply via WhatsApp Send Message API.
-8. Log `LLMCallLog` entries for all AI calls made.
+**Pipeline** (`after()`):
+1. Normalize → `ChannelInbound` (E.164 `channelUserId`)
+2. Upsert lead `(whatsapp, e164)`
+3. Resolve `pendingWaChoices` for numbered replies
+4. `routeMessage` → phase handlers
+5. Outbound via Meta Graph (or Twilio if provider switch)
 
 ---
 
-## Outbound Messages
+## Outbound Messages (Meta)
 
-Outbound messages are sent via Meta Cloud API REST endpoint.
+`POST https://graph.facebook.com/{WHATSAPP_GRAPH_VERSION}/{WHATSAPP_PHONE_NUMBER_ID}/messages`  
+Auth: `Authorization: Bearer {WHATSAPP_ACCESS_TOKEN}`  
+Default graph version: `v21.0`
 
-**Endpoint**: `POST https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages`
+| Domain method | Meta payload |
+|---------------|--------------|
+| `sendText` | `type: text` |
+| `sendInlineKeyboard` (≤3) | `interactive` / `button` reply buttons |
+| `sendInlineKeyboard` (4–10) | `interactive` / `list` |
+| `sendInlineKeyboard` (>10 or failure) | Numbered text + `pendingWaChoices` |
+| `sendVideo` | `type: video` with `link` (fallback: text link) |
 
-**Auth**: `Authorization: Bearer {WHATSAPP_ACCESS_TOKEN}`
+**Template messages** (re-engagement outside 24h session): still required for production
+cold outreach; register Meta-approved templates before launch (names TBD with TDM).
 
-**Free-form message** (within 24h conversation window):
-```json
-{
-  "messaging_product": "whatsapp",
-  "to": "<phone_e164>",
-  "type": "text",
-  "text": { "body": "<message_text>" }
-}
-```
+---
 
-**Template message** (re-engagement, outside 24h window):
-```json
-{
-  "messaging_product": "whatsapp",
-  "to": "<phone_e164>",
-  "type": "template",
-  "template": {
-    "name": "<approved_template_name>",
-    "language": { "code": "es" },
-    "components": [{
-      "type": "body",
-      "parameters": [{ "type": "text", "text": "<variable_value>" }]
-    }]
-  }
-}
-```
+## Environment
 
-**Required Meta-approved templates** (to be registered before launch):
-| Template name | Phase | Trigger |
-|---------------|-------|---------|
-| `panelsmart_reengagement_1` | Any | 75-min inactivity |
-| `panelsmart_reengagement_2` | Any | 7-hour inactivity |
-| `panelsmart_reengagement_3` | Any | 20-hour inactivity |
-| `panelsmart_code_delivery` | F2 | Registration code delivery |
+| Variable | Required for Meta | Description |
+|----------|-------------------|-------------|
+| `WHATSAPP_PROVIDER` | no (default `meta`) | `meta` \| `twilio` |
+| `WHATSAPP_ACCESS_TOKEN` | yes | Cloud API token |
+| `WHATSAPP_PHONE_NUMBER_ID` | yes | Sending phone number id |
+| `WHATSAPP_VERIFY_TOKEN` | yes | Hub verify token you choose |
+| `WHATSAPP_APP_SECRET` | yes | App secret for signature |
+| `WHATSAPP_GRAPH_VERSION` | no | Default `v21.0` |
+
+Twilio alternative: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
+optional `TWILIO_WEBHOOK_URL`.

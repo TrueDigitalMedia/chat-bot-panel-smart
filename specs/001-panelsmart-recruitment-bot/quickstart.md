@@ -16,8 +16,8 @@ end-to-end. Run these scenarios in order after initial setup.
 - Telegram bot created via @BotFather and bot token obtained
 - Telegram webhook registered (`setWebhook` called with your Vercel URL)
 - QStash account created and `QSTASH_TOKEN` set
-- PanelSmart API credentials provided by Treinta
-- *(Telegram integration paused — no Meta credentials needed for this phase)*
+- Client MySQL credentials + schema map provided by TDM (for real code delivery)
+- *(WhatsApp/Meta paused for Telegram-first phase unless Twilio module is enabled)*
 
 **Required environment variables**:
 ```
@@ -27,9 +27,15 @@ POSTGRES_URL=<vercel_postgres_connection_string>
 QSTASH_TOKEN=<upstash_qstash_token>
 QSTASH_CURRENT_SIGNING_KEY=<upstash_signing_key>
 QSTASH_NEXT_SIGNING_KEY=<upstash_next_signing_key>
-PANELSMART_API_URL=<panelsmart_base_url>
-PANELSMART_API_KEY=<panelsmart_bearer_token>
 ANTHROPIC_API_KEY=<anthropic_api_key>
+
+# Client MySQL (registration code path) — optional when CLIENT_MYSQL_SYNC_ENABLED=false
+CLIENT_MYSQL_SYNC_ENABLED=false
+CLIENT_MYSQL_HOST=<mysql_host>
+CLIENT_MYSQL_PORT=3306
+CLIENT_MYSQL_USER=<user>
+CLIENT_MYSQL_PASSWORD=<password>
+CLIENT_MYSQL_DATABASE=<database>
 ```
 
 **Register Telegram webhook** (run once after deploy):
@@ -208,28 +214,33 @@ SELECT completed_at FROM survey_profiles WHERE lead_id = '<lead_id>';
 
 ---
 
-## Scenario 5: 10-Minute Timeout and PATCH Call (FR-007, FR-008)
+## Scenario 5: MySQL Sync + Download Confirm → Code Delivery (FR-006, FR-007, FR-008)
 
-**Goal**: Verify the registration code delivery trigger after timeout.
+**Goal**: Verify lead sync to client MySQL on qualify and registration code lookup after
+download confirmation.
 
-> **Note**: For testing, override the 10-minute window to 10 seconds via an env var
-> `RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS=10`.
+> **Note**: With `CLIENT_MYSQL_SYNC_ENABLED=false`, the bot keeps the local mock code path
+> (`MOCK-…`). Enable the flag and point at a staging MySQL to validate the real path.
 
 **Steps**:
-1. Complete Phase 1 (qualified lead).
-2. Receive download links.
-3. Do not respond for the configured timeout duration.
+1. Complete Phase 1 (qualified lead, quota available).
+2. Confirm lead row was upserted in client MySQL (or `client_mysql_sync_status = synced` locally).
+3. Receive download links (`link_sent`).
+4. Confirm app download in the bot UI/callback.
+5. Ensure the client process has written the panelist/registration code in MySQL (or seed it in staging).
 
 **Expected outcome**:
 - `Lead.lead_status` = `waiting_for_code`.
-- PanelSmart PATCH API call is logged in `system_call_logs` with `call_type = panelsmart_patch`.
-- Bot sends onboarding video message.
+- `Lead.panelist_code` is non-null (real code from MySQL when flag on).
+- MySQL sync / lookup logged in `system_call_logs` with
+  `call_type` in (`client_mysql_sync`, `client_mysql_code_lookup`).
+- Bot sends the registration code (and onboarding video if configured).
 
-**Verify**:
+**Verify** (bot Postgres):
 ```sql
-SELECT outcome FROM re_engagement_schedules
-WHERE lead_id = '<lead_id>' ORDER BY attempt_number;
--- First entry should show the scheduled job
+SELECT lead_status, client_mysql_sync_status, panelist_code
+FROM leads WHERE id = '<lead_id>';
+-- Expected: waiting_for_code, synced, non-null panelist_code (when MySQL enabled)
 ```
 
 ---
@@ -308,10 +319,10 @@ SELECT lead_status FROM leads WHERE lead_id = '<lead_id>';
 **Goal**: Verify the complete funnel end-to-end.
 
 **Steps**:
-1. Complete Phase 1 (qualified + quota available).
-2. Simulate PanelSmart registration success (fire webhook or mock API).
-3. Proceed through Phase 4 household questions.
-4. Confirm thank-you video is sent.
+1. Complete Phase 1 (qualified + quota available) — MySQL sync runs.
+2. Confirm download → receive registration code from MySQL (or mock when flag off).
+3. Confirm registration success (user buttons or local registration webhook).
+4. Proceed through Phase 4; confirm thank-you video is sent.
 
 **Expected outcome**:
 - `Lead.lead_status` progresses: `link_sent` → `waiting_for_code` →
@@ -335,7 +346,8 @@ FROM system_call_logs
 WHERE lead_id = '<lead_id>'
 ORDER BY called_at;
 
--- Expected call_types after a full qualification: demographic_extraction, panelsmart_patch
+-- Expected call_types after a full qualification: demographic_extraction,
+-- client_mysql_sync, client_mysql_code_lookup (when CLIENT_MYSQL_SYNC_ENABLED=true)
 -- Expected call_types after FAQ interaction: faq_search
 -- Expected call_types after Phase 4: conversation_summary
 -- All rows must have non-null latency_ms and correlation_id

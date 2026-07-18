@@ -1,8 +1,9 @@
-import { sql } from '../client'
-import { embedText } from '@/lib/rag/embed'
+import { loadLocalEnv } from './load-local-env'
 import { createHash } from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
+
+loadLocalEnv()
 
 interface FaqSource {
   question: string
@@ -11,6 +12,14 @@ interface FaqSource {
 }
 
 async function seedFaqs(): Promise<void> {
+  if (!process.env.POSTGRES_URL) {
+    console.error('POSTGRES_URL is not set. Check your .env file.')
+    process.exit(1)
+  }
+
+  const { sql } = await import('../client')
+  const { embedText } = await import('@/lib/rag/embed')
+
   const sourcePath = process.env.FAQ_SOURCE_PATH ?? path.join(process.cwd(), 'data', 'faqs.json')
 
   if (!fs.existsSync(sourcePath)) {

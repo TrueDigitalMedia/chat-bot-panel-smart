@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
+import { PHASE1_EVAL_REASONS } from '@/lib/eval/qualification-eval'
 import { validateTransition } from './transitions'
 import type { LeadStatus } from '@/types/lead'
 
@@ -41,6 +42,17 @@ export async function transitionLead(
       timestamp: new Date().toISOString(),
     }),
   )
+
+  // Fire-and-forget Phase-1 qualification/quota eval (never blocks the chat)
+  if (PHASE1_EVAL_REASONS.has(reason)) {
+    void import('@/lib/eval/persist-eval')
+      .then(({ evaluatePhase1Outcome }) =>
+        evaluatePhase1Outcome({ leadId, correlationId, reason }),
+      )
+      .catch((err) => {
+        console.error('[eval] phase-1 eval failed', { leadId, reason, err: String(err) })
+      })
+  }
 
   return { previousStatus: from, newStatus }
 }

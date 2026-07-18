@@ -11,7 +11,7 @@ Primary record representing a potential panelist. Created on first Telegram cont
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
-| `id` | UUID | PK, auto-generated | Unique lead identifier (used as idempotency key for external API calls) |
+| `id` | UUID | PK, auto-generated | Unique lead identifier (idempotency / join key for client MySQL sync) |
 | `telegram_chat_id` | BIGINT | UNIQUE, NOT NULL | Telegram chat ID — primary identifier for sending messages |
 | `telegram_username` | VARCHAR(100) | NULLABLE | Telegram @username (display only; chat_id is authoritative) |
 | `lead_status` | ENUM | NOT NULL | Current state in the state machine (see State Machine below) |
@@ -23,6 +23,11 @@ Primary record representing a potential panelist. Created on first Telegram cont
 | `d2_accepted` | BOOLEAN | NULLABLE | Whether user wants prizes (D2) |
 | `d3_is_shopper` | BOOLEAN | NULLABLE | Whether user manages household purchases (D3) |
 | `conversation_summary` | TEXT | NULLABLE | AI-generated summary of Phase 1 survey for PanelSmart platform submission |
+| `client_mysql_sync_status` | VARCHAR(20) | NULLABLE | `pending` \| `synced` \| `failed` — write of lead to client MySQL |
+| `client_mysql_synced_at` | TIMESTAMPTZ | NULLABLE | When upsert to client MySQL succeeded |
+| `client_mysql_sync_error` | TEXT | NULLABLE | Last sync error (ops; no PII) |
+| `panelist_code` | VARCHAR(100) | NULLABLE | Registration code / panelist ID read from client MySQL |
+| `panelist_code_fetched_at` | TIMESTAMPTZ | NULLABLE | When the code was successfully read |
 | `re_engagement_count` | SMALLINT | NOT NULL, DEFAULT 0 | Total re-engagement notifications sent (max 3) |
 | `last_activity_at` | TIMESTAMPTZ | NOT NULL | Timestamp of last inbound message from user |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT now() | When lead was first created |
@@ -35,10 +40,10 @@ Primary record representing a potential panelist. Created on first Telegram cont
 | `incomplete` | Survey started but not yet complete | D3 = "Sí"; survey question index 1–15 | All 16 survey fields collected → score + quota check |
 | `not_qualified` | EXIT_A — declined T&C (D1) or prizes (D2) | D1 = "No" or D2 = "No" | Terminal — no exit |
 | `quota_exhausted` | EXIT_B — D3 = "No" OR survey complete with no slot | D3 = "No" OR scoring finds no quota | Terminal (or re-enter queue — out of scope v1) |
-| `link_sent` | Download links sent; awaiting app install | Qualification complete + quota available | 10min timeout → `waiting_for_code` |
-| `waiting_for_code` | PATCH API sent; code delivery in progress | 10min elapsed without activation | Registration confirmed → `code_delivered_registered`; failure → `code_delivered_not_registered`; 20h silence → `code_delivered_no_response` |
-| `code_delivered_registered` | User successfully registered in PanelSmart | Registration API confirms success | Phase 4 completion → `ficha_hogar_completada` |
-| `code_delivered_not_registered` | Technical registration error | Registration API returns error | Human agent resolution (out of state machine) |
+| `link_sent` | Download links sent; awaiting download confirm | Qualification complete + quota available + MySQL sync attempted | User confirms download + code lookup → `waiting_for_code` |
+| `waiting_for_code` | Registration code sent; awaiting user/app registration | Code read from client MySQL and delivered | Registration confirmed → `code_delivered_registered`; failure → `code_delivered_not_registered`; 20h silence → `code_delivered_no_response` |
+| `code_delivered_registered` | User successfully registered in PanelSmart | User confirm (or client webhook/status) | Phase 4 completion → `ficha_hogar_completada` |
+| `code_delivered_not_registered` | Technical registration error | User decline / code missing after retries / client failure | Human agent resolution (out of state machine) |
 | `code_delivered_no_response` | 20h elapsed with no user reply after code delivery | 20h inactivity post code delivery | Terminal |
 | `ficha_hogar_completada` | Household profile fully collected | All Phase 4 fields confirmed | Terminal — success |
 | `abandono` | Re-engagement limit reached | 3 unanswered re-engagement notifications | Terminal |
@@ -187,12 +192,12 @@ Observability record for every LLM API call made by the system (Principle II).
    ├── Survey complete, no quota ─────────────────────────────► quota_exhausted [EXIT_B + "🎉 ¡Gracias!", TERMINAL]
    └── Survey complete + quota available ─────────────────────────────────────────────────┐
                                                                                           ▼
-[F2: Onboarding]                                                                     link_sent
-   │ (10 min timeout)                                                                     │
-   └── PATCH API sent ──────────────────────────────────────────────────────► waiting_for_code
+[F2: Onboarding]                          (MySQL upsert on qualify)                  link_sent
+   │ (user confirms app download)                                                         │
+   └── SELECT panelist code from client MySQL ──────────────────────────────► waiting_for_code
                                                                                           │
 [F3: Registration Monitor]                                                                │
-   ├── Registration success ─────────────────────────────────► code_delivered_registered ─┐
+   ├── Registration success (user confirm / webhook) ────────► code_delivered_registered ─┐
    ├── Technical failure ─────────────────────────────► code_delivered_not_registered      │
    │                                                         (→ support redirect)          │
    └── 20h no response ────────────────────────────────► code_delivered_no_response [TERMINAL]

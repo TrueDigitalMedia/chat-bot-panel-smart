@@ -357,3 +357,96 @@
   text-align: center;
   padding: 2rem;
 }
+
+.evalBox {
+  margin-top: 1rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 0.85rem;
+}
+
+.evalBox strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.evalBtn {
+  margin: 0.5rem 0 0.35rem;
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.evalBtn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+
+.evalBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.backfillBtn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backfillBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.backfillBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.headerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.evalChecks {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.evalOk {
+  color: var(--accent);
+}
+
+.evalFail {
+  color: #9b2c2c;
+  font-weight: 600;
+}
+
+.evalMismatches {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 0.7rem;
+  overflow: auto;
+  max-height: 10rem;
+}

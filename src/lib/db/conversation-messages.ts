@@ -1,6 +1,7 @@
 import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
+import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
 import type { Channel } from '@/types/channel'
 
 export type MessageDirection = 'in' | 'out'
@@ -37,7 +38,28 @@ export async function logConversationMessage(input: LogMessageInput): Promise<vo
   }
 }
 
-export async function listConversations(limit = 50) {
+export type ConversationListItem = {
+  id: string
+  channel: Channel
+  channelUserId: string
+  channelUsername: string | null
+  phoneNumber: string | null
+  leadStatus: string
+  currentPhase: number
+  surveyQuestionIndex: number
+  lastActivityAt: Date
+  createdAt: Date
+  fullName: string | null
+  country: string | null
+  lastMessage: string | null
+  lastMessageAt: Date | null
+  messageCount: number
+  evalScore: number | null
+  evalPassed: boolean | null
+  evalReason: string | null
+}
+
+export async function listConversations(limit = 50): Promise<ConversationListItem[]> {
   const rows = await db
     .select({
       id: leads.id,
@@ -59,13 +81,7 @@ export async function listConversations(limit = 50) {
     .limit(limit)
 
   if (rows.length === 0) {
-    return [] as Array<
-      (typeof rows)[number] & {
-        lastMessage: string | null
-        lastMessageAt: Date | null
-        messageCount: number
-      }
-    >
+    return []
   }
 
   const ids = rows.map((r) => r.id)
@@ -96,13 +112,19 @@ export async function listConversations(limit = 50) {
     }
   }
 
+  const evals = await getLatestEvalsForLeads(ids)
+
   return rows.map((r) => {
     const s = stats.get(r.id)
+    const ev = evals.get(r.id)
     return {
       ...r,
       lastMessage: s?.lastMessage ?? null,
       lastMessageAt: s?.lastMessageAt ?? null,
       messageCount: s?.messageCount ?? 0,
+      evalScore: ev?.overallScore ?? null,
+      evalPassed: ev?.passed ?? null,
+      evalReason: ev?.reason ?? null,
     }
   })
 }
@@ -151,5 +173,7 @@ export async function getConversationDetail(leadId: string) {
     .orderBy(asc(conversationMessages.createdAt))
     .limit(500)
 
-  return { lead, messages }
+  const evalResult = await getLatestEvalForLead(leadId)
+
+  return { lead, messages, eval: evalResult }
 }

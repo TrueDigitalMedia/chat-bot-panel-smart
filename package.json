@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate",
-    "db:seed:faqs": "tsx src/lib/db/seed/faqs.ts"
+    "db:seed:faqs": "tsx --env-file=.env src/lib/db/seed/faqs.ts",
+    "db:seed:evals": "tsx --env-file=.env src/lib/db/seed/eval-fixtures.ts",
+    "eval:backfill": "tsx --env-file=.env src/lib/eval/run-backfill.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.11",

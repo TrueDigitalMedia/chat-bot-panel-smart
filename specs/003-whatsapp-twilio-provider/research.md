@@ -6,15 +6,21 @@
 
 ---
 
-## Decision 1: Transport = Twilio WhatsApp Sandbox (not Meta Cloud API)
+## Decision 1: Transport = Meta Cloud API primary; Twilio alternative (updated 2026-07-17)
 
-**Decision**: Implement WhatsApp exclusively through Twilio Messages API with Sandbox sender. Do not implement Meta Hub verify / Graph API from `001` whatsapp-webhook.md.
+**Original Decision (2026-07-13)**: Implement WhatsApp exclusively through Twilio Messages API with Sandbox sender.
 
-**Rationale**: User requirement; Sandbox unblocks integration with Account SID + Auth Token without WABA approval. Keeps Telegram separate.
+**Update (2026-07-17)**: **Primary** transport is **WhatsApp Business Cloud API (Meta)** under
+`src/lib/whatsapp/providers/meta/`. Twilio remains an **alternative** behind
+`WHATSAPP_PROVIDER=twilio` and `POST /api/webhooks/whatsapp/twilio`. Domain code still uses only
+`@/lib/messaging/send`.
+
+**Rationale**: Product requirement to use WhatsApp Business API directly; Twilio kept for sandbox /
+fallback without rewriting phase handlers.
 
 **Alternatives considered**:
-- Meta Cloud API direct — rejected for this feature.
-- Production Twilio WhatsApp sender — deferred post-sandbox.
+- Twilio-only — superseded; kept as switchable alternative.
+- Dual simultaneous providers without a switch — rejected (ambiguous inbound ownership).
 
 ---
 

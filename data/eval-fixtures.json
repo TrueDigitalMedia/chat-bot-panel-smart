@@ -1,0 +1,137 @@
+[
+  {
+    "slug": "d1-decline-tnc",
+    "description": "Panelista rechaza Términos y Condiciones (D1) → not_qualified / EXIT_A",
+    "scenarioType": "d1_decline",
+    "tags": ["qualification", "exit_a"],
+    "inputSnapshot": {
+      "d1Accepted": false,
+      "d2Accepted": null,
+      "d3IsShopper": null
+    },
+    "expected": {
+      "leadStatus": "not_qualified",
+      "requireScoring": false,
+      "requireGeo": false
+    }
+  },
+  {
+    "slug": "d2-decline-prizes",
+    "description": "Panelista acepta T&C pero rechaza premios (D2) → not_qualified / EXIT_A",
+    "scenarioType": "d2_decline",
+    "tags": ["qualification", "exit_a"],
+    "inputSnapshot": {
+      "d1Accepted": true,
+      "d2Accepted": false,
+      "d3IsShopper": null
+    },
+    "expected": {
+      "leadStatus": "not_qualified",
+      "requireScoring": false,
+      "requireGeo": false
+    }
+  },
+  {
+    "slug": "d3-no-not-shopper",
+    "description": "Panelista no administra compras del hogar (D3) → quota_exhausted / EXIT_B",
+    "scenarioType": "d3_no",
+    "tags": ["qualification", "exit_b"],
+    "inputSnapshot": {
+      "d1Accepted": true,
+      "d2Accepted": true,
+      "d3IsShopper": false
+    },
+    "expected": {
+      "leadStatus": "quota_exhausted",
+      "requireScoring": false,
+      "requireGeo": false
+    }
+  },
+  {
+    "slug": "geo-out-guatemala-fake-municipality",
+    "description": "Municipio fuera del catálogo NSE CAM → quota_exhausted, in_quota_geo=false",
+    "scenarioType": "geo_out",
+    "tags": ["geo", "quota", "exit_b"],
+    "inputSnapshot": {
+      "d1Accepted": true,
+      "d2Accepted": true,
+      "d3IsShopper": true,
+      "country": "Guatemala",
+      "stateProvince": "Guatemala",
+      "municipality": "Municipio Inventado XYZ",
+      "inQuotaGeo": false,
+      "nseRegion": null
+    },
+    "expected": {
+      "leadStatus": "quota_exhausted",
+      "inQuotaGeo": false,
+      "nseRegion": null,
+      "requireScoring": false,
+      "requireGeo": true
+    }
+  },
+  {
+    "slug": "geo-in-guatemala-centro-ii",
+    "description": "Guatemala / Guatemala / Guatemala está en catálogo (Centro II) — base para cupo OK",
+    "scenarioType": "survey_complete_quota_available",
+    "tags": ["geo", "quota", "nse"],
+    "inputSnapshot": {
+      "d1Accepted": true,
+      "d2Accepted": true,
+      "d3IsShopper": true,
+      "country": "Guatemala",
+      "stateProvince": "Guatemala",
+      "municipality": "Guatemala",
+      "inQuotaGeo": true,
+      "nseRegion": "Centro II",
+      "educationPsh": "Posgrado",
+      "cars": "2 o más",
+      "domesticHelp": true,
+      "householdSize": 2,
+      "bedrooms": 4,
+      "score": 70,
+      "quotaSegment": "A/B"
+    },
+    "expected": {
+      "leadStatus": "link_sent",
+      "inQuotaGeo": true,
+      "nseRegion": "Centro II",
+      "score": 70,
+      "quotaSegment": "A/B",
+      "requireScoring": true,
+      "requireGeo": true
+    }
+  },
+  {
+    "slug": "survey-complete-no-slot-low-ses",
+    "description": "Encuesta completa, geo OK, sin cupo de segmento → quota_exhausted (score D/E)",
+    "scenarioType": "survey_complete_no_quota",
+    "tags": ["quota", "scoring", "exit_b"],
+    "inputSnapshot": {
+      "d1Accepted": true,
+      "d2Accepted": true,
+      "d3IsShopper": true,
+      "country": "Guatemala",
+      "stateProvince": "Guatemala",
+      "municipality": "Guatemala",
+      "inQuotaGeo": true,
+      "nseRegion": "Centro II",
+      "educationPsh": "Sin instrucción formal",
+      "cars": "0",
+      "domesticHelp": false,
+      "householdSize": 8,
+      "bedrooms": 1,
+      "score": 2,
+      "quotaSegment": "D/E"
+    },
+    "expected": {
+      "leadStatus": "quota_exhausted",
+      "inQuotaGeo": true,
+      "nseRegion": "Centro II",
+      "score": 2,
+      "quotaSegment": "D/E",
+      "requireScoring": true,
+      "requireGeo": true
+    }
+  }
+]

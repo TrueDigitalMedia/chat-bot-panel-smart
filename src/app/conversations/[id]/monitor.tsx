@@ -40,6 +40,20 @@ type LeadDetail = {
   gender: string | null
 }
 
+type EvalDetail = {
+  id: string
+  overallScore: number
+  passed: boolean
+  checks: Record<string, boolean>
+  mismatches: Array<{ field: string; expected: unknown; actual: unknown }>
+  reason: string
+  expected: Record<string, unknown>
+  actual: Record<string, unknown>
+  ranAt: string
+  evalVersion: string
+  fixtureId: string | null
+}
+
 function formatWhen(d: string): string {
   return new Date(d).toLocaleString('es-GT', {
     dateStyle: 'short',
@@ -50,7 +64,10 @@ function formatWhen(d: string): string {
 export function ConversationMonitor({ leadId }: { leadId: string }) {
   const [lead, setLead] = useState<LeadDetail | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [evalResult, setEvalResult] = useState<EvalDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [evalBusy, setEvalBusy] = useState(false)
+  const [evalMsg, setEvalMsg] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevCount = useRef(0)
 
@@ -61,9 +78,14 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
         setError(res.status === 404 ? 'Conversación no encontrada' : 'Error al cargar')
         return
       }
-      const data = (await res.json()) as { lead: LeadDetail; messages: Message[] }
+      const data = (await res.json()) as {
+        lead: LeadDetail
+        messages: Message[]
+        eval: EvalDetail | null
+      }
       setLead(data.lead)
       setMessages(data.messages)
+      setEvalResult(data.eval ?? null)
       setError(null)
     } catch {
       setError('No se pudo conectar')
@@ -143,10 +165,18 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
             <strong>{lead.email || '—'}</strong>
           </li>
           <li>
-            <span>Score / cupo</span>
+            <span>Score NSE / cupo</span>
             <strong>
               {lead.score ?? '—'}
               {lead.quotaSegment ? ` · ${lead.quotaSegment}` : ''}
+            </strong>
+          </li>
+          <li>
+            <span>Eval QA</span>
+            <strong>
+              {evalResult
+                ? `${evalResult.overallScore} · ${evalResult.passed ? 'pass' : 'fail'}`
+                : '—'}
             </strong>
           </li>
           <li>
@@ -154,6 +184,68 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
             <strong>{formatWhen(lead.lastActivityAt)}</strong>
           </li>
         </ul>
+        <div className={styles.evalBox}>
+          <strong>Eval calificación / cuota</strong>
+          <button
+            type="button"
+            className={styles.evalBtn}
+            disabled={evalBusy}
+            onClick={async () => {
+              setEvalBusy(true)
+              setEvalMsg(null)
+              try {
+                const res = await fetch(`/api/conversations/${leadId}/eval`, {
+                  method: 'POST',
+                })
+                const data = (await res.json()) as {
+                  error?: string
+                  skipReason?: string
+                  overallScore?: number
+                  passed?: boolean
+                  eval?: EvalDetail | null
+                }
+                if (!res.ok) {
+                  setEvalMsg(data.skipReason || data.error || 'No evaluable')
+                } else {
+                  setEvalResult(data.eval ?? null)
+                  setEvalMsg(
+                    `OK · ${data.overallScore} · ${data.passed ? 'pass' : 'fail'}`,
+                  )
+                  await load()
+                }
+              } catch {
+                setEvalMsg('Error al ejecutar eval')
+              } finally {
+                setEvalBusy(false)
+              }
+            }}
+          >
+            {evalBusy ? 'Evaluando…' : evalResult ? 'Re-ejecutar eval' : 'Ejecutar eval'}
+          </button>
+          {evalMsg ? <p className={styles.muted}>{evalMsg}</p> : null}
+          {evalResult ? (
+            <>
+              <p className={styles.muted}>
+                reason: {evalResult.reason} · v{evalResult.evalVersion} ·{' '}
+                {evalResult.overallScore} ({evalResult.passed ? 'pass' : 'fail'})
+              </p>
+              <ul className={styles.evalChecks}>
+                {Object.entries(evalResult.checks).map(([key, ok]) => (
+                  <li key={key} className={ok ? styles.evalOk : styles.evalFail}>
+                    {ok ? '✓' : '✗'} {key}
+                  </li>
+                ))}
+              </ul>
+              {evalResult.mismatches?.length > 0 ? (
+                <pre className={styles.evalMismatches}>
+                  {JSON.stringify(evalResult.mismatches, null, 2)}
+                </pre>
+              ) : null}
+            </>
+          ) : (
+            <p className={styles.muted}>Sin eval aún. Ejecuta para calificar este lead.</p>
+          )}
+        </div>
         {lead.conversationSummary ? (
           <p className={styles.summary}>
             <strong>Resumen AI: </strong>

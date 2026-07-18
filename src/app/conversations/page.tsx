@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { listConversations } from '@/lib/db/conversation-messages'
+import { BackfillEvalsButton } from './backfill-button'
 import styles from './conversations.module.css'
 
 function formatWhen(d: Date | string | null | undefined): string {
@@ -32,9 +33,12 @@ export default async function ConversationsPage() {
           <h1 className={styles.title}>Conversaciones</h1>
           <p className={styles.sub}>Monitorea leads activos por canal. Los mensajes nuevos se registran en vivo.</p>
         </div>
-        <Link href="/" className={styles.homeLink}>
-          Inicio
-        </Link>
+        <div className={styles.headerActions}>
+          <BackfillEvalsButton />
+          <Link href="/" className={styles.homeLink}>
+            Inicio
+          </Link>
+        </div>
       </header>
 
       <div className={styles.tableWrap}>
@@ -44,6 +48,7 @@ export default async function ConversationsPage() {
               <th>Usuario</th>
               <th>Canal</th>
               <th>Estado</th>
+              <th>Eval QA</th>
               <th>Último mensaje</th>
               <th>Actividad</th>
               <th></th>
@@ -52,7 +57,7 @@ export default async function ConversationsPage() {
           <tbody>
             {conversations.length === 0 ? (
               <tr>
-                <td colSpan={6} className={styles.empty}>
+                <td colSpan={7} className={styles.empty}>
                   Aún no hay conversaciones.
                 </td>
               </tr>
@@ -79,6 +84,20 @@ export default async function ConversationsPage() {
                       F{c.currentPhase} · Q{c.surveyQuestionIndex}
                       {c.messageCount ? ` · ${c.messageCount} msgs` : ''}
                     </div>
+                  </td>
+                  <td>
+                    {c.evalScore != null ? (
+                      <>
+                        <span
+                          className={`${styles.badge} ${c.evalPassed ? styles.stDone : styles.stEnd}`}
+                        >
+                          {c.evalScore}
+                        </span>
+                        <div className={styles.muted}>{c.evalPassed ? 'pass' : 'fail'}</div>
+                      </>
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
                   </td>
                   <td className={styles.preview}>
                     {c.lastMessage ? c.lastMessage.slice(0, 80) : '—'}

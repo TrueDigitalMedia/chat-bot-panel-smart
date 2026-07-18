@@ -47,7 +47,7 @@ Telegram webhook handler runs as a serverless function with `after()` for deferr
   required for this phase. Architecture is channel-agnostic to allow future re-enablement.
 - QStash delivery cadence: 75 minutes → 7 hours → 20 hours; max 3 attempts per phase.
 - Re-engagement messages are free-form text (no Telegram template approval required).
-- Registration code PATCH call must complete within Vercel's 60s max serverless timeout.
+- Client MySQL sync and code lookup must complete within Vercel's serverless timeout budget.
 - PII (demographic data) must not be logged in plaintext; log field names only, not values.
 - Re-engagement timers must be cancellable when a user responds mid-cadence.
 
@@ -80,7 +80,7 @@ supports thousands with no structural changes (Vercel Postgres + QStash scale ho
   correlation_id, timestamp.
 - Every QStash job delivery (scheduled, delivered, cancelled) is logged in
   `re_engagement_schedules` with outcome.
-- Every PanelSmart PATCH attempt logs: attempt number, HTTP status, latency, lead_id.
+- Every client MySQL sync and code-lookup attempt logs: call_type, latency, lead_id, outcome.
 - Health and readiness endpoints are included in the implementation scope.
 
 ### III. Simplicity / YAGNI — Justified Complexity ⚠️
@@ -105,7 +105,7 @@ specs/001-panelsmart-recruitment-bot/
 ├── contracts/
 │   ├── telegram-webhook.md      # Inbound/outbound Telegram contracts (WhatsApp paused)
 │   ├── lead-state-api.md        # Internal lead status API
-│   └── panelsmart-integration.md # PanelSmart PATCH + registration webhook
+│   └── client-mysql-integration.md # Client MySQL sync + registration code lookup
 └── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)
 ```
 
@@ -118,8 +118,8 @@ src/
 │   │   ├── webhooks/
 │   │   │   ├── telegram/
 │   │   │   │   └── route.ts         # Telegram Bot API inbound handler (POST only)
-│   │   │   └── panelsmart/
-│   │   │       └── route.ts         # PanelSmart registration status webhook
+│   │   │   └── registration/
+│   │   │       └── route.ts         # Optional/local registration outcome webhook
 │   │   ├── leads/
 │   │   │   └── [id]/
 │   │   │       ├── route.ts         # GET lead state
@@ -152,8 +152,11 @@ src/
 │   ├── ai/
 │   │   ├── extract-survey-fields.ts # generateObject + SurveyProfile field extraction
 │   │   └── summarize-phase1.ts      # Conversation summary for Phase 4 context
-│   ├── panelsmart/
-│   │   └── client.ts                # PATCH API call with retry + logging
+│   ├── client-mysql/
+│   │   ├── pool.ts                  # mysql2 pool (CLIENT_MYSQL_*)
+│   │   ├── sync-lead.ts             # Upsert qualified lead into client MySQL
+│   │   ├── fetch-panelist-code.ts   # SELECT registration code / panelist ID
+│   │   └── map-lead-row.ts          # Lead/survey → MySQL column map
 │   ├── telegram/
 │   │   ├── send.ts                  # Outbound message / inline keyboard sender
 │   │   └── verify.ts                # Webhook secret token header validation
@@ -193,5 +196,6 @@ mounting the HTTP layer.
 |-----------|------------|--------------------------------------|
 | 8-state lead machine | Business requirement from Treinta defines 8 distinct states with different bot behaviors | Collapsing states loses the ability to resume correctly after async gaps (hours/days between turns) |
 | 4-phase sequential flow | Treinta's funnel design requires qualification before onboarding, registration before confirmation | Merging phases would break the quota-check gate and the registration-confirmation handshake |
+| Client MySQL (2nd DB) | Client owns panelist creation; bot only writes leads and reads codes | Calling CreatePanelist/GPM or inventing codes would diverge from the client registry |
 | QStash dependency | Per-user delays (75min/7h/20h from last activity) cannot be expressed as cron expressions | Vercel Cron requires polling with 60s resolution jitter and continuous DB load; not acceptable for re-engagement quality |
 | pgvector + embeddings | Telegram FAQ queries are paraphrased colloquially — lexical string matching misses them | TF-IDF / fuzzy match produces unacceptable miss rates for natural-language questions |

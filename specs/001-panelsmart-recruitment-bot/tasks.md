@@ -29,7 +29,7 @@ description: "Task list for PanelSmart Recruitment Bot implementation"
 - [X] T003 [P] Install dev dependencies: `vitest @vitejs/plugin-react-swc playwright @playwright/test` (use `@vitejs/plugin-react-swc` for Next.js+Vitest; do NOT use `@vitejs/plugin-react` which conflicts with Next.js transforms)
 - [X] T004 [P] Configure Vitest with `vitest.config.ts` and path aliases matching `tsconfig.json`
 - [X] T005 [P] Configure Playwright with `playwright.config.ts` targeting local dev server
-- [X] T006 [P] Create environment variable schema with Zod validation in `src/lib/env.ts` (validates all required env vars on startup: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `POSTGRES_URL`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `PANELSMART_API_URL`, `PANELSMART_API_KEY`, `ANTHROPIC_API_KEY`)
+- [X] T006 [P] Create environment variable schema with Zod validation in `src/lib/env.ts` (validates required env vars on startup: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `POSTGRES_URL`, `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`, `ANTHROPIC_API_KEY`; optional `CLIENT_MYSQL_*` + `CLIENT_MYSQL_SYNC_ENABLED` for client MySQL sync — see T029)
 - [X] T007 [P] Create `src/lib/db/client.ts` — initialize Drizzle ORM client using `@vercel/postgres`
 - [X] T008 [P] *(Merged into T013)* — pgvector extension is enabled as the first statement in the initial Drizzle migration (see T013); no separate setup script needed
 
@@ -100,37 +100,37 @@ description: "Task list for PanelSmart Recruitment Bot implementation"
 
 ## Phase 4: User Story 2 — App Download & Registration Code Delivery (Priority: P2)
 
-**Goal**: A qualified lead receives iOS/Android download links for PanelSmart. After a 10-minute window without activation, the system triggers registration code delivery via PanelSmart API.
+**Goal**: A qualified lead is upserted into **client MySQL**, receives iOS/Android download links, and after **download confirmation** receives the registration code read from MySQL (written by the client's internal process). See `contracts/client-mysql-integration.md`.
 
-**Independent Test**: Simulate a qualified lead entering Phase 2 and verify: links sent → status `link_sent` → 10-minute job scheduled → PATCH API called → status `waiting_for_code`. See `quickstart.md` Scenario 5.
+**Independent Test**: Simulate a qualified lead: MySQL sync → `link_sent` → download confirm → code lookup → `waiting_for_code`. See `quickstart.md` Scenario 5.
 
 ### Implementation for User Story 2
 
-- [X] T029 [P] [US2] Implement PanelSmart PATCH API client in `src/lib/panelsmart/client.ts` — `triggerRegistrationCode(leadId, chatId)`: sends `PATCH {PANELSMART_API_URL}/panelists/{leadId}/registration-code` with bearer auth, exponential backoff (500ms→1s→2s, max 3 attempts, ±20% jitter), idempotency key = `leadId`; logs every attempt via `logCall` with `callType='panelsmart_patch'`
-- [X] T030 [US2] Implement QStash scheduler helpers in `src/lib/scheduler/re-engagement.ts` — `scheduleJob(leadId, phase, attemptNumber, delaySeconds, templateKey)` and `cancelPendingJobs(leadId, phase)` using `@upstash/qstash`; define cadence constants in `src/lib/scheduler/constants.ts` as a named map to avoid off-by-one indexing: `const REENGAGEMENT_DELAY_SECONDS: Record<1|2|3, number> = { 1: 4500, 2: 25200, 3: 72000 }` and `PHASE2_CODE_DELAY_SECONDS = 600`; ⚠️ T042 (US5) extends this same file — do NOT mark parallel with T042
-- [X] T031 [US2] Implement Phase 2 handler in `src/lib/conversation/phases/phase-2.ts`:
-  - Send download links message (iOS App Store + Android Play Store URLs from env vars)
-  - `transitionLead(id, 'link_sent')`
-  - Schedule 10-minute QStash job pointing to `/api/jobs/re-engage` with `{ leadId, phase: 2, attemptNumber: 0, action: 'trigger_code' }`
-- [X] T032 [US2] Implement registration code delivery job handler in `src/app/api/jobs/re-engage/route.ts` — validate QStash signature → if `action === 'trigger_code'`: call `triggerRegistrationCode` → `transitionLead(id, 'waiting_for_code')` → send onboarding video via `sendVideo`
+> **2026-07-17 contract change**: CreatePanelist/GPM and PanelSmart PATCH are **out**. Interim local mock (`MOCK-…` + timer) remains until MySQL tasks below ship.
 
-**Checkpoint**: User Story 2 fully functional. Download links are sent, 10-minute timer fires, and registration code delivery is triggered via the PanelSmart API.
+- [ ] T029 [P] [US2] Implement client MySQL module in `src/lib/client-mysql/` — `pool.ts`, `map-lead-row.ts`, `sync-lead.ts` (`upsertQualifiedLead`), `fetch-panelist-code.ts`; log via `logCall` with `callType` `client_mysql_sync` / `client_mysql_code_lookup`; env: `CLIENT_MYSQL_*`, `CLIENT_MYSQL_SYNC_ENABLED`
+- [X] T030 [US2] Implement QStash scheduler helpers in `src/lib/scheduler/re-engagement.ts` — `scheduleJob(leadId, phase, attemptNumber, delaySeconds, templateKey)` and `cancelPendingJobs(leadId, phase)` using `@upstash/qstash`; define cadence constants in `src/lib/scheduler/constants.ts` as a named map to avoid off-by-one indexing: `const REENGAGEMENT_DELAY_SECONDS: Record<1|2|3, number> = { 1: 4500, 2: 25200, 3: 72000 }` and `PHASE2_CODE_DELAY_SECONDS = 600`; ⚠️ T042 (US5) extends this same file — do NOT mark parallel with T042
+- [X] T031 [US2] Implement Phase 2 handler in `src/lib/conversation/phases/phase-2.ts` (download links + `link_sent`). **Follow-up**: wire `upsertQualifiedLead` on qualify paths before Phase 2; replace mock store URLs when real links are provided.
+- [ ] T032 [US2] Replace mock code delivery: on download confirmation, call `fetchPanelistCode` → send real code → `transitionLead(id, 'waiting_for_code')` → optional onboarding video. Keep `mock-registration.ts` only when `CLIENT_MYSQL_SYNC_ENABLED=false`.
+- [ ] T032b [US2] Postgres migration on `leads`: `client_mysql_sync_status`, `client_mysql_synced_at`, `client_mysql_sync_error`, `panelist_code`, `panelist_code_fetched_at`
+
+**Checkpoint**: User Story 2 functional with MySQL enabled: sync on qualify, links sent, code from MySQL after download confirm.
 
 ---
 
 ## Phase 5: User Story 3 — Registration Monitoring & Routing (Priority: P3)
 
-> ⛔ **PREREQUISITE GATE**: Before starting this phase, confirm with Treinta whether PanelSmart pushes registration status via webhook (Option A) or the chatbot must poll (Option B). T033 is written for webhook. If polling is required, T033 must be rewritten before implementation begins. Document the decision in `research.md` Decision 8.
+> **Decision 8 (research.md)**: v1 uses **user confirmation buttons** after code delivery. Optional later: client webhook or MySQL status-column polling (`contracts/client-mysql-integration.md`).
 
 **Goal**: After registration code delivery, the system routes leads to Phase 4 on success, human handoff on failure, or inactivity freeze after 20 hours.
 
-**Independent Test**: Simulate the three outcomes (success webhook, failure, 20h silence) and verify correct `lead_status` transitions and routing. See `quickstart.md` Scenario 8 (partial).
+**Independent Test**: Simulate the three outcomes (user confirm success, failure, 20h silence) and verify correct `lead_status` transitions and routing. See `quickstart.md` Scenario 8 (partial).
 
 ### Implementation for User Story 3
 
-- [X] T033 [P] [US3] Implement PanelSmart registration status webhook in `src/app/api/webhooks/panelsmart/route.ts` — validate shared secret (`X-PanelSmart-Secret` header) → parse `{ leadId, event }` → if `registration_success` → `transitionLead(id, 'code_delivered_registered')` + trigger Phase 4 handler; if `registration_failure` → `transitionLead(id, 'code_delivered_not_registered')` + trigger human handoff
+- [X] T033 [P] [US3] Registration outcome via user buttons + local webhook `src/app/api/webhooks/registration/route.ts` (dev/sim). Optional future: client webhook or MySQL status poll — not required for v1 MySQL code path.
 - [X] T034 [US3] Implement Phase 3 handler in `src/lib/conversation/phases/phase-3.ts` — entry point called after `code_delivered_registered`; triggers Phase 4; also handles `code_delivered_not_registered` by sending human-handoff message
-- [X] T035 [US3] Add 20-hour inactivity freeze to registration monitoring: after PATCH API fires, schedule a QStash job for 20 hours (`action: 'freeze_registration'`); in job handler, if `lead_status` is still `waiting_for_code` → `transitionLead(id, 'code_delivered_no_response')` (update `src/app/api/jobs/re-engage/route.ts`)
+- [X] T035 [US3] Add 20-hour inactivity freeze to registration monitoring: after code is delivered, schedule a QStash job for 20 hours (`action: 'freeze_registration'`); in job handler, if `lead_status` is still `waiting_for_code` → `transitionLead(id, 'code_delivered_no_response')` (update `src/app/api/jobs/re-engage/route.ts`)
 - [X] T036 [US3] Implement human handoff message in `src/lib/conversation/phases/phase-3.ts` — sends a message with support contact information when `code_delivered_not_registered` is set
 
 **Checkpoint**: User Story 3 fully functional. All three registration paths route correctly. Human agents are only engaged for genuine technical failures.
@@ -304,5 +304,6 @@ Track C (US6):          T045 → T046 → T047 → T048 → T049
 - Each user story phase ends with a **Checkpoint** — validate independently before proceeding
 - Scoring algorithm (`T024`) requires implementation details from Treinta
 - FAQ source file (`T046`) must be provided by Treinta in JSON or CSV format before US6 begins
-- The PanelSmart registration status monitoring (`T033`) assumes webhook delivery (Option A from `contracts/panelsmart-integration.md`); confirm with Treinta before starting US3
+- Registration outcome (`T033`) uses user confirmation in v1; see Decision 8 and `contracts/client-mysql-integration.md`
+- Client MySQL DDL/column map from TDM is required before marking T029/T032 done against a real staging DB
 - Re-engagement cadence can be overridden via env vars for testing (see `quickstart.md`)

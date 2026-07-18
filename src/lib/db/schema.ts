@@ -213,3 +213,51 @@ export const conversationMessages = pgTable(
   },
   (t) => [index('conversation_messages_lead_created_idx').on(t.leadId, t.createdAt)],
 )
+
+/** Golden scenarios for qualification / quota QA (seeded examples). */
+export const evalFixtures = pgTable(
+  'eval_fixtures',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 80 }).notNull().unique(),
+    description: text('description').notNull(),
+    scenarioType: varchar('scenario_type', { length: 60 }).notNull(),
+    inputSnapshot: jsonb('input_snapshot').$type<Record<string, unknown>>().notNull(),
+    expected: jsonb('expected').$type<Record<string, unknown>>().notNull(),
+    tags: jsonb('tags').$type<string[]>(),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('eval_fixtures_scenario_idx').on(t.scenarioType)],
+)
+
+/** Per-lead Phase-1 qualification eval result (QA score, not socioeconomic score). */
+export const conversationEvals = pgTable(
+  'conversation_evals',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    fixtureId: uuid('fixture_id').references(() => evalFixtures.id),
+    correlationId: uuid('correlation_id'),
+    reason: varchar('reason', { length: 80 }).notNull(),
+    overallScore: smallint('overall_score').notNull(),
+    passed: boolean('passed').notNull(),
+    checks: jsonb('checks')
+      .$type<Record<string, boolean>>()
+      .notNull(),
+    actual: jsonb('actual').$type<Record<string, unknown>>().notNull(),
+    expected: jsonb('expected').$type<Record<string, unknown>>().notNull(),
+    mismatches: jsonb('mismatches')
+      .$type<Array<{ field: string; expected: unknown; actual: unknown }>>()
+      .notNull()
+      .default([]),
+    evalVersion: varchar('eval_version', { length: 20 }).notNull().default('v1'),
+    ranAt: timestamp('ran_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('conversation_evals_lead_ran_idx').on(t.leadId, t.ranAt),
+    index('conversation_evals_passed_idx').on(t.passed),
+  ],
+)
