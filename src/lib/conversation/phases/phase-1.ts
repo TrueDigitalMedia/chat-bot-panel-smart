@@ -271,7 +271,12 @@ export async function handlePhase1(
 
   await db.update(leads).set({ score, quotaSegment: segment, updatedAt: new Date() }).where(eq(leads.id, lead.id))
 
-  const hasQuota = await checkQuotaAvailability(segment, lead.id)
+  const hasQuota = await checkQuotaAvailability({
+    country: profile.country ?? '',
+    nseRegion: profile.nseRegion ?? '',
+    segment,
+    leadId: lead.id,
+  })
   if (!hasQuota) {
     await transitionLead(lead.id, 'quota_exhausted', 'survey_complete_no_quota', correlationId)
     await sendText(to, EXIT_B)

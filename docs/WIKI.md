@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-17
+> Última actualización: 2026-07-18
 
 ---
 
@@ -265,9 +265,11 @@ Peso en fórmula final: **×9**
 
 ## 7. Gaps entre la fórmula SCL-CAM y la implementación actual
 
-### 7.1 Fórmula de scoring (`src/lib/scoring/socioeconomic.ts`)
+> **✅ Sección 7.1, 7.2, 7.3 y 7.5 resueltas** por `specs/004-scl-cam-scoring-fix` y `specs/005-quota-admin-panel`. Se conserva el contenido original como referencia histórica de por qué se hizo el cambio. 7.4 (preguntas faltantes) sigue pendiente.
 
-La implementación actual **NO sigue la fórmula oficial de Kantar**. Usa una escala arbitraria de 0–100 con pesos inventados. Los problemas específicos son:
+### 7.1 Fórmula de scoring (`src/lib/scoring/socioeconomic.ts`) — ✅ RESUELTO
+
+La implementación **anterior** no seguía la fórmula oficial de Kantar; corregido en `specs/004-scl-cam-scoring-fix`. Usa una escala arbitraria de 0–100 con pesos inventados. Los problemas específicos son:
 
 | Aspecto | Fórmula Kantar (correcta) | Implementación actual (incorrecta) |
 |---------|--------------------------|-------------------------------------|
@@ -287,13 +289,13 @@ El PDF y el Excel actualizado tienen 12 opciones para educación del PSH, incluy
 
 La implementación actual tiene 10 opciones sin esos dos niveles base y sin "Pos Grado Incompleto".
 
-### 7.2 Cuota mock vs. cuota real
+### 7.2 Cuota mock vs. cuota real — ✅ RESUELTO
 
-`src/lib/scoring/quota.ts` es un **stub**: retorna 50/50 aleatorio (determinista por lead ID). No hay conexión a cuotas reales ni a la tabla de objetivos de Kantar.
+`src/lib/scoring/quota.ts` **era** un stub (50/50 aleatorio). Ahora consulta la tabla `quota_targets` (objetivo real vs. leads calificados) — ver `specs/005-quota-admin-panel`.
 
-### 7.3 Nombres de segmentos
+### 7.3 Nombres de segmentos — ✅ RESUELTO
 
-El código usa `A/B, C+, C, D+, D/E` (segmentos de México) en vez de `Nivel 1, 2, 3, 4` (segmentos de CAM).
+El código usaba `A/B, C+, C, D+, D/E` (México); ahora usa `Nivel 1, 2, 3, 4` (CAM) — ver `specs/004-scl-cam-scoring-fix`.
 
 ### 7.4 Preguntas faltantes en el flujo
 
@@ -305,9 +307,9 @@ Las siguientes preguntas del Excel actualizado **no están implementadas**:
 - **P18 (Fase 1):** ¿Bebé < 3 años? (cuota extra)
 - **Fase 4 completa:** 7 preguntas de Ficha Hogar (actualmente no son interactivas en el bot)
 
-### 7.5 Opción de género
+### 7.5 Opción de género — ✅ RESUELTO
 
-El Excel actualizado usa **Masculino/Femenino**; el código usa **Hombre/Mujer**.
+El Excel actualizado usa **Masculino/Femenino**; el código usaba **Hombre/Mujer** — corregido en `specs/004-scl-cam-scoring-fix`.
 
 ---
 
@@ -364,6 +366,8 @@ Regiones y estado actual (al momento del análisis):
 ---
 
 ## 9. Plan: Panel Administrativo de Cuotas
+
+> **✅ Implementado** en `specs/005-quota-admin-panel` (`/admin/quotas`, tabla `quota_targets`, import/export Excel, Basic Auth). El contenido de esta sección es el plan original — el diseño final está en `specs/005-quota-admin-panel/data-model.md` y `contracts/admin-quotas-api.md`, y difiere en un punto: la nomenclatura de región usa los nombres exactos del catálogo geográfico (`data/geo/cam-nse-regions.json`), no un texto libre, para evitar cuotas que nunca puedan coincidir con leads reales.
 
 ### Objetivo
 
@@ -559,14 +563,12 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - Eval QA automatizado (conversation evals)
 - Persistencia de panelista en sistema Treinta
 - AI summary del perfil del panelista
+- **Scoring SCL**: fórmula oficial Kantar SCL-CAM (NiPSH/HACI/AUTO/SD), segmentos `Nivel 1-4`, 12 opciones de educación PSH, género `Masculino/Femenino` (spec `004-scl-cam-scoring-fix`)
+- **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`, Basic Auth) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
-- **Scoring SCL**: existe pero usa fórmula incorrecta (no sigue la spec Kantar)
-- **Segmentos NSE**: usa nombres de México (A/B, C+…) en vez de CAM (Nivel 1/2/3/4)
-- **Cuota check**: mock aleatorio, no consulta cuotas reales
-- **Educación PSH**: solo 10 opciones, faltan "No alfabetizado" y "Pos Grado Incompleto"
-- **Género**: opciones "Hombre/Mujer" en vez de "Masculino/Femenino"
+*(ninguno conocido actualmente — ver Pendiente de implementar para trabajo futuro)*
 
 ### ❌ Pendiente de implementar
 
@@ -576,11 +578,8 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - Pregunta de bebé < 3 años (P18)
 - Fase 4 interactiva (7 preguntas de Ficha Hogar)
 - Pregunta descarte de panelista (fase 4, P1)
-- Panel administrativo de cuotas
 - Dashboard de leads (con datos reales)
 - Soporte para México y Ecuador (Excel TBD)
-- Tabla `quota_targets` en DB
-- Integración de cuota real en el bot
 
 ---
 

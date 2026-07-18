@@ -1,35 +1,39 @@
-import { createHash } from 'crypto'
+import { getQuotaProgressForTarget } from '@/lib/quotas/quota-progress'
 
-/**
- * Mock quota check — no external API.
- *
- * Default: random but stable per conversation (`leadId`).
- * Override for tests:
- *   QUOTA_MOCK_AVAILABLE=true  → always available
- *   QUOTA_MOCK_AVAILABLE=false → always exhausted
- */
-export async function checkQuotaAvailability(
-  segment: string,
-  leadId?: string,
-): Promise<boolean> {
-  const override = process.env.QUOTA_MOCK_AVAILABLE?.toLowerCase()
-  if (override === 'true') {
-    console.info(`[quota:mock] segment=${segment} available=true (override)`)
-    return true
-  }
-  if (override === 'false') {
-    console.info(`[quota:mock] segment=${segment} available=false (override)`)
-    return false
-  }
-
-  const seed = leadId ?? `${segment}:${Date.now()}`
-  const available = stableRandomBool(seed)
-  console.info(`[quota:mock] segment=${segment} lead=${leadId ?? 'n/a'} available=${available} (per-session)`)
-  return available
+interface CheckQuotaAvailabilityParams {
+  country: string
+  nseRegion: string
+  segment: string
+  leadId?: string
 }
 
-/** Deterministic 50/50 from a seed so the same conversation always gets the same result. */
-function stableRandomBool(seed: string): boolean {
-  const digest = createHash('sha256').update(seed).digest()
-  return (digest[0]! & 1) === 1
+/**
+ * Real quota check against `quota_targets` (replaces the old random mock).
+ * No target row for the combination → treated as unavailable (spec 005 edge case).
+ */
+export async function checkQuotaAvailability({
+  country,
+  nseRegion,
+  segment,
+  leadId,
+}: CheckQuotaAvailabilityParams): Promise<boolean> {
+  const progress = await getQuotaProgressForTarget(country, nseRegion, segment)
+  const available = progress != null && progress.active && progress.available > 0
+
+  console.log(
+    JSON.stringify({
+      event: 'quota_check',
+      lead_id: leadId ?? null,
+      country,
+      region: nseRegion,
+      segment,
+      target: progress?.target ?? 0,
+      achieved: progress?.achieved ?? 0,
+      available_count: progress?.available ?? 0,
+      active: progress?.active ?? false,
+      decision: available,
+    }),
+  )
+
+  return available
 }

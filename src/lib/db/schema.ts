@@ -13,6 +13,22 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
+export const quotaTargets = pgTable(
+  'quota_targets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    country: varchar('country', { length: 50 }).notNull(),
+    region: varchar('region', { length: 100 }).notNull(),
+    nseLevel: varchar('nse_level', { length: 20 }).notNull(),
+    targetCount: integer('target_count').notNull().default(0),
+    active: boolean('active').notNull().default(true),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('quota_targets_country_region_nse_idx').on(t.country, t.region, t.nseLevel)],
+)
+
 export const leadStatusEnum = pgEnum('lead_status', [
   'incomplete',
   'not_qualified',

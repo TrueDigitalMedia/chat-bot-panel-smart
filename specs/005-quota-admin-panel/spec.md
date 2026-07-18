@@ -87,7 +87,7 @@ Como administrador, quiero exportar el estado actual de las cuotas a un archivo 
 
 - ¿Qué ocurre si dos administradores editan el mismo objetivo de cuota al mismo tiempo? El sistema debe conservar el último valor guardado sin corromper datos.
 - ¿Qué ocurre si el objetivo de una combinación región+NSE se reduce a un número menor que los leads ya conseguidos? "Disponibles" debe mostrarse como 0, nunca negativo, y la combinación debe tratarse como sin cupo.
-- ¿Qué ocurre si se importa un archivo Excel con una región o NSE que no existe todavía en el sistema? El sistema debe crearla en vez de fallar.
+- ¿Qué ocurre si se importa un archivo Excel con una combinación región+NSE que aún no tiene fila en `quota_targets`? El sistema debe crearla (upsert), no fallar. ¿Qué ocurre si el nombre de país o región de una fila **no coincide con ningún valor real del catálogo geográfico** (typo, nombre distinto al que usa la encuesta)? El sistema NO debe crearla — debe rechazar esa fila y reportarla en una lista de "no coincidentes" para revisión manual, ya que una cuota con un nombre de región inválido nunca podría acumular leads reales (mismo riesgo de bug silencioso identificado en la corrección de scoring, spec 004). *(Aclarado durante `/speckit.analyze` — la redacción original era ambigua entre estos dos casos distintos.)*
 - ¿Qué ocurre si un usuario no autenticado intenta acceder al panel o a las rutas de API de cuotas? Debe ser rechazado.
 
 ## Requirements *(mandatory)*
@@ -117,7 +117,7 @@ Como administrador, quiero exportar el estado actual de las cuotas a un archivo 
 
 - **SC-001**: Un administrador puede actualizar un objetivo de cuota y ver el cambio reflejado en la vista de progreso en menos de 5 segundos.
 - **SC-002**: La decisión de aceptar/rechazar un lead nuevo por cupo coincide con el estado real de la cuota el 100% de las veces (se elimina por completo el comportamiento aleatorio del mock).
-- **SC-003**: La migración inicial importa el 100% de las combinaciones región+NSE de la hoja CAM (19 regiones × 4 niveles) sin reingreso manual.
+- **SC-003**: La migración inicial importa el 100% de las combinaciones región+NSE de la hoja CAM (33 regiones × 4 niveles = 132 celdas, objetivo total 3494 leads) sin reingreso manual. *(Corregido durante `/speckit.plan`: la tabla resumen del WIKI §8 omitió las filas con objetivo 0 al transcribir el Excel; se verificó contando directamente `docs/Kantar Quotas Test.xlsx` — 33 filas de región, no 19.)*
 - **SC-004**: Un administrador puede desactivar una región cerrada en menos de 30 segundos, y el bot deja de aceptar leads para esa combinación en el siguiente chequeo de cupo.
 
 ## Assumptions

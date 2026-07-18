@@ -40,6 +40,7 @@ export function canonicalCountry(raw: string): string | null {
     'republica dominicana': 'Rep. Dominicana',
     'rep dominicana': 'Rep. Dominicana',
     'dominican republic': 'Rep. Dominicana',
+    rd: 'Rep. Dominicana',
   }
   // Exact survey names
   for (const name of Object.keys(catalog.countries)) {
@@ -84,4 +85,22 @@ export function lookupNseRegion(
 
 export function listCatalogCountries(): string[] {
   return Object.keys(catalog.countries)
+}
+
+/** Unique NSE region names for a country, from the same catalog `lookupNseRegion` reads. */
+export function listNseRegionsForCountry(country: string): string[] {
+  const c = canonicalCountry(country) ?? country
+  const entries = catalog.countries[c] ?? []
+  return [...new Set(entries.map((e) => e.nseRegion))]
+}
+
+/**
+ * Resolve a possibly differently-cased/accented region name to the catalog's exact string
+ * for that country (e.g. Excel's "Cibao Sin Santiago" → catalog's "Cibao sin Santiago").
+ * Returns null if no region in the catalog normalizes to the same key.
+ */
+export function canonicalNseRegion(country: string, region: string): string | null {
+  const regions = listNseRegionsForCountry(country)
+  const n = normalizeGeoKey(region)
+  return regions.find((r) => normalizeGeoKey(r) === n) ?? null
 }
