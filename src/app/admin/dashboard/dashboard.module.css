@@ -1,0 +1,322 @@
+.page {
+  --ink: #14201b;
+  --muted: #5c6b64;
+  --line: #d5ddd8;
+  --paper: #f3f6f4;
+  --card: #ffffff;
+  --accent: #0f6b4c;
+  --accent-soft: #e4f3ec;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, #dceee5 0%, transparent 55%),
+    linear-gradient(180deg, #eef3f0 0%, var(--paper) 40%, #e8eeea 100%);
+  color: var(--ink);
+  font-family: var(--font-body), 'Segoe UI', sans-serif;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.title {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.sub {
+  margin-top: 0.4rem;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.navLink,
+.homeLink {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.navLink:hover,
+.homeLink:hover {
+  text-decoration: underline;
+}
+
+.section {
+  margin-bottom: 1.75rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* Summary cards */
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+}
+
+.card span {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.card strong {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Country bar chart (plain CSS — research.md R1) */
+.chart {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.chartRow {
+  display: grid;
+  grid-template-columns: 9rem 1fr 4.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.chartLabel {
+  font-weight: 600;
+}
+
+.chartTrack {
+  height: 0.6rem;
+  background: #eef2f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chartFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.chartValue {
+  color: var(--muted);
+  text-align: right;
+  font-size: 0.78rem;
+}
+
+/* Table (región×NSE) */
+.tableWrap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: #fafbfa;
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: #f7faf8;
+}
+
+.pctBadge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pctLow {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.pctMid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pctHigh {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Funnel */
+.funnel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.funnelRow {
+  display: grid;
+  grid-template-columns: 14rem 1fr 4.5rem 4.5rem;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.funnelLabel {
+  font-weight: 600;
+}
+
+.funnelDrop {
+  border: 1px solid #9b2c2c;
+  border-radius: 8px;
+  padding: 0.1rem 0.4rem;
+}
+
+.funnelPct {
+  color: var(--muted);
+  text-align: right;
+  font-size: 0.78rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 2.5rem 1rem !important;
+}
+
+/* Filters */
+.filtersForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.filterField select,
+.filterField input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.filterClear {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterClear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Refresh poller */
+.refreshBtn {
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

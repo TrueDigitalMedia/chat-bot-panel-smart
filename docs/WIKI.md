@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-18
+> Última actualización: 2026-07-18 (spec 006)
 
 ---
 
@@ -565,6 +565,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - AI summary del perfil del panelista
 - **Scoring SCL**: fórmula oficial Kantar SCL-CAM (NiPSH/HACI/AUTO/SD), segmentos `Nivel 1-4`, 12 opciones de educación PSH, género `Masculino/Femenino` (spec `004-scl-cam-scoring-fix`)
 - **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`, Basic Auth) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
+- **Dashboard de leads** (`/admin/dashboard`): cards de resumen, tabla región×NSE con color-coding, gráfico por país, embudo de conversión de 7 etapas, filtros (país/región/NSE/canal/fecha), polling de 60s (spec `006-leads-dashboard`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
@@ -578,7 +579,6 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - Pregunta de bebé < 3 años (P18)
 - Fase 4 interactiva (7 preguntas de Ficha Hogar)
 - Pregunta descarte de panelista (fase 4, P1)
-- Dashboard de leads (con datos reales)
 - Soporte para México y Ecuador (Excel TBD)
 
 ---

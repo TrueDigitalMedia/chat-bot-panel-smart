@@ -1,7 +1,8 @@
-import { and, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { quotaTargets, leads, surveyProfiles } from '@/lib/db/schema'
 import type { LeadStatus } from '@/types/lead'
+import type { Channel } from '@/types/channel'
 
 /** Lead statuses reached only after passing the quota check (see docs/WIKI.md §3 state machine). */
 export const QUALIFIED_STATUSES: LeadStatus[] = [
@@ -58,19 +59,33 @@ export function toProgress(row: QuotaTargetRow, achieved: number): QuotaProgress
   }
 }
 
-async function countAchieved(country: string, region: string, nseLevel: string): Promise<number> {
+interface AchievedFilters {
+  channel?: Channel
+  dateFrom?: Date
+  dateTo?: Date
+}
+
+async function countAchieved(
+  country: string,
+  region: string,
+  nseLevel: string,
+  extra: AchievedFilters = {},
+): Promise<number> {
+  const conditions: SQL[] = [
+    inArray(leads.leadStatus, QUALIFIED_STATUSES),
+    eq(leads.quotaSegment, nseLevel),
+    eq(surveyProfiles.country, country),
+    eq(surveyProfiles.nseRegion, region),
+  ]
+  if (extra.channel) conditions.push(eq(leads.channel, extra.channel))
+  if (extra.dateFrom) conditions.push(gte(leads.createdAt, extra.dateFrom))
+  if (extra.dateTo) conditions.push(lte(leads.createdAt, extra.dateTo))
+
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(leads)
     .innerJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
-    .where(
-      and(
-        inArray(leads.leadStatus, QUALIFIED_STATUSES),
-        eq(leads.quotaSegment, nseLevel),
-        eq(surveyProfiles.country, country),
-        eq(surveyProfiles.nseRegion, region),
-      ),
-    )
+    .where(and(...conditions))
   return row?.count ?? 0
 }
 
@@ -103,6 +118,10 @@ export interface QuotaProgressFilters {
   region?: string
   nseLevel?: string
   active?: boolean
+  /** Dashboard-only filters (spec 006) — narrow the "achieved" count, not which target rows are listed. */
+  channel?: Channel
+  dateFrom?: Date
+  dateTo?: Date
 }
 
 /** Progress for all quota targets matching the given filters. */
@@ -118,7 +137,15 @@ export async function listQuotaProgress(filters: QuotaProgressFilters = {}): Pro
     .from(quotaTargets)
     .where(conditions.length ? and(...conditions) : undefined)
 
+  const achievedFilters: AchievedFilters = {
+    channel: filters.channel,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  }
+
   return Promise.all(
-    rows.map(async (row) => toProgress(row, await countAchieved(row.country, row.region, row.nseLevel))),
+    rows.map(async (row) =>
+      toProgress(row, await countAchieved(row.country, row.region, row.nseLevel, achievedFilters)),
+    ),
   )
 }

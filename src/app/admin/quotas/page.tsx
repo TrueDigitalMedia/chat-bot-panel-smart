@@ -42,6 +42,9 @@ export default async function QuotasPage() {
           <a href="/api/admin/quotas/export" className={styles.exportLink}>
             Exportar
           </a>
+          <Link href="/admin/dashboard" className={styles.homeLink}>
+            Dashboard
+          </Link>
           <Link href="/" className={styles.homeLink}>
             Inicio
           </Link>
