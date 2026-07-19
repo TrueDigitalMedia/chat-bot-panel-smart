@@ -17,6 +17,9 @@ export const FIELD_LABELS: Record<SurveyFieldName, string> = {
   shoppingCategories: 'Categorías de compra',
   contactChannel: 'Canal de contacto',
   contactSchedule: 'Horario de contacto',
+  age: 'Edad',
+  isPregnant: 'Embarazo',
+  hasBabyUnder3: 'Bebé menor de 3 años',
 }
 
 /** Synonyms → survey field (for NL correction). */
@@ -62,6 +65,12 @@ export const FIELD_ALIASES: Record<string, SurveyFieldName> = {
   categorías: 'shoppingCategories',
   canal: 'contactChannel',
   horario: 'contactSchedule',
+  edad: 'age',
+  años: 'age',
+  embarazo: 'isPregnant',
+  embarazada: 'isPregnant',
+  bebe: 'hasBabyUnder3',
+  bebé: 'hasBabyUnder3',
 }
 
 export function resolveFieldAlias(raw: string): SurveyFieldName | null {

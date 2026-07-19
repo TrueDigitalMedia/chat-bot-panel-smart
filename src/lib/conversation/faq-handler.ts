@@ -7,6 +7,7 @@ import { validateBotResponse, SAFE_FALLBACK } from '@/lib/ai/validate-output'
 import { supportRedirect } from './exit-messages'
 import { isTerminal } from '@/lib/state-machine/transitions'
 import { env } from '@/lib/env'
+import { SURVEY_QUESTION_COUNT } from './survey-questions'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelRecipient } from '@/types/channel'
 
@@ -40,7 +41,8 @@ export async function handleOutOfFlow(
     !SKIP_PATTERNS.test(query.trim()) &&
     !query.startsWith('d1:') &&
     !query.startsWith('d2:') &&
-    !query.startsWith('d3:')
+    !query.startsWith('d3:') &&
+    !query.startsWith('optin:')
 
   if (shouldCheckFaq) {
     const faqEntry = await findFaq(query, { leadId: lead.id, correlationId })
@@ -89,7 +91,7 @@ async function resendPendingQuestion(
   }
 
   // Survey question
-  if (questionIdx >= 1 && questionIdx <= 16) {
+  if (questionIdx >= 1 && questionIdx <= SURVEY_QUESTION_COUNT) {
     const { sendSurveyQuestion } = await import('./send-survey-question')
     await sendSurveyQuestion(to, questionIdx, lead.id)
   }

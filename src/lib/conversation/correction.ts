@@ -12,7 +12,7 @@ import {
 } from './correction-fields'
 import { captureSurveyFieldValue } from './survey-capture'
 import { sendSurveyQuestion } from './send-survey-question'
-import { SURVEY_QUESTIONS } from './survey-questions'
+import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from './survey-questions'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
 export { CORRECT_MENU, CORRECT_CANCEL } from './correction-fields'
@@ -137,7 +137,7 @@ export async function cancelCorrection(lead: Lead): Promise<void> {
 
   await sendText(lead, 'Corrección cancelada. Seguimos donde íbamos.')
   const idx = lead.surveyQuestionIndex
-  if (idx >= 1 && idx <= 16) {
+  if (idx >= 1 && idx <= SURVEY_QUESTION_COUNT) {
     await sendSurveyQuestion(lead, idx, lead.id)
   }
 }
@@ -156,7 +156,7 @@ export async function applyFieldAndContinue(
 
   const fieldIdx = questionIndexForField(field)
   const nextIdx =
-    cascade.length > 0 ? questionIndexForField(cascade[0]!) : Math.min(fieldIdx + 1, 16)
+    cascade.length > 0 ? questionIndexForField(cascade[0]!) : Math.min(fieldIdx + 1, SURVEY_QUESTION_COUNT)
   const now = new Date()
 
   await db.update(surveyProfiles).set(patch).where(eq(surveyProfiles.leadId, lead.id))

@@ -21,6 +21,7 @@ const FIELD_SCHEMAS = {
   email: z.object({ value: z.string().email().max(200).nullable() }),
   householdSize: z.object({ value: z.number().int().positive().max(30).nullable() }),
   bedrooms: z.object({ value: z.number().int().min(0).max(20).nullable() }),
+  age: z.object({ value: z.number().int().min(13).max(100).nullable() }),
   shoppingCategories: z.object({
     value: z
       .array(z.number().int().min(1).max(8))

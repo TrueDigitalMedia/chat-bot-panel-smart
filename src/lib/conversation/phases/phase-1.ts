@@ -6,7 +6,7 @@ import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
-import { SURVEY_QUESTIONS } from '../survey-questions'
+import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
@@ -19,7 +19,7 @@ import type { ChannelRecipient } from '@/types/channel'
 
 const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
 
-// Handle Phase 1: decision points D1→D2→D3 then 16-question survey
+// Handle Phase 1: opt-in gate, decision points D1→D2→D3, then the survey (SURVEY_QUESTION_COUNT questions)
 export async function handlePhase1(
   lead: Lead,
   messageText: string,
@@ -29,6 +29,21 @@ export async function handlePhase1(
   const to = lead
 
   // --- DECISION POINTS ---
+
+  // Opt-in: initial enrollment gate, before D1 (spec 007)
+  if (!lead.optInAccepted) {
+    if (callbackData === 'optin:accept') {
+      await db.update(leads).set({ optInAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await sendD1(to)
+    } else if (callbackData === 'optin:decline') {
+      await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
+      await sendText(to, EXIT_A)
+    } else {
+      // First message or any non-button input → send opt-in
+      await sendOptIn(to)
+    }
+    return
+  }
 
   // D1: T&C
   if (!lead.d1Accepted) {
@@ -95,7 +110,7 @@ export async function handlePhase1(
       .set({ surveyQuestionIndex: 1, updatedAt: new Date() })
       .where(eq(leads.id, lead.id))
   }
-  if (idx < 1 || idx > 16) {
+  if (idx < 1 || idx > SURVEY_QUESTION_COUNT) {
     console.warn('[phase-1] survey index out of range', { leadId: lead.id, idx })
     return
   }
@@ -247,7 +262,7 @@ export async function handlePhase1(
     return
   }
 
-  if (nextIdx <= 16) {
+  if (nextIdx <= SURVEY_QUESTION_COUNT) {
     await sendSurveyQuestion(to, nextIdx, lead.id)
     return
   }
@@ -292,6 +307,19 @@ export async function handlePhase1(
 }
 
 // --- Helpers ---
+
+async function sendOptIn(to: ChannelRecipient): Promise<void> {
+  await sendInlineKeyboard(
+    to,
+    '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?',
+    [
+      [
+        { text: 'Inscribirme', callback_data: 'optin:accept' },
+        { text: 'No', callback_data: 'optin:decline' },
+      ],
+    ],
+  )
+}
 
 async function sendD1(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(

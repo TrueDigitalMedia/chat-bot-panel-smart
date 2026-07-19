@@ -6,6 +6,7 @@ import { askGeoConfirmation, isGeoConfirmCallback, parseGeoConfirmNo, parseGeoCo
 import type { GeoField } from '@/lib/geo/guatemala'
 import { questionIndexForField } from '@/lib/conversation/correction-fields'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
+import { SURVEY_QUESTION_COUNT } from '@/lib/conversation/survey-questions'
 import { EXIT_B, EXIT_B_THANKS } from '@/lib/conversation/exit-messages'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
@@ -25,7 +26,7 @@ export async function persistSurveyFieldAndAdvance(
   const idx = questionIndexForField(field as Parameters<typeof questionIndexForField>[0])
   // Prefer lead's current index when field matches current question; else use field index
   const currentIdx =
-    lead.surveyQuestionIndex >= 1 && lead.surveyQuestionIndex <= 16
+    lead.surveyQuestionIndex >= 1 && lead.surveyQuestionIndex <= SURVEY_QUESTION_COUNT
       ? lead.surveyQuestionIndex
       : idx
 
@@ -72,7 +73,7 @@ export async function persistSurveyFieldAndAdvance(
     return
   }
 
-  if (nextIdx <= 16) {
+  if (nextIdx <= SURVEY_QUESTION_COUNT) {
     await sendSurveyQuestion(to, nextIdx, lead.id)
     return
   }

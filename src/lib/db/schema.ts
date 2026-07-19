@@ -57,6 +57,7 @@ export const leads = pgTable(
     surveyQuestionIndex: smallint('survey_question_index').notNull().default(0),
     quotaSegment: varchar('quota_segment', { length: 50 }),
     score: smallint('score'),
+    optInAccepted: boolean('opt_in_accepted').notNull().default(false),
     d1Accepted: boolean('d1_accepted').notNull().default(false),
     d2Accepted: boolean('d2_accepted'),
     d3IsShopper: boolean('d3_is_shopper'),
@@ -96,6 +97,9 @@ export const surveyProfiles = pgTable('survey_profiles', {
   rawFreeTextJson: jsonb('raw_free_text_json'),
   extractionModel: varchar('extraction_model', { length: 100 }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  age: smallint('age'),
+  isPregnant: boolean('is_pregnant'),
+  hasBabyUnder3: boolean('has_baby_under_3'),
 })
 
 export const flowStates = pgTable('flow_states', {

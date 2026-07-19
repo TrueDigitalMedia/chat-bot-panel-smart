@@ -192,4 +192,37 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
       ],
     ],
   },
+  {
+    index: 17,
+    fieldName: 'age',
+    text: '¿Cuántos años cumplidos tienes?',
+    inputType: 'free_text',
+  },
+  {
+    index: 18,
+    fieldName: 'isPregnant',
+    text: '¿Te encuentras actualmente embarazada?',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: 'Sí', callback_data: 'isPregnant:true' },
+        { text: 'No', callback_data: 'isPregnant:false' },
+      ],
+    ],
+  },
+  {
+    index: 19,
+    fieldName: 'hasBabyUnder3',
+    text: '¿Vive usted con un bebé menor de 3 años?',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: 'Sí', callback_data: 'hasBabyUnder3:true' },
+        { text: 'No', callback_data: 'hasBabyUnder3:false' },
+      ],
+    ],
+  },
 ]
+
+/** Single source of truth for the survey's total question count — never hardcode this. */
+export const SURVEY_QUESTION_COUNT = SURVEY_QUESTIONS.length

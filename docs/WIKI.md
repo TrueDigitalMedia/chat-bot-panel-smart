@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-18 (spec 006)
+> Última actualización: 2026-07-18 (specs 006, 007)
 
 ---
 
@@ -162,7 +162,7 @@ El archivo `docs/Preguntas_Kantar_CAM_Ecuador_México (MX Y EC TBD).xlsx`, hoja 
 | 22 | ¿Cómo te gustaría ser contactado/a? | WhatsApp / Llamada telefónica | = Q15 actual |
 | 23 | ¿En qué horario del día puedes ser contactado/a? | Mañana / Tarde / Noche | = Q16 actual |
 
-**Preguntas NUEVAS no implementadas:** #1 (bienvenida/opt-in), #12 (edad), #17 (embarazo), #18 (bebé < 3 años).
+**Preguntas NUEVAS — ✅ implementadas** en `specs/007-fase1-new-survey-questions`: #1 (bienvenida/opt-in, ahora un decision point antes de D1), #12 (edad), #17 (embarazo), #18 (bebé < 3 años). Nota: internamente el bot pregunta edad/embarazo/bebé **al final** de la encuesta (índices 17-19), no en la posición #12/#17/#18 exacta del Excel — se decidió así para no romper conversaciones en curso al desplegar (ver `research.md` R1 de esa spec). El opt-in sí es la primera interacción, como pide el Excel.
 
 ### FASE 2/3 — Descarga y registro en app
 
@@ -265,7 +265,7 @@ Peso en fórmula final: **×9**
 
 ## 7. Gaps entre la fórmula SCL-CAM y la implementación actual
 
-> **✅ Sección 7.1, 7.2, 7.3 y 7.5 resueltas** por `specs/004-scl-cam-scoring-fix` y `specs/005-quota-admin-panel`. Se conserva el contenido original como referencia histórica de por qué se hizo el cambio. 7.4 (preguntas faltantes) sigue pendiente.
+> **✅ Sección 7.1, 7.2, 7.3 y 7.5 resueltas** por `specs/004-scl-cam-scoring-fix` y `specs/005-quota-admin-panel`. Se conserva el contenido original como referencia histórica de por qué se hizo el cambio. 7.4 (preguntas faltantes) parcialmente resuelto por `specs/007-fase1-new-survey-questions` (preguntas de Fase 1); Ficha Hogar (Fase 4) sigue pendiente.
 
 ### 7.1 Fórmula de scoring (`src/lib/scoring/socioeconomic.ts`) — ✅ RESUELTO
 
@@ -297,15 +297,15 @@ La implementación actual tiene 10 opciones sin esos dos niveles base y sin "Pos
 
 El código usaba `A/B, C+, C, D+, D/E` (México); ahora usa `Nivel 1, 2, 3, 4` (CAM) — ver `specs/004-scl-cam-scoring-fix`.
 
-### 7.4 Preguntas faltantes en el flujo
+### 7.4 Preguntas faltantes en el flujo — parcialmente resuelto
 
-Las siguientes preguntas del Excel actualizado **no están implementadas**:
+Las siguientes preguntas del Excel actualizado, antes ausentes:
 
-- **P1 (Fase 1):** Opt-in inicial "¿Te gustaría inscribirte en PanelSmart?"
-- **P12 (Fase 1):** Edad del encuestado (cuota extra)
-- **P17 (Fase 1):** ¿Embarazada? (cuota extra)
-- **P18 (Fase 1):** ¿Bebé < 3 años? (cuota extra)
-- **Fase 4 completa:** 7 preguntas de Ficha Hogar (actualmente no son interactivas en el bot)
+- **P1 (Fase 1):** Opt-in inicial "¿Te gustaría inscribirte en PanelSmart?" — ✅ implementado en `specs/007-fase1-new-survey-questions`
+- **P12 (Fase 1):** Edad del encuestado (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
+- **P17 (Fase 1):** ¿Embarazada? (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
+- **P18 (Fase 1):** ¿Bebé < 3 años? (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
+- **Fase 4 completa:** 7 preguntas de Ficha Hogar (actualmente no son interactivas en el bot) — pendiente
 
 ### 7.5 Opción de género — ✅ RESUELTO
 
@@ -551,8 +551,8 @@ GET /api/admin/dashboard/by-country  → resumen por país
 ### ✅ Implementado y funcionando
 
 - Flujo completo de 4 fases (Telegram y WhatsApp)
-- Decision points D1, D2, D3
-- Encuesta de 16 preguntas (survey questions actuales)
+- Opt-in inicial + Decision points D1, D2, D3 (spec `007-fase1-new-survey-questions`)
+- Encuesta de 19 preguntas (16 originales + edad/embarazo/bebé<3, spec `007-fase1-new-survey-questions`)
 - GPS gate + reverse geocoding + catálogo NSE-GEO CAM
 - Validación geográfica de Guatemala (departamento → municipio → zona)
 - Corrección de respuestas previas durante la encuesta
@@ -566,6 +566,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - **Scoring SCL**: fórmula oficial Kantar SCL-CAM (NiPSH/HACI/AUTO/SD), segmentos `Nivel 1-4`, 12 opciones de educación PSH, género `Masculino/Femenino` (spec `004-scl-cam-scoring-fix`)
 - **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`, Basic Auth) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
 - **Dashboard de leads** (`/admin/dashboard`): cards de resumen, tabla región×NSE con color-coding, gráfico por país, embudo de conversión de 7 etapas, filtros (país/región/NSE/canal/fecha), polling de 60s (spec `006-leads-dashboard`)
+- **Preguntas nuevas de Fase 1**: opt-in inicial (nuevo decision point antes de D1), edad, embarazo, bebé < 3 años — cuotas extra sin impacto en el score NSE (spec `007-fase1-new-survey-questions`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
@@ -573,10 +574,6 @@ GET /api/admin/dashboard/by-country  → resumen por país
 
 ### ❌ Pendiente de implementar
 
-- Pregunta de opt-in inicial (P1 del Excel actualizado)
-- Pregunta de edad (P12)
-- Pregunta de embarazo (P17)
-- Pregunta de bebé < 3 años (P18)
 - Fase 4 interactiva (7 preguntas de Ficha Hogar)
 - Pregunta descarte de panelista (fase 4, P1)
 - Soporte para México y Ecuador (Excel TBD)

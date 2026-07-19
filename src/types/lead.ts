@@ -25,6 +25,7 @@ export interface Lead {
   surveyQuestionIndex: number
   quotaSegment: string | null
   score: number | null
+  optInAccepted: boolean
   d1Accepted: boolean
   d2Accepted: boolean | null
   d3IsShopper: boolean | null
@@ -57,6 +58,9 @@ export interface SurveyProfile {
   rawFreeTextJson: Record<string, unknown> | null
   extractionModel: string | null
   completedAt: Date | null
+  age: number | null
+  isPregnant: boolean | null
+  hasBabyUnder3: boolean | null
 }
 
 // Scoring fields subset
@@ -83,6 +87,9 @@ export const SURVEY_FIELDS = [
   'shoppingCategories',
   'contactChannel',
   'contactSchedule',
+  'age',
+  'isPregnant',
+  'hasBabyUnder3',
 ] as const satisfies (keyof SurveyProfile)[]
 
 export type SurveyFieldName = (typeof SURVEY_FIELDS)[number]
@@ -97,6 +104,8 @@ export const BUTTON_FIELDS = new Set<SurveyFieldName>([
   'shoppingFrequency',
   'contactChannel',
   'contactSchedule',
+  'isPregnant',
+  'hasBabyUnder3',
 ])
 
 export const FREE_TEXT_FIELDS = new Set<SurveyFieldName>([
@@ -108,4 +117,5 @@ export const FREE_TEXT_FIELDS = new Set<SurveyFieldName>([
   'householdSize',
   'bedrooms',
   'shoppingCategories',
+  'age',
 ])
