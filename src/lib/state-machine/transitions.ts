@@ -12,10 +12,11 @@ const ALLOWED_TRANSITIONS: Record<LeadStatus, Set<LeadStatus>> = {
     'code_delivered_no_response',
     'abandono',
   ]),
-  code_delivered_registered: new Set(['ficha_hogar_completada', 'abandono']),
+  code_delivered_registered: new Set(['ficha_hogar_completada', 'ficha_hogar_descartado', 'abandono']),
   code_delivered_not_registered: new Set(['abandono']),
   code_delivered_no_response: new Set([]),
   ficha_hogar_completada: new Set([]),
+  ficha_hogar_descartado: new Set([]),
   abandono: new Set([]),
 }
 

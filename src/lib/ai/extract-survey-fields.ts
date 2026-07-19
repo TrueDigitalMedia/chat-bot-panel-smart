@@ -22,6 +22,8 @@ const FIELD_SCHEMAS = {
   householdSize: z.object({ value: z.number().int().positive().max(30).nullable() }),
   bedrooms: z.object({ value: z.number().int().min(0).max(20).nullable() }),
   age: z.object({ value: z.number().int().min(13).max(100).nullable() }),
+  dateOfBirth: z.object({ value: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).nullable() }),
+  petCount: z.object({ value: z.number().int().min(0).max(50).nullable() }),
   shoppingCategories: z.object({
     value: z
       .array(z.number().int().min(1).max(8))
@@ -31,6 +33,14 @@ const FIELD_SCHEMAS = {
 } as const
 
 type FieldSchemaKey = keyof typeof FIELD_SCHEMAS
+
+// Extra formatting guidance for fields where the field name alone isn't enough
+// for the model to reliably produce a value matching the Zod schema (e.g. a
+// specific date format).
+const FIELD_HINTS: Partial<Record<FieldSchemaKey, string>> = {
+  dateOfBirth:
+    'Formato esperado: DD/MM/AAAA (día/mes/año, con ceros a la izquierda). Convierte cualquier fecha mencionada en el mensaje a ese formato exacto.',
+}
 
 export async function extractField(
   fieldName: FieldSchemaKey,
@@ -57,7 +67,7 @@ export async function extractField(
   const model = CHAT_MODEL_ID
   const start = Date.now()
   try {
-    const prompt = buildExtractionPrompt(fieldName, sanitized)
+    const prompt = buildExtractionPrompt(fieldName, sanitized, FIELD_HINTS[fieldName])
     const schema = FIELD_SCHEMAS[fieldName]
 
     const result = await generateObject({

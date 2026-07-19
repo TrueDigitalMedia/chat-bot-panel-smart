@@ -39,6 +39,7 @@ export const leadStatusEnum = pgEnum('lead_status', [
   'code_delivered_not_registered',
   'code_delivered_no_response',
   'ficha_hogar_completada',
+  'ficha_hogar_descartado',
   'abandono',
 ])
 
@@ -101,6 +102,28 @@ export const surveyProfiles = pgTable('survey_profiles', {
   isPregnant: boolean('is_pregnant'),
   hasBabyUnder3: boolean('has_baby_under_3'),
 })
+
+export const fichaHogarProfiles = pgTable(
+  'ficha_hogar_profiles',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id),
+    questionIndex: smallint('question_index').notNull().default(0),
+    conflictOfInterest: boolean('conflict_of_interest'),
+    hasInternet: boolean('has_internet'),
+    relationshipToHoh: varchar('relationship_to_hoh', { length: 20 }),
+    dateOfBirth: varchar('date_of_birth', { length: 10 }),
+    hasHealthCondition: boolean('has_health_condition'),
+    unlimitedDataPlan: boolean('unlimited_data_plan'),
+    petCount: smallint('pet_count'),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('ficha_hogar_profiles_lead_id_idx').on(t.leadId)],
+)
 
 export const flowStates = pgTable('flow_states', {
   id: uuid('id').defaultRandom().primaryKey(),

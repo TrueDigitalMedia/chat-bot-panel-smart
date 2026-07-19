@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-18 (specs 006, 007)
+> Última actualización: 2026-07-18 (specs 006, 007, 008)
 
 ---
 
@@ -126,7 +126,7 @@ Confirma que el usuario se registró. Si sí → Fase 4. Si no → soporte.
 
 ### Fase 4 — Ficha Hogar
 
-Preguntas adicionales del perfil del panelista (parentesco, internet, fecha nacimiento, condición salud, plan datos, mascotas). Genera resumen AI y persiste el panelista en el sistema Treinta. Transición final → `ficha_hogar_completada`.
+Cuestionario interactivo de 7 preguntas (conflicto de interés, internet, parentesco, fecha nacimiento, condición salud, plan datos, mascotas) — ✅ implementado en `specs/008-ficha-hogar-interactive`. Una respuesta "Sí" a conflicto de interés descarta al panelista (`ficha_hogar_descartado`). Al completar las 7 preguntas, genera resumen AI (con datos combinados de `survey_profiles` + `ficha_hogar_profiles`) y persiste el panelista en el sistema Treinta. Transición final → `ficha_hogar_completada`. Incluye menú de corrección propio (`ficha-hogar-correction.ts`).
 
 ---
 
@@ -180,7 +180,7 @@ El flujo de la hoja incluye: envío de links de descarga, video instructivo, ent
 | 6 | ¿Tu smartphone cuenta con un plan de datos móviles ilimitado? | Sí / No |
 | 7 | ¿Cuántas mascotas (perros y/o gatos) hay en tu hogar? | Numérico |
 
-La Fase 4 actual en el código **no implementa estas preguntas** como un cuestionario interactivo — solo genera el resumen AI y persiste el panelista. Las preguntas de Ficha Hogar son **pendientes de implementar**.
+**✅ implementado** en `specs/008-ficha-hogar-interactive`: las 7 preguntas ahora son un cuestionario interactivo (motor de estado propio en `ficha_hogar_profiles`, paralelo al de Fase 1). La pregunta #1 (conflicto de interés) actúa como gate de descarte. Al completarse las 7, el resumen AI y el registro Treinta incluyen estos datos combinados con los de `survey_profiles`.
 
 ---
 
@@ -265,7 +265,7 @@ Peso en fórmula final: **×9**
 
 ## 7. Gaps entre la fórmula SCL-CAM y la implementación actual
 
-> **✅ Sección 7.1, 7.2, 7.3 y 7.5 resueltas** por `specs/004-scl-cam-scoring-fix` y `specs/005-quota-admin-panel`. Se conserva el contenido original como referencia histórica de por qué se hizo el cambio. 7.4 (preguntas faltantes) parcialmente resuelto por `specs/007-fase1-new-survey-questions` (preguntas de Fase 1); Ficha Hogar (Fase 4) sigue pendiente.
+> **✅ Secciones 7.1–7.5 resueltas** por `specs/004-scl-cam-scoring-fix`, `specs/005-quota-admin-panel`, `specs/007-fase1-new-survey-questions` y `specs/008-ficha-hogar-interactive`. Se conserva el contenido original como referencia histórica de por qué se hizo el cambio.
 
 ### 7.1 Fórmula de scoring (`src/lib/scoring/socioeconomic.ts`) — ✅ RESUELTO
 
@@ -297,15 +297,15 @@ La implementación actual tiene 10 opciones sin esos dos niveles base y sin "Pos
 
 El código usaba `A/B, C+, C, D+, D/E` (México); ahora usa `Nivel 1, 2, 3, 4` (CAM) — ver `specs/004-scl-cam-scoring-fix`.
 
-### 7.4 Preguntas faltantes en el flujo — parcialmente resuelto
+### 7.4 Preguntas faltantes en el flujo — ✅ RESUELTO
 
-Las siguientes preguntas del Excel actualizado, antes ausentes:
+Las siguientes preguntas del Excel actualizado, antes ausentes, ya están implementadas:
 
-- **P1 (Fase 1):** Opt-in inicial "¿Te gustaría inscribirte en PanelSmart?" — ✅ implementado en `specs/007-fase1-new-survey-questions`
-- **P12 (Fase 1):** Edad del encuestado (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
-- **P17 (Fase 1):** ¿Embarazada? (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
-- **P18 (Fase 1):** ¿Bebé < 3 años? (cuota extra) — ✅ implementado en `specs/007-fase1-new-survey-questions`
-- **Fase 4 completa:** 7 preguntas de Ficha Hogar (actualmente no son interactivas en el bot) — pendiente
+- **P1 (Fase 1):** Opt-in inicial "¿Te gustaría inscribirte en PanelSmart?" — `specs/007-fase1-new-survey-questions`
+- **P12 (Fase 1):** Edad del encuestado (cuota extra) — `specs/007-fase1-new-survey-questions`
+- **P17 (Fase 1):** ¿Embarazada? (cuota extra) — `specs/007-fase1-new-survey-questions`
+- **P18 (Fase 1):** ¿Bebé < 3 años? (cuota extra) — `specs/007-fase1-new-survey-questions`
+- **Fase 4 completa:** 7 preguntas de Ficha Hogar, ahora interactivas — `specs/008-ficha-hogar-interactive`
 
 ### 7.5 Opción de género — ✅ RESUELTO
 
@@ -567,6 +567,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`, Basic Auth) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
 - **Dashboard de leads** (`/admin/dashboard`): cards de resumen, tabla región×NSE con color-coding, gráfico por país, embudo de conversión de 7 etapas, filtros (país/región/NSE/canal/fecha), polling de 60s (spec `006-leads-dashboard`)
 - **Preguntas nuevas de Fase 1**: opt-in inicial (nuevo decision point antes de D1), edad, embarazo, bebé < 3 años — cuotas extra sin impacto en el score NSE (spec `007-fase1-new-survey-questions`)
+- **Fase 4 interactiva (Ficha Hogar)**: cuestionario de 7 preguntas con motor de estado propio (`ficha_hogar_profiles`), gate de descarte por conflicto de interés (P1), corrección de respuestas, y merge de datos en el resumen AI/Treinta (spec `008-ficha-hogar-interactive`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
@@ -574,8 +575,6 @@ GET /api/admin/dashboard/by-country  → resumen por país
 
 ### ❌ Pendiente de implementar
 
-- Fase 4 interactiva (7 preguntas de Ficha Hogar)
-- Pregunta descarte de panelista (fase 4, P1)
 - Soporte para México y Ecuador (Excel TBD)
 
 ---

@@ -8,9 +8,9 @@ import type { Lead } from '@/types/lead'
 
 export async function handlePhase3Success(lead: Lead, correlationId: string): Promise<void> {
   await db.update(leads).set({ currentPhase: 3, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-  // Trigger Phase 4
-  const { handlePhase4 } = await import('./phase-4')
-  await handlePhase4(lead, correlationId)
+  // Enter Fase 4 — Ficha Hogar interactive questionnaire (sends question 1)
+  const { handleFichaHogar } = await import('./phase-4')
+  await handleFichaHogar(lead, '', undefined, correlationId)
 }
 
 export async function handlePhase3Failure(lead: Lead): Promise<void> {

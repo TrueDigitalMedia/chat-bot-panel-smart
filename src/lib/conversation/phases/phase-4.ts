@@ -1,34 +1,183 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { leads, surveyProfiles } from '@/lib/db/schema'
+import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendText, sendVideo } from '@/lib/messaging/send'
-import { supportRedirect } from '../exit-messages'
+import { sendText, sendInlineKeyboard, sendVideo } from '@/lib/messaging/send'
+import { supportRedirect, EXIT_A } from '../exit-messages'
 import { env } from '@/lib/env'
 import type { Lead } from '@/types/lead'
+import { FICHA_HOGAR_BUTTON_FIELDS } from '@/types/lead'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { boundContext } from '@/lib/ai/context-guard'
 import { chatModel, CHAT_MODEL_ID } from '@/lib/ai/models'
+import { extractField } from '@/lib/ai/extract-survey-fields'
 import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
+import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
+import type { ChannelRecipient } from '@/types/channel'
 
 const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
 
-export async function handlePhase4(lead: Lead, correlationId: string): Promise<void> {
-  await db.update(leads).set({ currentPhase: 4, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+export async function sendFichaHogarQuestion(to: ChannelRecipient, index: number): Promise<void> {
+  const q = FICHA_HOGAR_QUESTIONS[index - 1]
+  if (!q) return
+  if (q.inputType === 'button' && q.buttons) {
+    await sendInlineKeyboard(to, q.text, q.buttons)
+  } else {
+    await sendText(to, q.text)
+  }
+}
 
-  // Generate AI summary of Phase 1 survey
-  const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
+async function getOrCreateFichaHogarProfile(leadId: string) {
+  await db.insert(fichaHogarProfiles).values({ leadId }).onConflictDoNothing()
+  const [profile] = await db
+    .select()
+    .from(fichaHogarProfiles)
+    .where(eq(fichaHogarProfiles.leadId, leadId))
+    .limit(1)
+  return profile
+}
+
+/** Plausibility check for DD/MM/AAAA: not in the future, implies a reasonable age (0-120). */
+export function isPlausibleBirthDate(value: string): boolean {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
+  if (!match) return false
+  const [, dd, mm, yyyy] = match
+  const day = Number(dd)
+  const month = Number(mm)
+  const year = Number(yyyy)
+  const date = new Date(year, month - 1, day)
+  if (Number.isNaN(date.getTime())) return false
+  // JS Date silently rolls over out-of-range values (e.g. month 13 → next January) instead
+  // of failing — verify the constructed date's components match the input to catch that.
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return false
+  }
+  if (date.getTime() > Date.now()) return false
+  const ageYears = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+  return ageYears >= 0 && ageYears <= 120
+}
+
+/**
+ * Ficha Hogar entry point + continuation handler — same dual role as handlePhase1.
+ * Call with empty text/callbackData to send question 1 (from handlePhase3Success).
+ */
+export async function handleFichaHogar(
+  lead: Lead,
+  messageText: string,
+  callbackData: string | undefined,
+  correlationId: string,
+): Promise<void> {
+  const to = lead
+  const profile = await getOrCreateFichaHogarProfile(lead.id)
+  const idx = profile.questionIndex
+
+  if (idx < 1) {
+    await db
+      .update(fichaHogarProfiles)
+      .set({ questionIndex: 1, updatedAt: new Date() })
+      .where(eq(fichaHogarProfiles.leadId, lead.id))
+    await sendFichaHogarQuestion(to, 1)
+    return
+  }
+
+  const question = FICHA_HOGAR_QUESTIONS[idx - 1]
+  if (!question) return
+
+  let fieldValue: unknown = null
+
+  if (question.inputType === 'button') {
+    if (!callbackData?.startsWith(`${question.fieldName}:`)) {
+      await sendFichaHogarQuestion(to, idx)
+      return
+    }
+    const raw = callbackData.split(':').slice(1).join(':')
+    fieldValue =
+      FICHA_HOGAR_BUTTON_FIELDS.has(question.fieldName) && (raw === 'true' || raw === 'false')
+        ? raw === 'true'
+        : raw
+  } else {
+    if (!messageText.trim()) {
+      await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      await sendFichaHogarQuestion(to, idx)
+      return
+    }
+    const result = await extractField(
+      question.fieldName as Parameters<typeof extractField>[0],
+      messageText,
+      { leadId: lead.id },
+    )
+    if (!result.ok) {
+      await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      await sendFichaHogarQuestion(to, idx)
+      return
+    }
+    fieldValue = result.value
+
+    if (question.fieldName === 'dateOfBirth' && !isPlausibleBirthDate(String(fieldValue))) {
+      await sendText(to, 'Esa fecha no parece válida. ¿Puedes escribirla de nuevo en formato DD/MM/AAAA?')
+      await sendFichaHogarQuestion(to, idx)
+      return
+    }
+  }
+
+  // Q1 (conflictOfInterest) discard gate — before persisting/advancing further
+  if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
+    await db
+      .update(fichaHogarProfiles)
+      .set({ conflictOfInterest: true, completedAt: new Date(), updatedAt: new Date() })
+      .where(eq(fichaHogarProfiles.leadId, lead.id))
+    await transitionLead(
+      lead.id,
+      'ficha_hogar_descartado',
+      'ficha_hogar_conflict_of_interest',
+      correlationId,
+    )
+    await sendText(to, EXIT_A)
+    return
+  }
+
+  await db
+    .update(fichaHogarProfiles)
+    .set({ [question.fieldName]: fieldValue, updatedAt: new Date() } as Record<string, unknown>)
+    .where(eq(fichaHogarProfiles.leadId, lead.id))
+
+  const nextIdx = idx + 1
+  await db
+    .update(fichaHogarProfiles)
+    .set({ questionIndex: nextIdx, updatedAt: new Date() })
+    .where(eq(fichaHogarProfiles.leadId, lead.id))
+
+  if (nextIdx <= FICHA_HOGAR_QUESTION_COUNT) {
+    await sendFichaHogarQuestion(to, nextIdx)
+    return
+  }
+
+  await completeFichaHogar(lead, correlationId)
+}
+
+/**
+ * Generates the AI summary, persists the panelist to Treinta, and marks Ficha Hogar
+ * complete. Only reached after all FICHA_HOGAR_QUESTION_COUNT questions are answered —
+ * the discard branch above returns before ever calling this.
+ */
+async function completeFichaHogar(lead: Lead, correlationId: string): Promise<void> {
+  await db.update(leads).set({ currentPhase: 4, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+  await db
+    .update(fichaHogarProfiles)
+    .set({ completedAt: new Date() })
+    .where(eq(fichaHogarProfiles.leadId, lead.id))
+
+  const [surveyProfile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
+  const [fichaHogarProfile] = await db.select().from(fichaHogarProfiles).where(eq(fichaHogarProfiles.leadId, lead.id))
+  const profile = { ...surveyProfile, ...fichaHogarProfile }
 
   const summaryCorrelationId = generateCorrelationId()
   const summaryPrompt = `Genera un resumen conciso del perfil del panelista basado en estos datos de la encuesta:\n${JSON.stringify(profile, null, 2)}`
 
-  const context = boundContext(
-    [{ role: 'user', content: summaryPrompt }],
-    2000,
-  )
+  const context = boundContext([{ role: 'user', content: summaryPrompt }], 2000)
 
   const model = CHAT_MODEL_ID
   const start = Date.now()
@@ -61,12 +210,10 @@ export async function handlePhase4(lead: Lead, correlationId: string): Promise<v
     }).catch(() => {})
   }
 
-  // Store summary
   if (summary) {
     await db.update(leads).set({ conversationSummary: summary }).where(eq(leads.id, lead.id))
   }
 
-  // Persist Treinta-owned snapshot + embedding
   const persisted = await persistTreintaPanelist({
     leadId: lead.id,
     profile,

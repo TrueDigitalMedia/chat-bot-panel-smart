@@ -87,6 +87,24 @@ export async function routeMessage(
     return
   }
 
+  // Fase 4 — Ficha Hogar interactive questionnaire (spec 008). No FAQ digression
+  // check here (research.md R7) — same simplicity as the waiting_for_code branch above.
+  if (status === 'code_delivered_registered') {
+    const {
+      handleFichaHogarCorrectionFlow,
+      detectsFichaHogarCorrectionIntent,
+      showFichaHogarCorrectionMenu,
+    } = await import('./ficha-hogar-correction')
+    if (await handleFichaHogarCorrectionFlow(lead, callbackData)) return
+    if (messageText && detectsFichaHogarCorrectionIntent(messageText)) {
+      await showFichaHogarCorrectionMenu(lead)
+      return
+    }
+    const { handleFichaHogar } = await import('./phases/phase-4')
+    await handleFichaHogar(lead, messageText, callbackData, correlationId)
+    return
+  }
+
   if (status === 'link_sent') {
     await sendText(
       lead,

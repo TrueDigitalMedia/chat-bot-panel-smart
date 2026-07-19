@@ -10,6 +10,7 @@ export type LeadStatus =
   | 'code_delivered_not_registered'
   | 'code_delivered_no_response'
   | 'ficha_hogar_completada'
+  | 'ficha_hogar_descartado'
   | 'abandono'
 
 export type DecisionPoint = 'd1' | 'd2' | 'd3'
@@ -119,3 +120,42 @@ export const FREE_TEXT_FIELDS = new Set<SurveyFieldName>([
   'shoppingCategories',
   'age',
 ])
+
+// --- Ficha Hogar (Fase 4, spec 008) — separate questionnaire, separate table ---
+
+export interface FichaHogarProfile {
+  id: string
+  leadId: string
+  questionIndex: number
+  conflictOfInterest: boolean | null
+  hasInternet: boolean | null
+  relationshipToHoh: string | null
+  dateOfBirth: string | null
+  hasHealthCondition: boolean | null
+  unlimitedDataPlan: boolean | null
+  petCount: number | null
+  completedAt: Date | null
+}
+
+// Ficha Hogar question field names in order
+export const FICHA_HOGAR_FIELDS = [
+  'conflictOfInterest',
+  'hasInternet',
+  'relationshipToHoh',
+  'dateOfBirth',
+  'hasHealthCondition',
+  'unlimitedDataPlan',
+  'petCount',
+] as const satisfies (keyof FichaHogarProfile)[]
+
+export type FichaHogarFieldName = (typeof FICHA_HOGAR_FIELDS)[number]
+
+export const FICHA_HOGAR_BUTTON_FIELDS = new Set<FichaHogarFieldName>([
+  'conflictOfInterest',
+  'hasInternet',
+  'relationshipToHoh',
+  'hasHealthCondition',
+  'unlimitedDataPlan',
+])
+
+export const FICHA_HOGAR_FREE_TEXT_FIELDS = new Set<FichaHogarFieldName>(['dateOfBirth', 'petCount'])
