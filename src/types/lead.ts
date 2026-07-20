@@ -35,6 +35,9 @@ export interface Lead {
   lastActivityAt: Date
   createdAt: Date
   updatedAt: Date
+  tdmLeadId: number | null
+  tdmSyncStatus: string | null
+  tdmLastSyncAt: Date | null
 }
 
 export interface SurveyProfile {
@@ -45,6 +48,7 @@ export interface SurveyProfile {
   stateProvince: string | null
   municipality: string | null
   neighborhood: string | null
+  nseRegion: string | null
   email: string | null
   gender: string | null
   educationPsh: string | null

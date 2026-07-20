@@ -67,6 +67,11 @@ export const leads = pgTable(
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /** MySQL AUTO_INCREMENT id assigned by TDM's tb_leads_agente_ia on first successful sync (spec 010). */
+    tdmLeadId: integer('tdm_lead_id'),
+    /** 'synced' | 'failed', code-managed like flowStates.gpsGateStatus. */
+    tdmSyncStatus: varchar('tdm_sync_status', { length: 20 }),
+    tdmLastSyncAt: timestamp('tdm_last_sync_at', { withTimezone: true }),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )
