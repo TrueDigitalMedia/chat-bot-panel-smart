@@ -8,6 +8,25 @@ export interface SurveyQuestion {
   buttons?: InlineKeyboardButton[][]
 }
 
+/**
+ * Canonical Q14 shopping-category list (id shown/expected in the numbered question
+ * text → label). Single source of truth — imported by field-map.ts (MySQL sync
+ * labels) and extract-survey-fields.ts (LLM extraction hint) so both stay in sync
+ * with what's actually shown to the user here.
+ */
+export const SHOPPING_CATEGORIES: ReadonlyArray<{ id: number; label: string }> = [
+  { id: 1, label: 'Canasta básica' },
+  { id: 2, label: 'Lácteos' },
+  { id: 3, label: 'Bebidas' },
+  { id: 4, label: 'Snacks/Botanas' },
+  { id: 5, label: 'Cuidado personal' },
+  { id: 6, label: 'Prod. de limpieza' },
+  { id: 7, label: 'Cuidado del bebé' },
+  { id: 8, label: 'Mascotas' },
+] as const
+
+const SHOPPING_CATEGORIES_TEXT = SHOPPING_CATEGORIES.map((c) => `${c.id}. ${c.label}`).join('\n')
+
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 1,
@@ -164,7 +183,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 14,
     fieldName: 'shoppingCategories',
-    text: '🛍️ ¿Cuáles de estas categorías compras en una semana típica? Puedes elegir todas las que apliquen:\n\n1. Canasta básica\n2. Lácteos\n3. Bebidas\n4. Snacks/Botanas\n5. Cuidado personal\n6. Prod. de limpieza\n7. Cuidado del bebé\n8. Mascotas\n\n(Puedes responder indicando los números de las categorías directamente)',
+    text: `🛍️ ¿Cuáles de estas categorías compras en una semana típica? Puedes elegir todas las que apliquen:\n\n${SHOPPING_CATEGORIES_TEXT}\n\n(Puedes responder indicando los números de las categorías directamente)`,
     inputType: 'free_text',
   },
   {

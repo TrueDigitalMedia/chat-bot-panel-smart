@@ -1,4 +1,5 @@
 import { env } from '@/lib/env'
+import { SHOPPING_CATEGORIES } from '@/lib/conversation/survey-questions'
 import type { FichaHogarProfile, Lead, LeadStatus, SurveyProfile } from '@/types/lead'
 import type { TbLeadsAgenteIaRow } from './types'
 
@@ -26,25 +27,10 @@ export function mapCoarseStatus(leadStatus: LeadStatus): string {
   return COARSE_STATUS_MAP[leadStatus]
 }
 
-/**
- * Q14's exact category list (src/lib/conversation/survey-questions.ts, index 14),
- * ids 1-8 in display order.
- */
-const SHOPPING_CATEGORY_LABELS: readonly string[] = [
-  'Canasta básica',
-  'Lácteos',
-  'Bebidas',
-  'Snacks/Botanas',
-  'Cuidado personal',
-  'Prod. de limpieza',
-  'Cuidado del bebé',
-  'Mascotas',
-]
-
 export function mapShoppingCategories(ids: number[] | null): string | null {
   if (!ids || ids.length === 0) return null
   const labels = ids
-    .map((id) => SHOPPING_CATEGORY_LABELS[id - 1])
+    .map((id) => SHOPPING_CATEGORIES.find((c) => c.id === id)?.label)
     .filter((label): label is string => Boolean(label))
   return labels.length > 0 ? labels.join(', ') : null
 }
