@@ -17,7 +17,7 @@ export default async function ConversationDetailPage({
           <h1 className={styles.title}>Conversación</h1>
           <p className={styles.sub}>Vista en vivo del hilo y del estado del lead.</p>
         </div>
-        <Link href="/conversations" className={styles.backLink}>
+        <Link href="/admin/conversations" className={styles.backLink}>
           ← Todas
         </Link>
       </header>

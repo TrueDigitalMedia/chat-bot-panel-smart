@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
-import { Fraunces, Source_Sans_3 } from 'next/font/google'
+import { Fraunces, Source_Sans_3, Geist } from 'next/font/google'
 import './globals.css'
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const display = Fraunces({
   variable: '--font-display',
@@ -25,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${display.variable} ${body.variable}`}>
+    <html lang="es" className={cn(display.variable, body.variable, "font-sans", geist.variable)}>
       <body>{children}</body>
     </html>
   )

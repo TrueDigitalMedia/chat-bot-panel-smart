@@ -9,6 +9,11 @@ const envSchema = z.object({
   QSTASH_NEXT_SIGNING_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
   SUPPORT_CONTACT: z.string().default('555555555'),
+
+  /** Single shared admin credential (login form + legacy Basic Auth predecessor). */
+  ADMIN_PASSWORD: z.string().min(1).optional(),
+  /** HMAC key for the admin session cookie — deliberately separate from ADMIN_PASSWORD (research.md R1). */
+  SESSION_SECRET: z.string().min(1).optional(),
   /** Secret for local mock registration webhook. Defaults for local/dev. */
   REGISTRATION_WEBHOOK_SECRET: z.string().default('dev-registration-secret'),
   APP_BASE_URL: z.string().url().optional(),

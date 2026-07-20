@@ -1,22 +1,23 @@
-import Link from 'next/link'
-import styles from './conversations/conversations.module.css'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { env } from '@/lib/env'
+import { verifySessionCookie, SESSION_COOKIE_NAME } from '@/lib/auth/session'
+import { LoginForm } from './login-form'
 
-export default function Home() {
+export default async function LoginPage() {
+  const cookieStore = await cookies()
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
+  const hasValidSession = env.SESSION_SECRET
+    ? await verifySessionCookie(env.SESSION_SECRET, sessionCookie)
+    : false
+
+  if (hasValidSession) {
+    redirect('/admin/dashboard')
+  }
+
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>PanelSmart</p>
-          <h1 className={styles.title}>Chat bot de reclutamiento</h1>
-          <p className={styles.sub}>
-            Telegram activo. WhatsApp y web listos a nivel de identidad. Monitorea las conversaciones
-            en vivo desde el panel.
-          </p>
-        </div>
-      </header>
-      <Link href="/conversations" className={styles.open}>
-        Ver conversaciones
-      </Link>
+    <div className="bg-background flex min-h-screen items-center justify-center p-4">
+      <LoginForm />
     </div>
   )
 }

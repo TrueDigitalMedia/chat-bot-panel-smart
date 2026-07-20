@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-18 (specs 006, 007, 008)
+> Última actualización: 2026-07-19 (specs 006, 007, 008, 009)
 
 ---
 
@@ -46,6 +46,7 @@ El bot conduce al usuario a través de un flujo de calificación, calcula su niv
 | Testing unitario | Vitest |
 | Testing E2E | Playwright |
 | Reverse geocoding | API interna + catálogo NSE-GEO CAM |
+| UI del área admin | Tailwind CSS + shadcn/ui (spec `009-admin-login-sidebar`; el resto de páginas sigue usando CSS Modules) |
 
 ---
 
@@ -559,15 +560,16 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - FAQ RAG (preguntas frecuentes via embeddings pgvector)
 - Re-engagement automático via QStash (fases 1 y 2)
 - Dual provider WhatsApp (Meta Cloud API + Twilio)
-- UI de conversaciones (`/conversations`)
+- UI de conversaciones (`/admin/conversations`, dentro del área admin — spec `009-admin-login-sidebar`)
 - Eval QA automatizado (conversation evals)
 - Persistencia de panelista en sistema Treinta
 - AI summary del perfil del panelista
 - **Scoring SCL**: fórmula oficial Kantar SCL-CAM (NiPSH/HACI/AUTO/SD), segmentos `Nivel 1-4`, 12 opciones de educación PSH, género `Masculino/Femenino` (spec `004-scl-cam-scoring-fix`)
-- **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`, Basic Auth) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
+- **Cuota real**: `checkQuotaAvailability` consulta la tabla `quota_targets` (objetivo vs. conseguidos reales) en vez de un mock aleatorio; incluye panel administrativo (`/admin/quotas`) para ver/editar/activar-desactivar cuotas e importar/exportar desde Excel (spec `005-quota-admin-panel`)
 - **Dashboard de leads** (`/admin/dashboard`): cards de resumen, tabla región×NSE con color-coding, gráfico por país, embudo de conversión de 7 etapas, filtros (país/región/NSE/canal/fecha), polling de 60s (spec `006-leads-dashboard`)
 - **Preguntas nuevas de Fase 1**: opt-in inicial (nuevo decision point antes de D1), edad, embarazo, bebé < 3 años — cuotas extra sin impacto en el score NSE (spec `007-fase1-new-survey-questions`)
 - **Fase 4 interactiva (Ficha Hogar)**: cuestionario de 7 preguntas con motor de estado propio (`ficha_hogar_profiles`), gate de descarte por conflicto de interés (P1), corrección de respuestas, y merge de datos en el resumen AI/Treinta (spec `008-ficha-hogar-interactive`)
+- **Login + sidebar de admin**: `/` es ahora el formulario de login (reemplaza el Basic Auth); sesión vía cookie firmada (HMAC, sin tabla en DB); todas las páginas internas (`/admin/quotas`, `/admin/dashboard`, `/admin/conversations`) viven detrás del mismo gate y comparten un sidebar colapsable (shadcn/ui) para navegar entre secciones; `/api/conversations/*` y `/api/evals/*` también quedaron protegidos (antes eran públicos); URLs viejas (`/conversations`) redirigen a su nueva ubicación (spec `009-admin-login-sidebar`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 

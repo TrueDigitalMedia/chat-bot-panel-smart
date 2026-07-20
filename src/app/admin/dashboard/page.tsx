@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { listQuotaProgress, type QuotaProgress } from '@/lib/quotas/quota-progress'
 import { groupProgressByCountry } from '@/lib/dashboard/country-summary'
 import { getConversionFunnel } from '@/lib/dashboard/funnel'
@@ -88,12 +87,6 @@ export default async function DashboardPage({
         </div>
         <div className={styles.headerActions}>
           <RefreshPoller />
-          <Link href="/admin/quotas" className={styles.navLink}>
-            Cuotas
-          </Link>
-          <Link href="/" className={styles.homeLink}>
-            Inicio
-          </Link>
         </div>
       </header>
 

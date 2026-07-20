@@ -1,27 +1,46 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifySessionCookie, SESSION_COOKIE_NAME } from '@/lib/auth/session'
 
-const REALM = 'admin'
+// Legacy public URLs that moved under /admin (spec 009 US3) — redirect rather than 404.
+const LEGACY_REDIRECTS: Array<[RegExp, string]> = [
+  [/^\/conversations\/([^/]+)$/, '/admin/conversations/$1'],
+  [/^\/conversations$/, '/admin/conversations'],
+]
 
-export function middleware(request: NextRequest): NextResponse {
-  const password = process.env.ADMIN_PASSWORD
-  const authHeader = request.headers.get('authorization')
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const { pathname } = request.nextUrl
 
-  if (password && authHeader?.startsWith('Basic ')) {
-    const decoded = atob(authHeader.slice('Basic '.length))
-    const separatorIndex = decoded.indexOf(':')
-    const user = separatorIndex === -1 ? decoded : decoded.slice(0, separatorIndex)
-    const pass = separatorIndex === -1 ? '' : decoded.slice(separatorIndex + 1)
-    if (user === 'admin' && pass === password) {
-      return NextResponse.next()
+  for (const [pattern, replacement] of LEGACY_REDIRECTS) {
+    const match = pathname.match(pattern)
+    if (match) {
+      const target = replacement.replace(/\$(\d)/g, (_, i) => match[Number(i)] ?? '')
+      return NextResponse.redirect(new URL(target, request.url), 308)
     }
   }
 
-  return new NextResponse('Authentication required', {
-    status: 401,
-    headers: { 'WWW-Authenticate': `Basic realm="${REALM}"` },
-  })
+  const secret = process.env.SESSION_SECRET
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value
+  const hasValidSession = secret ? await verifySessionCookie(secret, sessionCookie) : false
+
+  if (hasValidSession) {
+    return NextResponse.next()
+  }
+
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return new NextResponse('Authentication required', { status: 401 })
+  }
+
+  const loginUrl = new URL('/', request.url)
+  return NextResponse.redirect(loginUrl)
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/api/conversations/:path*',
+    '/api/evals/:path*',
+    '/conversations',
+    '/conversations/:path*',
+  ],
 }

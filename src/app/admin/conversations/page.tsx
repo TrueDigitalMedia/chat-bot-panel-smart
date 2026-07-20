@@ -35,9 +35,6 @@ export default async function ConversationsPage() {
         </div>
         <div className={styles.headerActions}>
           <BackfillEvalsButton />
-          <Link href="/" className={styles.homeLink}>
-            Inicio
-          </Link>
         </div>
       </header>
 
@@ -104,7 +101,7 @@ export default async function ConversationsPage() {
                   </td>
                   <td className={styles.muted}>{formatWhen(c.lastActivityAt)}</td>
                   <td>
-                    <Link href={`/conversations/${c.id}`} className={styles.open}>
+                    <Link href={`/admin/conversations/${c.id}`} className={styles.open}>
                       Abrir
                     </Link>
                   </td>
