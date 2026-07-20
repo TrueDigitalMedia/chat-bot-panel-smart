@@ -12,6 +12,7 @@ import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
 import { sendSurveyQuestion } from '../send-survey-question'
+import { matchButtonChoice } from '../match-button-choice'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import type { Lead } from '@/types/lead'
 
@@ -122,11 +123,18 @@ export async function handlePhase1(
 
   if (question.inputType === 'button') {
     // Extract value from callback data: format "fieldName:value"
-    if (!callbackData?.startsWith(`${question.fieldName}:`)) {
+    let resolvedCallback = callbackData
+    if (!resolvedCallback?.startsWith(`${question.fieldName}:`) && messageText.trim() && question.buttons) {
+      // User typed instead of tapping (e.g. "si" for "Sí") — best-effort match against
+      // this question's own button labels before giving up.
+      const matched = matchButtonChoice(question.buttons, messageText)
+      if (matched) resolvedCallback = matched
+    }
+    if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
       await sendSurveyQuestion(to, idx, lead.id)
       return
     }
-    const raw = callbackData.split(':').slice(1).join(':')
+    const raw = resolvedCallback.split(':').slice(1).join(':')
     fieldValue = question.fieldName === 'domesticHelp' ? raw === 'true' : raw
   } else {
     // Free-text: ignore empty / stray button callbacks — just re-ask

@@ -17,6 +17,7 @@ import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
 import { syncLeadFichaHogarComplete, syncLeadFichaHogarDiscarded } from '@/lib/tdm-mysql/sync'
 import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
+import { matchButtonChoice } from '../match-button-choice'
 import type { ChannelRecipient } from '@/types/channel'
 
 const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
@@ -90,11 +91,18 @@ export async function handleFichaHogar(
   let fieldValue: unknown = null
 
   if (question.inputType === 'button') {
-    if (!callbackData?.startsWith(`${question.fieldName}:`)) {
+    let resolvedCallback = callbackData
+    if (!resolvedCallback?.startsWith(`${question.fieldName}:`) && messageText.trim() && question.buttons) {
+      // User typed instead of tapping (e.g. "si" for "Sí") — best-effort match against
+      // this question's own button labels before giving up.
+      const matched = matchButtonChoice(question.buttons, messageText)
+      if (matched) resolvedCallback = matched
+    }
+    if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
       await sendFichaHogarQuestion(to, idx)
       return
     }
-    const raw = callbackData.split(':').slice(1).join(':')
+    const raw = resolvedCallback.split(':').slice(1).join(':')
     fieldValue =
       FICHA_HOGAR_BUTTON_FIELDS.has(question.fieldName) && (raw === 'true' || raw === 'false')
         ? raw === 'true'

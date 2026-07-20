@@ -5,6 +5,7 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { validateGuatemalaGeoField } from '@/lib/geo/guatemala'
 import { BUTTON_FIELDS, FREE_TEXT_FIELDS, type SurveyFieldName } from '@/types/lead'
 import { SURVEY_QUESTIONS } from './survey-questions'
+import { matchButtonChoice } from './match-button-choice'
 
 export type CaptureResult =
   | { ok: true; value: unknown; needsConfirmation?: boolean }
@@ -24,10 +25,15 @@ export async function captureSurveyFieldValue(
   if (!question) return { ok: false, message: 'Campo no válido.' }
 
   if (BUTTON_FIELDS.has(field)) {
-    if (!callbackData?.startsWith(`${field}:`)) {
+    let resolvedCallback = callbackData
+    if (!resolvedCallback?.startsWith(`${field}:`) && messageText.trim() && question.buttons) {
+      const matched = matchButtonChoice(question.buttons, messageText)
+      if (matched) resolvedCallback = matched
+    }
+    if (!resolvedCallback?.startsWith(`${field}:`)) {
       return { ok: false, message: 'Elige una opción de los botones, por favor.' }
     }
-    const raw = callbackData.split(':').slice(1).join(':')
+    const raw = resolvedCallback.split(':').slice(1).join(':')
     const value = field === 'domesticHelp' ? raw === 'true' : raw
     return { ok: true, value }
   }
