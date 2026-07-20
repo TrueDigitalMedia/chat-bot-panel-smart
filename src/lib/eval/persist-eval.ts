@@ -163,7 +163,7 @@ async function persistEval(opts: {
     reason: opts.reason,
     overallScore: result.overallScore,
     passed: result.passed,
-    checks: result.checks,
+    checks: result.checks as unknown as Record<string, boolean>,
     actual: opts.actual as unknown as Record<string, unknown>,
     expected: result.expected as unknown as Record<string, unknown>,
     mismatches: result.mismatches,
