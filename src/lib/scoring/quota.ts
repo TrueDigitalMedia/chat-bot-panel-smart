@@ -1,4 +1,6 @@
 import { getQuotaProgressForTarget } from '@/lib/quotas/quota-progress'
+import { syncLeadPhase1Complete } from '@/lib/tdm-mysql/sync'
+import type { Lead } from '@/types/lead'
 
 interface CheckQuotaAvailabilityParams {
   country: string
@@ -36,4 +38,15 @@ export async function checkQuotaAvailability({
   )
 
   return available
+}
+
+/**
+ * Fire-and-forget side effect shared by the two call sites that transition a lead to
+ * `link_sent` after quota confirms available (handle-confirm.ts and phase-1.ts) — kept
+ * as one helper so the TDM sync call isn't duplicated across both paths. Never blocks
+ * or breaks the caller: `syncLeadPhase1Complete` never throws on its own, and the
+ * `.catch` here is a second line of defense.
+ */
+export async function finalizeQuotaPassedLead(lead: Lead, correlationId: string): Promise<void> {
+  await syncLeadPhase1Complete(lead.id, correlationId).catch(() => {})
 }

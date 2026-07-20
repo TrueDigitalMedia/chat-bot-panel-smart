@@ -3,6 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // `db/client.ts` calls `neon(process.env.POSTGRES_URL!)` at module load — mock it so
 // unit tests don't need a real connection string just to import quota-progress.ts.
 vi.mock('@/lib/db/client', () => ({ db: {} }))
+// scoring/quota.ts now also pulls in tdm-mysql/sync.ts -> tdm-mysql/client.ts -> env.ts
+// (spec 010), whose eager validateEnv() would otherwise throw without real credentials.
+vi.mock('@/lib/env', () => ({
+  env: { CLIENT_MYSQL_SYNC_ENABLED: false },
+  isClientMysqlConfigured: () => false,
+  isClientMysqlSyncEnabled: () => false,
+}))
 
 import { toProgress, type QuotaTargetRow } from '@/lib/quotas/quota-progress'
 

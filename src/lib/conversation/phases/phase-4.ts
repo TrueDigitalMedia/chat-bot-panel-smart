@@ -15,6 +15,7 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
+import { syncLeadFichaHogarComplete, syncLeadFichaHogarDiscarded } from '@/lib/tdm-mysql/sync'
 import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
 import type { ChannelRecipient } from '@/types/channel'
 
@@ -129,6 +130,7 @@ export async function handleFichaHogar(
       .update(fichaHogarProfiles)
       .set({ conflictOfInterest: true, completedAt: new Date(), updatedAt: new Date() })
       .where(eq(fichaHogarProfiles.leadId, lead.id))
+    await syncLeadFichaHogarDiscarded(lead.id, correlationId).catch(() => {})
     await transitionLead(
       lead.id,
       'ficha_hogar_descartado',
@@ -213,6 +215,9 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
   if (summary) {
     await db.update(leads).set({ conversationSummary: summary }).where(eq(leads.id, lead.id))
   }
+
+  // Unrelated side effect from Treinta's persistence below — must not be gated on its outcome.
+  await syncLeadFichaHogarComplete(lead.id, correlationId, summary).catch(() => {})
 
   const persisted = await persistTreintaPanelist({
     leadId: lead.id,

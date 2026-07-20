@@ -39,6 +39,17 @@ const envSchema = z.object({
   RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS: z.coerce.number().optional(),
   RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS: z.string().optional(),
   FORCE_EXTRACTION_ERROR: z.string().optional(),
+
+  // Client MySQL (TDM/Kantar) — write-only lead sync, see specs/010-tdm-lead-sync
+  CLIENT_MYSQL_SYNC_ENABLED: z.coerce.boolean().default(false),
+  CLIENT_MYSQL_HOST: z.string().min(1).optional(),
+  CLIENT_MYSQL_PORT: z.coerce.number().default(3306),
+  CLIENT_MYSQL_USER: z.string().min(1).optional(),
+  CLIENT_MYSQL_PASSWORD: z.string().min(1).optional(),
+  CLIENT_MYSQL_DATABASE: z.string().min(1).optional(),
+  CLIENT_MYSQL_TENANT_ID: z.string().min(1).optional(),
+  CLIENT_MYSQL_LEAD_VERSION: z.string().min(1).optional(),
+  CLIENT_MYSQL_SSL_CA: z.string().min(1).optional(),
 })
 
 function validateEnv() {
@@ -64,4 +75,17 @@ export function isMetaWhatsAppConfigured(): boolean {
 
 export function isTwilioConfigured(): boolean {
   return Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM)
+}
+
+export function isClientMysqlConfigured(): boolean {
+  return Boolean(
+    env.CLIENT_MYSQL_HOST &&
+      env.CLIENT_MYSQL_USER &&
+      env.CLIENT_MYSQL_PASSWORD &&
+      env.CLIENT_MYSQL_DATABASE,
+  )
+}
+
+export function isClientMysqlSyncEnabled(): boolean {
+  return env.CLIENT_MYSQL_SYNC_ENABLED && isClientMysqlConfigured()
 }
