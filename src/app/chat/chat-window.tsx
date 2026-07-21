@@ -1,0 +1,227 @@
+'use client'
+
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+interface ChatButton {
+  text: string
+  callback_data: string
+}
+
+interface ChatMessage {
+  id: string
+  direction: 'in' | 'out'
+  contentType: string
+  body: string
+  meta: { buttons?: ChatButton[]; type?: string; label?: string } | null
+  createdAt: string
+}
+
+interface ChatResponse {
+  leadId: string
+  leadStatus: string
+  messages: ChatMessage[]
+}
+
+type TurnPayload =
+  | { text: string }
+  | { callbackData: string; label: string }
+  | { location: { latitude: number; longitude: number } }
+
+export function ChatWindow() {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [input, setInput] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    void bootstrap()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function bootstrap(): Promise<void> {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/chat/web')
+      if (!res.ok) throw new Error('bootstrap_failed')
+      const data = (await res.json()) as ChatResponse
+      // Hydrate full history on every mount, including a reload mid-survey (US2) —
+      // not just a visitor's very first-ever visit.
+      setMessages(data.messages)
+    } catch {
+      setError('No se pudo conectar con el chat. Intenta recargar la página.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function sendTurn(payload: TurnPayload): Promise<void> {
+    setSending(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/chat/web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error('send_failed')
+      const data = (await res.json()) as ChatResponse
+      setMessages((prev) => [...prev, ...data.messages])
+    } catch {
+      setError('No se pudo enviar tu mensaje. Intenta de nuevo.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function echoVisitorMessage(body: string, contentType: string): void {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        direction: 'in',
+        contentType,
+        body,
+        meta: null,
+        createdAt: new Date().toISOString(),
+      },
+    ])
+  }
+
+  function handleSendText(e: FormEvent): void {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text || sending) return
+    echoVisitorMessage(text, 'text')
+    setInput('')
+    void sendTurn({ text })
+  }
+
+  function handleButtonClick(button: ChatButton): void {
+    if (sending) return
+    echoVisitorMessage(button.text, 'callback')
+    void sendTurn({ callbackData: button.callback_data, label: button.text })
+  }
+
+  function handleShareLocation(): void {
+    if (!navigator.geolocation) {
+      setError('Tu navegador no soporta compartir ubicación — usa «Escribir mi ubicación» para continuar a mano.')
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void sendTurn({
+          location: { latitude: position.coords.latitude, longitude: position.coords.longitude },
+        })
+      },
+      () => {
+        setError('No se pudo obtener tu ubicación — usa «Escribir mi ubicación» para continuar a mano.')
+      },
+    )
+  }
+
+  // Exact phrase gps-capture.ts matches to switch to manual department/municipio entry
+  // (src/lib/conversation/gps-capture.ts SKIP_TEXT) — same text Telegram's keyboard button sends.
+  function handleWriteLocationManually(): void {
+    if (sending) return
+    echoVisitorMessage('Escribir mi ubicación', 'text')
+    void sendTurn({ text: 'Escribir mi ubicación' })
+  }
+
+  const lastMessage = messages[messages.length - 1]
+  const isLocationRequestPending = lastMessage?.direction === 'out' && lastMessage.meta?.type === 'location_request'
+
+  if (loading) {
+    return <p className="text-muted-foreground p-6 text-sm">Conectando con el chat…</p>
+  }
+
+  return (
+    <div className="flex h-[70vh] flex-col">
+      <div className="flex-1 space-y-2 overflow-y-auto p-4">
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} onButtonClick={handleButtonClick} disabled={sending} />
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      {error ? <p className="text-destructive px-4 pb-2 text-sm">{error}</p> : null}
+
+      {isLocationRequestPending ? (
+        <div className="border-border flex gap-2 border-t p-3">
+          <Button type="button" onClick={handleShareLocation} disabled={sending}>
+            📍 Compartir ubicación
+          </Button>
+          <Button type="button" variant="outline" onClick={handleWriteLocationManually} disabled={sending}>
+            ✍️ Escribir mi ubicación
+          </Button>
+        </div>
+      ) : null}
+
+      <form onSubmit={handleSendText} className="border-border flex gap-2 border-t p-3">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Escribe tu mensaje…"
+          disabled={sending}
+        />
+        <Button type="submit" disabled={sending || !input.trim()}>
+          Enviar
+        </Button>
+      </form>
+    </div>
+  )
+}
+
+function MessageBubble({
+  message,
+  onButtonClick,
+  disabled,
+}: {
+  message: ChatMessage
+  onButtonClick: (button: ChatButton) => void
+  disabled: boolean
+}) {
+  const isBot = message.direction === 'out'
+  const buttons = message.meta?.buttons
+  // A button click's raw callback_data (e.g. "optin:accept") isn't meant for display —
+  // prefer the friendly label stored in meta when this bubble is re-rendered from history.
+  const displayBody = message.contentType === 'callback' ? (message.meta?.label ?? message.body) : message.body
+
+  return (
+    <div className={isBot ? 'flex justify-start' : 'flex justify-end'}>
+      <div
+        className={
+          isBot
+            ? 'bg-muted text-foreground max-w-[80%] rounded-2xl rounded-bl-sm px-3 py-2 text-sm'
+            : 'bg-primary text-primary-foreground max-w-[80%] rounded-2xl rounded-br-sm px-3 py-2 text-sm'
+        }
+      >
+        <p className="whitespace-pre-wrap">{displayBody}</p>
+        {buttons && buttons.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {buttons.map((button) => (
+              <Button
+                key={button.callback_data}
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={disabled}
+                onClick={() => onButtonClick(button)}
+              >
+                {button.text}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}

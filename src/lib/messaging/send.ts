@@ -41,7 +41,9 @@ export async function sendText(to: ChannelRecipient, text: string): Promise<void
       await whatsapp.sendWhatsAppText(to.channelUserId, text)
       break
     case 'web':
-      throw new Error(`Outbound messaging not implemented for channel: ${to.channel}`)
+      // No external SDK to push to — the message is "delivered" by persisting it below;
+      // the visitor's browser picks it up on its next GET/POST response (spec 012 research.md R2/R7).
+      break
     default: {
       const _exhaustive: never = to.channel
       throw new Error(`Unknown channel: ${_exhaustive}`)
@@ -63,7 +65,8 @@ export async function sendVideo(
       await whatsapp.sendWhatsAppVideo(to.channelUserId, video, caption)
       break
     case 'web':
-      throw new Error(`Outbound video not implemented for channel: ${to.channel}`)
+      // See sendText — persisted below, no external push needed (research.md R2/R7).
+      break
     default: {
       const _exhaustive: never = to.channel
       throw new Error(`Unknown channel: ${_exhaustive}`)
@@ -92,7 +95,10 @@ export async function sendInlineKeyboard(
       break
     }
     case 'web':
-      throw new Error(`Outbound keyboard not implemented for channel: ${to.channel}`)
+      // No pending-choices workaround needed — the web client renders real buttons
+      // straight from `meta.buttons` below and posts the actual callback_data back
+      // (research.md R4), same model as Telegram's native inline keyboards.
+      break
     default: {
       const _exhaustive: never = to.channel
       throw new Error(`Unknown channel: ${_exhaustive}`)
@@ -116,7 +122,8 @@ export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
       await telegram.sendContactRequest(BigInt(to.channelUserId), prompt)
       break
     case 'web':
-      throw new Error('Outbound messaging not implemented for channel: web')
+      // Same "type it" prompt as the non-Telegram branch above — no native contact-share UI.
+      break
     case 'whatsapp':
       return
     default: {
@@ -134,7 +141,7 @@ export async function confirmPhoneSaved(to: ChannelRecipient, phone: string): Pr
       await telegram.removeReplyKeyboard(BigInt(to.channelUserId), msg)
       break
     case 'web':
-      throw new Error('Outbound messaging not implemented for channel: web')
+      break
     case 'whatsapp':
       await sendText(to, msg)
       return
@@ -164,8 +171,15 @@ export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
       await logOut(to, 'text', prompt, { type: 'location_request' })
       break
     }
-    case 'web':
-      throw new Error(`Location request not implemented for channel: ${to.channel}`)
+    case 'web': {
+      // No native "share location" UI element — the client shows a button that triggers
+      // the browser's own geolocation permission prompt (spec 012 research.md R5); the
+      // `type: 'location_request'` meta is how the client knows to show it.
+      const prompt =
+        '📍 Para ubicar tu zona de cupo, comparte tu ubicación — toca «Compartir ubicación» y acepta el permiso del navegador, o escribe tu ubicación (departamento y municipio) si prefieres continuar a mano.'
+      await logOut(to, 'text', prompt, { type: 'location_request' })
+      break
+    }
     default: {
       const _exhaustive: never = to.channel
       throw new Error(`Unknown channel: ${_exhaustive}`)

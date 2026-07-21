@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-20 (spec 011: cuotas flexibles por dimensión, implementado — ver §8.1)
+> Última actualización: 2026-07-21 (spec 012: chat web, implementado — ver §12)
 
 ---
 
@@ -18,6 +18,7 @@
 9. [Plan: Panel Administrativo de Cuotas](#9-plan-panel-administrativo-de-cuotas)
 10. [Plan: Dashboard de Leads](#10-plan-dashboard-de-leads)
 11. [Estado de implementación por feature](#11-estado-de-implementación-por-feature)
+12. [Chat web (canal nuevo)](#12-chat-web-canal-nuevo)
 
 ---
 
@@ -613,6 +614,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - **Fase 4 interactiva (Ficha Hogar)**: cuestionario de 7 preguntas con motor de estado propio (`ficha_hogar_profiles`), gate de descarte por conflicto de interés (P1), corrección de respuestas, y merge de datos en el resumen AI/Treinta (spec `008-ficha-hogar-interactive`)
 - **Login + sidebar de admin**: `/` es ahora el formulario de login (reemplaza el Basic Auth); sesión vía cookie firmada (HMAC, sin tabla en DB); todas las páginas internas (`/admin/quotas`, `/admin/dashboard`, `/admin/conversations`) viven detrás del mismo gate y comparten un sidebar colapsable (shadcn/ui) para navegar entre secciones; `/api/conversations/*` y `/api/evals/*` también quedaron protegidos (antes eran públicos); URLs viejas (`/conversations`) redirigen a su nueva ubicación (spec `009-admin-login-sidebar`)
 - **Cuotas flexibles por dimensión**: matching OR entre NSE/edad/integrantes (calificar por cualquier dimensión con cupo, no las tres a la vez), todas las regiones abiertas, tope agregado manual por región (`quota_region_caps`), excepción sin límite para embarazo/bebé — ver [§8.1](#81-cuotas-flexibles-por-dimensión-2026-07-20) (spec `011-flexible-quota-matching`)
+- **Chat web**: nuevo canal `web` — página pública `/chat` para conversar con el bot sin Telegram/WhatsApp, misma máquina de estados y reglas de negocio que los otros canales, sesión anónima persistente por navegador — ver [§12](#12-chat-web-canal-nuevo) (spec `012-web-chat-channel`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
@@ -621,6 +623,38 @@ GET /api/admin/dashboard/by-country  → resumen por país
 ### ❌ Pendiente de implementar
 
 - Soporte para México y Ecuador (Excel TBD)
+
+---
+
+## 12. Chat web (canal nuevo)
+
+> ✅ **Implementado** en `specs/012-web-chat-channel`. Nuevo canal `web` — antes solo existía como valor del enum sin ninguna implementación (cada `case 'web'` en `send.ts` lanzaba error).
+
+### Qué es
+
+Una página pública (`/chat`, fuera de `/admin`, sin autenticación) donde cualquier visitante puede conversar directamente con el mismo bot de reclutamiento que hoy corre en Telegram y WhatsApp — mismo opt-in, misma encuesta de calificación, mismo scoring NSE, mismas cuotas flexibles por dimensión (§8.1), mismo resultado final. No es un asistente ni un flujo distinto: es el motor de conversación existente (`routeMessage`/`handlePhase1`, sin cambios) con una tercera puerta de entrada/salida.
+
+### Identidad del visitante
+
+Sin cuenta ni login. Una cookie `web_session_id` (UUID v4, `HttpOnly`, ~2 años de vigencia) identifica al visitante en su navegador; ese UUID se usa tal cual como `channelUserId` del lead (`upsertLead('web', sessionId)`) — mismo campo e índice único que ya usan Telegram (`chat_id`) y WhatsApp (teléfono), sin cambios de schema.
+
+### Cómo llega la respuesta del bot (sin webhook externo)
+
+A diferencia de Telegram/WhatsApp (el bot responde llamando a la API del proveedor, de forma asíncrona tras devolver `200` al webhook), el canal web no tiene un proveedor externo al que "empujarle" el mensaje. En su lugar:
+
+- `POST /api/chat/web` procesa el turno de forma **síncrona** (`await routeMessage(...)`, sin el `after()` que usan los webhooks) y devuelve la respuesta del bot en el mismo HTTP response.
+- Los mensajes salientes se "entregan" simplemente persistiéndolos en `conversation_messages` (la misma tabla que ya registra todos los mensajes de todos los canales para el panel admin) — los `case 'web'` de `src/lib/messaging/send.ts` ya no lanzan error, solo dejan de llamar a un SDK externo.
+- `GET /api/chat/web` es el "bootstrap": resuelve/crea la sesión, dispara el mensaje de apertura si el lead nunca tuvo mensajes, y devuelve el historial completo — así una recarga de página retoma exactamente donde quedó (sin repetir el opt-in).
+
+No hay WebSocket ni SSE — el modelo es puramente request/response, suficiente para todos los escenarios del spec (incluida la ubicación GPS vía el permiso de geolocalización del navegador, que se mapea 1:1 al mismo `ChannelInbound.location` que ya usa el GPS de Telegram/WhatsApp).
+
+### Límite conocido: re-enganche
+
+Los jobs de re-enganche (QStash) para un lead del canal web simplemente registran su mensaje en `conversation_messages` — no hay forma de "empujarlo" a una pestaña de navegador que pudo haberse cerrado. El visitante lo verá la próxima vez que abra o recargue `/chat`. Limitación conocida y aceptada, no un bug.
+
+### Panel administrativo
+
+Sin cambios — `/admin/conversations` y `/admin/dashboard` ya renderizaban `channel` de forma genérica (incluido un filtro "Web" ya presente en el dashboard desde antes de esta feature); los leads y conversaciones del canal web aparecen ahí automáticamente.
 
 ---
 
