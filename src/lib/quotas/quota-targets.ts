@@ -7,20 +7,49 @@ import {
   listCatalogCountries,
   listNseRegionsForCountry,
 } from '@/lib/geo/cam-nse-catalog'
+import {
+  NSE_LEVELS,
+  AGE_BANDS,
+  HOUSEHOLD_BANDS,
+  DIMENSION_TYPES,
+  type NseLevel,
+  type DimensionType,
+} from '@/lib/quotas/dimension-catalog'
 
-export const NSE_LEVELS = ['Nivel 1', 'Nivel 2', 'Nivel 3', 'Nivel 4'] as const
-export type NseLevel = (typeof NSE_LEVELS)[number]
+// Re-exported for backward compatibility — existing importers (e.g. the dashboard) use
+// these from here; the values themselves live in dimension-catalog.ts (no DB import) so
+// client components can use them without pulling in the DB client (research.md R3).
+export { NSE_LEVELS, AGE_BANDS, HOUSEHOLD_BANDS, DIMENSION_TYPES }
+export type { NseLevel, DimensionType }
 
-export type QuotaTargetErrorCode = 'invalid_country' | 'invalid_region' | 'invalid_nse_level' | 'invalid_target_count'
+/** Valid `dimension_value`s per `dimension_type` — see specs/011-flexible-quota-matching/data-model.md. */
+const DIMENSION_VALUES: Record<DimensionType, readonly string[]> = {
+  nse: NSE_LEVELS,
+  edad: AGE_BANDS,
+  integrantes: HOUSEHOLD_BANDS,
+}
+
+export type QuotaTargetErrorCode =
+  | 'invalid_country'
+  | 'invalid_region'
+  | 'invalid_dimension_type'
+  | 'invalid_dimension_value'
+  | 'invalid_target_count'
 
 export class QuotaTargetError extends Error {
   code: QuotaTargetErrorCode
   validRegions?: string[]
+  validValues?: readonly string[]
 
-  constructor(code: QuotaTargetErrorCode, message: string, validRegions?: string[]) {
+  constructor(
+    code: QuotaTargetErrorCode,
+    message: string,
+    extra?: { validRegions?: string[]; validValues?: readonly string[] },
+  ) {
     super(message)
     this.code = code
-    this.validRegions = validRegions
+    this.validRegions = extra?.validRegions
+    this.validValues = extra?.validValues
   }
 }
 
@@ -30,16 +59,18 @@ export class QuotaTargetNotFoundError extends Error {}
 export interface QuotaTargetInput {
   country: string
   region: string
-  nseLevel: string
+  dimensionType: string
+  dimensionValue: string
   targetCount?: number
   notes?: string | null
 }
 
-/** Validates and canonicalizes country/region/nseLevel against the geo catalog (research.md R3). */
+/** Validates and canonicalizes country/region/dimensionType/dimensionValue against the catalogs (research.md R3). */
 function validateAndCanonicalize(input: QuotaTargetInput): {
   country: string
   region: string
-  nseLevel: NseLevel
+  dimensionType: DimensionType
+  dimensionValue: string
 } {
   const country = canonicalCountry(input.country) ?? input.country
   if (!listCatalogCountries().includes(country)) {
@@ -48,28 +79,39 @@ function validateAndCanonicalize(input: QuotaTargetInput): {
 
   const region = canonicalNseRegion(country, input.region)
   if (!region) {
-    throw new QuotaTargetError(
-      'invalid_region',
-      `Region "${input.region}" is not valid for ${country}`,
-      listNseRegionsForCountry(country),
-    )
+    throw new QuotaTargetError('invalid_region', `Region "${input.region}" is not valid for ${country}`, {
+      validRegions: listNseRegionsForCountry(country),
+    })
   }
 
-  if (!NSE_LEVELS.includes(input.nseLevel as NseLevel)) {
-    throw new QuotaTargetError('invalid_nse_level', `Invalid NSE level: ${input.nseLevel}`)
+  if (!DIMENSION_TYPES.includes(input.dimensionType as DimensionType)) {
+    throw new QuotaTargetError('invalid_dimension_type', `Invalid dimension type: ${input.dimensionType}`, {
+      validValues: DIMENSION_TYPES,
+    })
+  }
+  const dimensionType = input.dimensionType as DimensionType
+
+  const validValues = DIMENSION_VALUES[dimensionType]
+  if (!validValues.includes(input.dimensionValue)) {
+    throw new QuotaTargetError(
+      'invalid_dimension_value',
+      `Invalid ${dimensionType} value: ${input.dimensionValue}`,
+      { validValues },
+    )
   }
 
   if (input.targetCount != null && input.targetCount < 0) {
     throw new QuotaTargetError('invalid_target_count', 'targetCount must be >= 0')
   }
 
-  return { country, region, nseLevel: input.nseLevel as NseLevel }
+  return { country, region, dimensionType, dimensionValue: input.dimensionValue }
 }
 
 export interface QuotaTargetListFilters {
   country?: string
   region?: string
-  nseLevel?: string
+  dimensionType?: string
+  dimensionValue?: string
   active?: boolean
 }
 
@@ -77,7 +119,8 @@ export async function listQuotaTargets(filters: QuotaTargetListFilters = {}) {
   const conditions = []
   if (filters.country) conditions.push(eq(quotaTargets.country, filters.country))
   if (filters.region) conditions.push(eq(quotaTargets.region, filters.region))
-  if (filters.nseLevel) conditions.push(eq(quotaTargets.nseLevel, filters.nseLevel))
+  if (filters.dimensionType) conditions.push(eq(quotaTargets.dimensionType, filters.dimensionType))
+  if (filters.dimensionValue) conditions.push(eq(quotaTargets.dimensionValue, filters.dimensionValue))
   if (filters.active !== undefined) conditions.push(eq(quotaTargets.active, filters.active))
 
   return db
@@ -87,7 +130,7 @@ export async function listQuotaTargets(filters: QuotaTargetListFilters = {}) {
 }
 
 export async function createQuotaTarget(input: QuotaTargetInput) {
-  const { country, region, nseLevel } = validateAndCanonicalize(input)
+  const { country, region, dimensionType, dimensionValue } = validateAndCanonicalize(input)
 
   const [existing] = await db
     .select({ id: quotaTargets.id })
@@ -96,13 +139,14 @@ export async function createQuotaTarget(input: QuotaTargetInput) {
       and(
         eq(quotaTargets.country, country),
         eq(quotaTargets.region, region),
-        eq(quotaTargets.nseLevel, nseLevel),
+        eq(quotaTargets.dimensionType, dimensionType),
+        eq(quotaTargets.dimensionValue, dimensionValue),
       ),
     )
     .limit(1)
   if (existing) {
     throw new QuotaTargetConflictError(
-      `Quota target already exists for ${country} / ${region} / ${nseLevel} — use PUT to edit it`,
+      `Quota target already exists for ${country} / ${region} / ${dimensionType} / ${dimensionValue} — use PUT to edit it`,
     )
   }
 
@@ -111,7 +155,8 @@ export async function createQuotaTarget(input: QuotaTargetInput) {
     .values({
       country,
       region,
-      nseLevel,
+      dimensionType,
+      dimensionValue,
       targetCount: input.targetCount ?? 0,
       notes: input.notes ?? null,
     })
@@ -142,21 +187,22 @@ export async function updateQuotaTarget(id: string, patch: QuotaTargetPatch) {
   return row
 }
 
-/** Insert-or-update by (country, region, nseLevel) — used by the Excel importer (US3). */
+/** Insert-or-update by (country, region, dimensionType, dimensionValue) — used by the Excel importer (US3). */
 export async function upsertQuotaTarget(input: QuotaTargetInput) {
-  const { country, region, nseLevel } = validateAndCanonicalize(input)
+  const { country, region, dimensionType, dimensionValue } = validateAndCanonicalize(input)
 
   const [row] = await db
     .insert(quotaTargets)
     .values({
       country,
       region,
-      nseLevel,
+      dimensionType,
+      dimensionValue,
       targetCount: input.targetCount ?? 0,
       notes: input.notes ?? null,
     })
     .onConflictDoUpdate({
-      target: [quotaTargets.country, quotaTargets.region, quotaTargets.nseLevel],
+      target: [quotaTargets.country, quotaTargets.region, quotaTargets.dimensionType, quotaTargets.dimensionValue],
       set: { targetCount: input.targetCount ?? 0, updatedAt: new Date() },
     })
     .returning()

@@ -1,27 +1,42 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import styles from './dashboard.module.css'
+import styles from './quotas.module.css'
+import { AGE_BANDS, HOUSEHOLD_BANDS, NSE_LEVELS, type DimensionType } from '@/lib/quotas/dimension-catalog'
 
-interface FiltersFormProps {
+const DIMENSION_LABELS: Record<DimensionType, string> = {
+  nse: 'NSE',
+  edad: 'Edad',
+  integrantes: 'Integrantes',
+}
+
+const VALUES_BY_DIMENSION: Record<DimensionType, readonly string[]> = {
+  nse: NSE_LEVELS,
+  edad: AGE_BANDS,
+  integrantes: HOUSEHOLD_BANDS,
+}
+
+interface QuotaFiltersFormProps {
   countries: string[]
-  dimensionValues: readonly string[]
   regionsByCountry: Record<string, string[]>
 }
 
-export function FiltersForm({ countries, dimensionValues, regionsByCountry }: FiltersFormProps) {
+export function QuotaFiltersForm({ countries, regionsByCountry }: QuotaFiltersFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const selectedCountry = searchParams.get('country') ?? ''
+  const selectedDimensionType = (searchParams.get('dimensionType') ?? '') as DimensionType | ''
   const availableRegions = selectedCountry ? (regionsByCountry[selectedCountry] ?? []) : []
+  const availableValues = selectedDimensionType ? VALUES_BY_DIMENSION[selectedDimensionType] : []
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString())
     if (value) next.set(key, value)
     else next.delete(key)
     if (key === 'country') next.delete('region')
-    router.push(`/admin/dashboard?${next.toString()}`)
+    if (key === 'dimensionType') next.delete('dimensionValue')
+    router.push(`/admin/quotas?${next.toString()}`)
   }
 
   const hasFilters = searchParams.toString().length > 0
@@ -55,46 +70,33 @@ export function FiltersForm({ countries, dimensionValues, regionsByCountry }: Fi
         </select>
       </label>
       <label className={styles.filterField}>
-        Nivel NSE
-        <select
-          value={searchParams.get('dimensionValue') ?? ''}
-          onChange={(e) => update('dimensionValue', e.target.value)}
-        >
-          <option value="">Todos</option>
-          {dimensionValues.map((n) => (
-            <option key={n} value={n}>
-              {n}
+        Dimensión
+        <select value={selectedDimensionType} onChange={(e) => update('dimensionType', e.target.value)}>
+          <option value="">Todas</option>
+          {(Object.keys(DIMENSION_LABELS) as DimensionType[]).map((d) => (
+            <option key={d} value={d}>
+              {DIMENSION_LABELS[d]}
             </option>
           ))}
         </select>
       </label>
       <label className={styles.filterField}>
-        Canal
-        <select value={searchParams.get('channel') ?? ''} onChange={(e) => update('channel', e.target.value)}>
+        Valor
+        <select
+          value={searchParams.get('dimensionValue') ?? ''}
+          onChange={(e) => update('dimensionValue', e.target.value)}
+          disabled={!selectedDimensionType}
+        >
           <option value="">Todos</option>
-          <option value="telegram">Telegram</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="web">Web</option>
+          {availableValues.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
         </select>
       </label>
-      <label className={styles.filterField}>
-        Desde
-        <input
-          type="date"
-          value={searchParams.get('from') ?? ''}
-          onChange={(e) => update('from', e.target.value)}
-        />
-      </label>
-      <label className={styles.filterField}>
-        Hasta
-        <input type="date" value={searchParams.get('to') ?? ''} onChange={(e) => update('to', e.target.value)} />
-      </label>
       {hasFilters ? (
-        <button
-          type="button"
-          className={styles.filterClear}
-          onClick={() => router.push('/admin/dashboard')}
-        >
+        <button type="button" className={styles.filterClear} onClick={() => router.push('/admin/quotas')}>
           Limpiar filtros
         </button>
       ) : null}

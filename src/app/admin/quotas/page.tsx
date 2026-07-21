@@ -1,10 +1,37 @@
 import { listQuotaProgress } from '@/lib/quotas/quota-progress'
+import { listRegionCaps } from '@/lib/quotas/region-caps'
+import { listCatalogCountries, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
 import { QuotaRowForm } from './quota-row-form'
+import { NewQuotaTargetRow } from './new-quota-target-row'
 import { ImportForm } from './import-form'
+import { RegionCapForm } from './region-cap-form'
+import { QuotaFiltersForm } from './quota-filters-form'
 import styles from './quotas.module.css'
 
-export default async function QuotasPage() {
-  const items = await listQuotaProgress()
+interface QuotasSearchParams {
+  country?: string
+  region?: string
+  dimensionType?: string
+  dimensionValue?: string
+}
+
+export default async function QuotasPage({
+  searchParams,
+}: {
+  searchParams: Promise<QuotasSearchParams>
+}) {
+  const params = await searchParams
+  const [items, regionCaps] = await Promise.all([
+    listQuotaProgress({
+      country: params.country || undefined,
+      region: params.region || undefined,
+      dimensionType: params.dimensionType || undefined,
+      dimensionValue: params.dimensionValue || undefined,
+    }),
+    listRegionCaps(),
+  ])
+  const catalogCountries = listCatalogCountries()
+  const regionsByCountry = Object.fromEntries(catalogCountries.map((c) => [c, listNseRegionsForCountry(c)]))
 
   const summary = items.reduce(
     (acc, item) => {
@@ -18,11 +45,16 @@ export default async function QuotasPage() {
   const totalPct =
     summary.totalTarget > 0 ? Math.round((summary.totalAchieved / summary.totalTarget) * 100) : 0
 
+  const hasActiveFilters = Boolean(
+    params.country || params.region || params.dimensionType || params.dimensionValue,
+  )
+
   const sorted = [...items].sort(
     (a, b) =>
       a.country.localeCompare(b.country) ||
       a.region.localeCompare(b.region) ||
-      a.nseLevel.localeCompare(b.nseLevel),
+      a.dimensionType.localeCompare(b.dimensionType) ||
+      a.dimensionValue.localeCompare(b.dimensionValue),
   )
 
   return (
@@ -32,8 +64,9 @@ export default async function QuotasPage() {
           <p className={styles.eyebrow}>PanelSmart</p>
           <h1 className={styles.title}>Cuotas</h1>
           <p className={styles.sub}>
-            Objetivos de leads por país, región y nivel socioeconómico (CAM). Reemplaza el Excel de
-            cuotas.
+            Objetivos de leads por país, región y dimensión (NSE, edad o integrantes). Un lead califica
+            si cumple al menos una dimensión con cupo disponible en su región — ver{' '}
+            <a href="#region-caps">tope agregado por región</a> más abajo.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -63,13 +96,16 @@ export default async function QuotasPage() {
         </div>
       </div>
 
+      <QuotaFiltersForm countries={catalogCountries} regionsByCountry={regionsByCountry} />
+
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
               <th>País</th>
               <th>Región</th>
-              <th>Nivel</th>
+              <th>Dimensión</th>
+              <th>Valor</th>
               <th>Objetivo</th>
               <th>Conseguidos</th>
               <th>Disponibles</th>
@@ -78,10 +114,13 @@ export default async function QuotasPage() {
             </tr>
           </thead>
           <tbody>
+            <NewQuotaTargetRow countries={catalogCountries} regionsByCountry={regionsByCountry} />
             {sorted.length === 0 ? (
               <tr>
-                <td colSpan={8} className={styles.empty}>
-                  Aún no hay cuotas configuradas. Importa el Excel de Kantar o crea una manualmente.
+                <td colSpan={9} className={styles.empty}>
+                  {hasActiveFilters
+                    ? 'Ninguna cuota coincide con los filtros actuales.'
+                    : 'Aún no hay cuotas configuradas. Importa el Excel de Kantar o crea una manualmente.'}
                 </td>
               </tr>
             ) : (
@@ -90,6 +129,16 @@ export default async function QuotasPage() {
           </tbody>
         </table>
       </div>
+
+      <section id="region-caps" className={styles.regionCapsSection}>
+        <h2 className={styles.title}>Tope agregado por región</h2>
+        <p className={styles.sub}>
+          Límite manual de leads calificados por región, independiente de las dimensiones — evita
+          concentrar el reclutamiento en una sola región. Los leads calificados por embarazo/bebé
+          cuentan en el total pero nunca son bloqueados por este tope.
+        </p>
+        <RegionCapForm caps={regionCaps} countries={catalogCountries} regionsByCountry={regionsByCountry} />
+      </section>
     </div>
   )
 }

@@ -39,6 +39,7 @@ export function canonicalCountry(raw: string): string | null {
     honduras: 'Honduras',
     'republica dominicana': 'Rep. Dominicana',
     'rep dominicana': 'Rep. Dominicana',
+    dominicana: 'Rep. Dominicana',
     'dominican republic': 'Rep. Dominicana',
     rd: 'Rep. Dominicana',
   }

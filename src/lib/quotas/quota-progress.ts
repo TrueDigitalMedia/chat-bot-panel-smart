@@ -18,7 +18,8 @@ export interface QuotaProgress {
   id: string
   country: string
   region: string
-  nseLevel: string
+  dimensionType: string
+  dimensionValue: string
   target: number
   achieved: number
   available: number
@@ -32,7 +33,8 @@ export interface QuotaTargetRow {
   id: string
   country: string
   region: string
-  nseLevel: string
+  dimensionType: string
+  dimensionValue: string
   targetCount: number
   active: boolean
   notes: string | null
@@ -48,7 +50,8 @@ export function toProgress(row: QuotaTargetRow, achieved: number): QuotaProgress
     id: row.id,
     country: row.country,
     region: row.region,
-    nseLevel: row.nseLevel,
+    dimensionType: row.dimensionType,
+    dimensionValue: row.dimensionValue,
     target: row.targetCount,
     achieved,
     available,
@@ -65,15 +68,23 @@ interface AchievedFilters {
   dateTo?: Date
 }
 
+/**
+ * Counts leads attributed to this exact dimension cell — i.e. leads whose
+ * `quota_matched_dimension`/`quota_matched_value` equal this cell, not merely leads that
+ * also happen to have this NSE/edad/integrantes value (see research.md R4 — a lead only
+ * decrements the one dimension that qualified it, not every dimension it satisfies).
+ */
 async function countAchieved(
   country: string,
   region: string,
-  nseLevel: string,
+  dimensionType: string,
+  dimensionValue: string,
   extra: AchievedFilters = {},
 ): Promise<number> {
   const conditions: SQL[] = [
     inArray(leads.leadStatus, QUALIFIED_STATUSES),
-    eq(leads.quotaSegment, nseLevel),
+    eq(leads.quotaMatchedDimension, dimensionType),
+    eq(leads.quotaMatchedValue, dimensionValue),
     eq(surveyProfiles.country, country),
     eq(surveyProfiles.nseRegion, region),
   ]
@@ -89,11 +100,12 @@ async function countAchieved(
   return row?.count ?? 0
 }
 
-/** Progress for a single country+region+nseLevel combination, or null if no target row exists. */
+/** Progress for a single country+region+dimension combination, or null if no target row exists. */
 export async function getQuotaProgressForTarget(
   country: string,
   region: string,
-  nseLevel: string,
+  dimensionType: string,
+  dimensionValue: string,
 ): Promise<QuotaProgress | null> {
   const [row] = await db
     .select()
@@ -102,21 +114,23 @@ export async function getQuotaProgressForTarget(
       and(
         eq(quotaTargets.country, country),
         eq(quotaTargets.region, region),
-        eq(quotaTargets.nseLevel, nseLevel),
+        eq(quotaTargets.dimensionType, dimensionType),
+        eq(quotaTargets.dimensionValue, dimensionValue),
       ),
     )
     .limit(1)
 
   if (!row) return null
 
-  const achieved = await countAchieved(country, region, nseLevel)
+  const achieved = await countAchieved(country, region, dimensionType, dimensionValue)
   return toProgress(row, achieved)
 }
 
 export interface QuotaProgressFilters {
   country?: string
   region?: string
-  nseLevel?: string
+  dimensionType?: string
+  dimensionValue?: string
   active?: boolean
   /** Dashboard-only filters (spec 006) — narrow the "achieved" count, not which target rows are listed. */
   channel?: Channel
@@ -129,7 +143,8 @@ export async function listQuotaProgress(filters: QuotaProgressFilters = {}): Pro
   const conditions: SQL[] = []
   if (filters.country) conditions.push(eq(quotaTargets.country, filters.country))
   if (filters.region) conditions.push(eq(quotaTargets.region, filters.region))
-  if (filters.nseLevel) conditions.push(eq(quotaTargets.nseLevel, filters.nseLevel))
+  if (filters.dimensionType) conditions.push(eq(quotaTargets.dimensionType, filters.dimensionType))
+  if (filters.dimensionValue) conditions.push(eq(quotaTargets.dimensionValue, filters.dimensionValue))
   if (filters.active !== undefined) conditions.push(eq(quotaTargets.active, filters.active))
 
   const rows = await db
@@ -145,7 +160,10 @@ export async function listQuotaProgress(filters: QuotaProgressFilters = {}): Pro
 
   return Promise.all(
     rows.map(async (row) =>
-      toProgress(row, await countAchieved(row.country, row.region, row.nseLevel, achievedFilters)),
+      toProgress(
+        row,
+        await countAchieved(row.country, row.region, row.dimensionType, row.dimensionValue, achievedFilters),
+      ),
     ),
   )
 }

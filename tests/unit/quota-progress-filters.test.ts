@@ -30,7 +30,8 @@ let targetRows: Array<{
   id: string
   country: string
   region: string
-  nseLevel: string
+  dimensionType: string
+  dimensionValue: string
   targetCount: number
   active: boolean
   notes: string | null
@@ -64,7 +65,8 @@ describe('listQuotaProgress — channel/date-range filters (T011, additive to sp
         id: 't1',
         country: 'Guatemala',
         region: 'Centro I',
-        nseLevel: 'Nivel 2',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
         targetCount: 50,
         active: true,
         notes: null,

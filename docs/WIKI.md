@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-19 (specs 006, 007, 008, 009)
+> Última actualización: 2026-07-20 (spec 011: cuotas flexibles por dimensión, implementado — ver §8.1)
 
 ---
 
@@ -14,6 +14,7 @@
 6. [Fórmula de Scoring SCL-CAM (Kantar Worldpanel)](#6-fórmula-de-scoring-scl-cam-kantar-worldpanel)
 7. [Gaps entre la fórmula SCL-CAM y la implementación actual](#7-gaps-entre-la-fórmula-scl-cam-y-la-implementación-actual)
 8. [Sistema de cuotas actual (Kantar Quotas Test)](#8-sistema-de-cuotas-actual-kantar-quotas-test)
+   - 8.1 [Cuotas flexibles por dimensión (2026-07-20)](#81-cuotas-flexibles-por-dimensión-2026-07-20)
 9. [Plan: Panel Administrativo de Cuotas](#9-plan-panel-administrativo-de-cuotas)
 10. [Plan: Dashboard de Leads](#10-plan-dashboard-de-leads)
 11. [Estado de implementación por feature](#11-estado-de-implementación-por-feature)
@@ -316,6 +317,8 @@ El Excel actualizado usa **Masculino/Femenino**; el código usaba **Hombre/Mujer
 
 ## 8. Sistema de cuotas actual (Kantar Quotas Test)
 
+> ⚠️ **Superado desde 2026-07-20.** La regla de matching descrita en esta sección (país + región + NSE deben coincidir simultáneamente) queda reemplazada por el modelo de **cuotas flexibles por dimensión** — ver [§8.1](#81-cuotas-flexibles-por-dimensión-2026-07-20). Esta sección se conserva como referencia histórica del diseño original (`specs/005-quota-admin-panel`).
+
 El archivo `docs/Kantar Quotas Test.xlsx` contiene las cuotas objetivo por país, región y nivel socioeconómico.
 
 ### Estructura del archivo
@@ -363,6 +366,45 @@ Regiones y estado actual (al momento del análisis):
 ### Hoja Ecuador
 
 5 niveles: **A, B, C, D, E** — por región (Costa Norte, Costa Sur, Guayaquil Sur, Quito Norte/Sur, Santo Domingo, etc.). Total: 146 leads objetivo, 0 conseguidos.
+
+---
+
+## 8.1 Cuotas flexibles por dimensión (2026-07-20)
+
+> ✅ **Implementado** en `specs/011-flexible-quota-matching`. `quota_targets` ahora usa `dimension_type`/`dimension_value` (NSE, edad, integrantes) en vez de un único `nse_level`; nueva tabla `quota_region_caps` para el tope agregado manual por región; `leads.quota_matched_dimension`/`quota_matched_value` registran qué condición calificó a cada lead. Ver [Principio IV de la constitution](/.specify/memory/constitution.md), `specs/011-flexible-quota-matching/data-model.md` y `contracts/quota-check-contract.md`.
+
+### Qué cambia respecto al modelo anterior (§8)
+
+Hoy la elegibilidad exige que **país + región + NSE** coincidan a la vez contra una única fila de `quota_targets` (`specs/005-quota-admin-panel`). El negocio pidió flexibilizar esto para todos los países:
+
+1. **Matching OR por dimensión, no AND combinado.** Un lead califica si cumple **al menos una** condición de cuota disponible entre sus dimensiones — NSE, edad, o tamaño de hogar — dentro de su región. Ya no es necesario que todas coincidan al mismo tiempo.
+2. **Todas las regiones están abiertas.** Se puede reclutar de cualquier región, siempre que cumpla alguna de las condiciones requeridas.
+3. **Excepción sin límite: embarazo o bebé 0-36 meses.** Si el hogar tiene una embarazada o un bebé de hasta 36 meses, el lead califica como panelista sin importar NSE, edad o integrantes, y sin tope de cuota.
+4. **Tope agregado por región.** Para evitar saturar una sola región, cada región debe tener un límite máximo agregado de leads que bloquee nuevos registros al alcanzarse, incluso si alguna dimensión individual (NSE/edad/integrantes) sigue con cupo disponible. El valor exacto de este tope se define en el spec.
+
+### Estructura de datos (por celda, no por combinación)
+
+Confirmado con los archivos fuente adjuntos por el negocio: `docs/Muestra Faltante por País Julio 2026_True.xlsx` (una hoja por país; filas = región, columnas = celdas de cuota independientes) y `docs/Muestra Regiones NSE CAM.xlsx` (catálogo departamento/municipio → región, mismo catálogo que ya usa `data/geo/cam-nse-regions.json`).
+
+Columnas de la hoja por país (ejemplo Honduras):
+
+| Región | SCL1 | SCL2 | SCL3 | SCL4 | Embarazadas y bebés Hasta 36m | Hasta 34 | 35 a 49 | 50+ | 1 a 2 | 3 a 4 | 5+ |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+
+Cada celda es un cupo independiente (leads faltantes para esa condición en esa región); la columna de embarazadas/bebés no lleva tope.
+
+### Ejemplos (del negocio, verificados contra el Excel)
+
+- **Honduras – Nor Occidente I** — SCL1=0, SCL2=0, SCL3=0, 50+=0 (sin cupo), pero **5+ integrantes = 22** (con cupo) → el lead califica por la condición de integrantes, aunque no cumpla NSE ni edad.
+- **Honduras – Centro I** — 35 a 49 años=0, 3 a 4 integrantes=0 (sin cupo), pero **SCL4 = 16** (con cupo) → el lead califica por NSE, aunque las demás características no coincidan.
+- **RD – Suroeste** — SCL1 no tiene cupo (0), pero un usuario de hasta 34 años sí puede calificar mientras esa cuota de edad tenga cupo disponible; si esa cuota de edad se agota, el mismo tipo de usuario aún puede calificar si su hogar tiene 5+ integrantes (cuota de integrantes con cupo).
+
+### Fuente de datos
+
+Reemplaza a `docs/Kantar Quotas Test.xlsx` (§8) como insumo de cuotas:
+
+- `docs/Muestra Faltante por País Julio 2026_True.xlsx` — cuotas faltantes por país/región/dimensión (hojas: Dominicana, Costa Rica, El Salvador, Guatemala, Honduras, Nicaragua, Panamá, Ecuador, México)
+- `docs/Muestra Regiones NSE CAM.xlsx` — catálogo departamento/municipio → región por país
 
 ---
 
@@ -570,6 +612,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - **Preguntas nuevas de Fase 1**: opt-in inicial (nuevo decision point antes de D1), edad, embarazo, bebé < 3 años — cuotas extra sin impacto en el score NSE (spec `007-fase1-new-survey-questions`)
 - **Fase 4 interactiva (Ficha Hogar)**: cuestionario de 7 preguntas con motor de estado propio (`ficha_hogar_profiles`), gate de descarte por conflicto de interés (P1), corrección de respuestas, y merge de datos en el resumen AI/Treinta (spec `008-ficha-hogar-interactive`)
 - **Login + sidebar de admin**: `/` es ahora el formulario de login (reemplaza el Basic Auth); sesión vía cookie firmada (HMAC, sin tabla en DB); todas las páginas internas (`/admin/quotas`, `/admin/dashboard`, `/admin/conversations`) viven detrás del mismo gate y comparten un sidebar colapsable (shadcn/ui) para navegar entre secciones; `/api/conversations/*` y `/api/evals/*` también quedaron protegidos (antes eran públicos); URLs viejas (`/conversations`) redirigen a su nueva ubicación (spec `009-admin-login-sidebar`)
+- **Cuotas flexibles por dimensión**: matching OR entre NSE/edad/integrantes (calificar por cualquier dimensión con cupo, no las tres a la vez), todas las regiones abiertas, tope agregado manual por región (`quota_region_caps`), excepción sin límite para embarazo/bebé — ver [§8.1](#81-cuotas-flexibles-por-dimensión-2026-07-20) (spec `011-flexible-quota-matching`)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 

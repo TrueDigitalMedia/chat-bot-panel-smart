@@ -1,60 +1,67 @@
 import * as XLSX from 'xlsx'
 import { listQuotaProgress, type QuotaProgress } from './quota-progress'
 
-const NSE_LEVEL_ORDER = ['Nivel 1', 'Nivel 2', 'Nivel 3', 'Nivel 4']
+const DIMENSION_COLUMNS: Array<{ dimensionType: string; dimensionValue: string; header: string }> = [
+  { dimensionType: 'nse', dimensionValue: 'Nivel 1', header: 'SCL1' },
+  { dimensionType: 'nse', dimensionValue: 'Nivel 2', header: 'SCL2' },
+  { dimensionType: 'nse', dimensionValue: 'Nivel 3', header: 'SCL3' },
+  { dimensionType: 'nse', dimensionValue: 'Nivel 4', header: 'SCL4' },
+  { dimensionType: 'edad', dimensionValue: 'Hasta 34', header: 'Hasta 34' },
+  { dimensionType: 'edad', dimensionValue: '35 a 49', header: '35 a 49' },
+  { dimensionType: 'edad', dimensionValue: '50+', header: '50+' },
+  { dimensionType: 'integrantes', dimensionValue: '1 a 2', header: '1 a 2' },
+  { dimensionType: 'integrantes', dimensionValue: '3 a 4', header: '3 a 4' },
+  { dimensionType: 'integrantes', dimensionValue: '5+', header: '5+' },
+]
 
 /**
- * Builds an .xlsx workbook shaped like `docs/Kantar Quotas Test.xlsx`'s CAM sheet, so it
- * round-trips through `importQuotaTargetsFromWorkbook` (excel-import.ts).
+ * Builds an .xlsx workbook shaped like `docs/Muestra Faltante por País Julio 2026_True.xlsx`
+ * (one sheet per country, dimension columns per region), so it round-trips through
+ * `importQuotaTargetsFromWorkbook` (excel-import.ts). Exports `target` (not achieved/available)
+ * per cell, matching the import format.
  */
 export async function exportQuotaTargetsToWorkbook(): Promise<Buffer> {
   const items = await listQuotaProgress()
 
-  const groups = new Map<string, { country: string; region: string; byLevel: Map<string, QuotaProgress> }>()
+  const byCountry = new Map<string, Map<string, Map<string, QuotaProgress>>>()
   for (const item of items) {
-    const key = `${item.country}|${item.region}`
-    let group = groups.get(key)
-    if (!group) {
-      group = { country: item.country, region: item.region, byLevel: new Map() }
-      groups.set(key, group)
+    let regions = byCountry.get(item.country)
+    if (!regions) {
+      regions = new Map()
+      byCountry.set(item.country, regions)
     }
-    group.byLevel.set(item.nseLevel, item)
+    let cells = regions.get(item.region)
+    if (!cells) {
+      cells = new Map()
+      regions.set(item.region, cells)
+    }
+    cells.set(`${item.dimensionType}|${item.dimensionValue}`, item)
   }
 
-  const rows: unknown[][] = [
-    [' ', 'Nivel 1', '', '', 'Nivel 2', '', '', 'Nivel 3', '', '', 'Nivel 4', '', ''],
-    [
-      '',
-      'Objetivo',
-      'Conseguidos',
-      'Disponibles',
-      'Objetivo',
-      'Conseguidos',
-      'Disponibles',
-      'Objetivo',
-      'Conseguidos',
-      'Disponibles',
-      'Objetivo',
-      'Conseguidos',
-      'Disponibles',
-    ],
-  ]
-
-  const sortedGroups = [...groups.values()].sort(
-    (a, b) => a.country.localeCompare(b.country) || a.region.localeCompare(b.region),
-  )
-
-  for (const group of sortedGroups) {
-    const row: unknown[] = [`${group.country} - ${group.region}`]
-    for (const level of NSE_LEVEL_ORDER) {
-      const item = group.byLevel.get(level)
-      row.push(item?.target ?? 0, item?.achieved ?? 0, item?.available ?? 0)
-    }
-    rows.push(row)
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(rows)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'CAM')
+
+  const sortedCountries = [...byCountry.keys()].sort()
+  for (const country of sortedCountries) {
+    const regions = byCountry.get(country)!
+    const rows: unknown[][] = [
+      [' ', ...DIMENSION_COLUMNS.map((c) => c.header)],
+    ]
+
+    const sortedRegions = [...regions.keys()].sort()
+    for (const region of sortedRegions) {
+      const cells = regions.get(region)!
+      const row: unknown[] = [`${region} / ${country}`]
+      for (const { dimensionType, dimensionValue } of DIMENSION_COLUMNS) {
+        const item = cells.get(`${dimensionType}|${dimensionValue}`)
+        row.push(item?.target ?? '')
+      }
+      rows.push(row)
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+    // Sheet names are capped at 31 chars and can't contain []/\?*: — country names here are safe.
+    XLSX.utils.book_append_sheet(wb, ws, country)
+  }
+
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
 }

@@ -1,14 +1,15 @@
 <!--
 SYNC IMPACT REPORT
-Version change: (none) → 1.0.0
-Modified principles: N/A — initial ratification
-Added sections: Core Principles (3), Technology Stack, Development Workflow, Governance
+Version change: 1.0.0 → 1.1.0
+Modified principles: N/A
+Added sections: Core Principles — IV. Flexible Quota Eligibility (new)
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ Reviewed — generic structure applies; no changes needed
+  - .specify/templates/plan-template.md ⚠ Pending — Constitution Check section should reference Principle IV for any feature touching quota_targets, NSE scoring, or lead capture
   - .specify/templates/spec-template.md ✅ Reviewed — generic structure applies; no changes needed
   - .specify/templates/tasks-template.md ✅ Reviewed — generic structure applies; no changes needed
-Follow-up TODOs: None — all placeholders resolved
+Follow-up TODOs:
+  - specs/011-flexible-quota-matching (or next available number): formalize this principle into a spec via /speckit-specify — data model for per-dimension quotas (NSE, edad, integrantes), open-region matching, per-region aggregate cap, and the unlimited pregnancy/baby-under-36-months exception.
 -->
 
 # AI Chat Platform Constitution
@@ -56,6 +57,29 @@ Complexity MUST be justified before it is introduced:
 **Rationale**: This is a new project with evolving requirements. Over-engineering early kills velocity
 and makes pivots expensive.
 
+### IV. Flexible Quota Eligibility
+
+Panelist quota eligibility MUST be evaluated as independent, OR-combined dimensions, never as a single
+combined key that all conditions must satisfy at once:
+
+- A lead qualifies if it satisfies **at least one** available quota condition among its independent
+  dimensions (NSE level, age band, household size) — matching all dimensions simultaneously MUST NOT
+  be required.
+- Every region MUST be open for recruitment; no region may be excluded from matching ahead of time.
+- Each region MUST enforce an aggregate cap on total accepted leads, independent of per-dimension quotas,
+  that blocks new registrations once reached — even if an individual dimension still has room. This
+  exists to prevent over-concentration in a single region.
+- A household reporting a pregnancy or a baby aged 0–36 months MUST always qualify, with no quota limit,
+  regardless of NSE level, age band, or household size.
+- This rule applies uniformly across all countries served by the platform. Any plan that touches
+  `quota_targets`, NSE/SCL scoring, or the lead capture flow MUST verify compliance with this principle
+  in its Constitution Check section.
+
+**Rationale**: Requiring simultaneous region+NSE match under-fills quotas and rejects otherwise-valid
+leads that satisfy a different open dimension. The business now prioritizes filling any open quota cell
+over exact combined matches, while an aggregate per-region cap keeps recruitment from concentrating in
+whichever region is easiest to qualify for.
+
 ## Technology Stack
 
 This project is built on the following foundation. All implementation decisions MUST respect these
@@ -101,4 +125,4 @@ source of development principles for the AI Chat Platform.
   Tracking table with explicit justification.
 - Refer to `.specify/` for runtime development guidance and workflow tooling.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-07
+**Version**: 1.1.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-20

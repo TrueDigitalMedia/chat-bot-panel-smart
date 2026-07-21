@@ -6,11 +6,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url)
   const country = searchParams.get('country') ?? undefined
   const region = searchParams.get('region') ?? undefined
-  const nseLevel = searchParams.get('nseLevel') ?? undefined
+  const dimensionType = searchParams.get('dimensionType') ?? undefined
+  const dimensionValue = searchParams.get('dimensionValue') ?? undefined
   const activeParam = searchParams.get('active')
   const active = activeParam == null ? undefined : activeParam === 'true'
 
-  const items = await listQuotaProgress({ country, region, nseLevel, active })
+  const items = await listQuotaProgress({ country, region, dimensionType, dimensionValue, active })
 
   const summary = items.reduce(
     (acc, item) => {
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const row = await createQuotaTarget({
       country: body.country,
       region: body.region,
-      nseLevel: body.nseLevel,
+      dimensionType: body.dimensionType,
+      dimensionValue: body.dimensionValue,
       targetCount: body.targetCount,
       notes: body.notes ?? null,
     })
@@ -40,7 +42,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     if (err instanceof QuotaTargetError) {
       return NextResponse.json(
-        { error: err.code, ...(err.validRegions ? { validRegions: err.validRegions } : {}) },
+        {
+          error: err.code,
+          ...(err.validRegions ? { validRegions: err.validRegions } : {}),
+          ...(err.validValues ? { validValues: err.validValues } : {}),
+        },
         { status: 400 },
       )
     }

@@ -294,18 +294,31 @@ export async function handlePhase1(
 
   await db.update(leads).set({ score, quotaSegment: segment, updatedAt: new Date() }).where(eq(leads.id, lead.id))
 
-  const hasQuota = await checkQuotaAvailability({
+  const quotaDecision = await checkQuotaAvailability({
     country: profile.country ?? '',
     nseRegion: profile.nseRegion ?? '',
     segment,
+    age: profile.age,
+    householdSize: profile.householdSize,
+    isPregnant: profile.isPregnant,
+    hasBabyUnder3: profile.hasBabyUnder3,
     leadId: lead.id,
   })
-  if (!hasQuota) {
+  if (!quotaDecision.qualifies) {
     await transitionLead(lead.id, 'quota_exhausted', 'survey_complete_no_quota', correlationId)
     await sendText(to, EXIT_B)
     await sendText(to, EXIT_B_THANKS)
     return
   }
+
+  await db
+    .update(leads)
+    .set({
+      quotaMatchedDimension: quotaDecision.matchedDimension,
+      quotaMatchedValue: quotaDecision.matchedValue,
+      updatedAt: new Date(),
+    })
+    .where(eq(leads.id, lead.id))
 
   // Advance to Phase 2
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)

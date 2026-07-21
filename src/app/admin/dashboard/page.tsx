@@ -17,7 +17,7 @@ function pctColorClass(pct: number): string {
 interface DashboardSearchParams {
   country?: string
   region?: string
-  nseLevel?: string
+  dimensionValue?: string
   channel?: string
   from?: string
   to?: string
@@ -33,15 +33,20 @@ export default async function DashboardPage({
   const dateFrom = params.from ? new Date(params.from) : undefined
   const dateTo = params.to ? new Date(params.to) : undefined
 
+  // dimensionType: 'nse' — this dashboard (spec 006) predates the edad/integrantes
+  // dimensions (spec 011); keeping it scoped to NSE preserves its historical meaning
+  // (Objetivo/Conseguidos totals stay comparable to before) instead of summing three
+  // independent OR-matched dimensions into one misleading number.
   const items = await listQuotaProgress({
     country: params.country || undefined,
     region: params.region || undefined,
-    nseLevel: params.nseLevel || undefined,
+    dimensionType: 'nse',
+    dimensionValue: params.dimensionValue || undefined,
     channel,
     dateFrom,
     dateTo,
   })
-  // Deliberately no region/nseLevel here — research.md R4 (assigned upstream of NSE/region).
+  // Deliberately no region/dimensionValue here — research.md R4 (assigned upstream of NSE/region).
   const funnel = await getConversionFunnel({
     country: params.country || undefined,
     channel,
@@ -72,7 +77,7 @@ export default async function DashboardPage({
     (a, b) =>
       a.country.localeCompare(b.country) ||
       a.region.localeCompare(b.region) ||
-      a.nseLevel.localeCompare(b.nseLevel),
+      a.dimensionValue.localeCompare(b.dimensionValue),
   )
 
   return (
@@ -91,7 +96,7 @@ export default async function DashboardPage({
       </header>
 
       <div className={styles.section}>
-        <FiltersForm countries={catalogCountries} nseLevels={NSE_LEVELS} regionsByCountry={regionsByCountry} />
+        <FiltersForm countries={catalogCountries} dimensionValues={NSE_LEVELS} regionsByCountry={regionsByCountry} />
       </div>
 
       <div className={styles.section}>
@@ -146,7 +151,7 @@ export default async function DashboardPage({
               <tr>
                 <th>País</th>
                 <th>Región</th>
-                <th>Nivel</th>
+                <th>Nivel NSE</th>
                 <th>Objetivo</th>
                 <th>Conseguidos</th>
                 <th>Disponibles</th>
@@ -165,7 +170,7 @@ export default async function DashboardPage({
                   <tr key={item.id}>
                     <td>{item.country}</td>
                     <td>{item.region}</td>
-                    <td>{item.nseLevel}</td>
+                    <td>{item.dimensionValue}</td>
                     <td>{item.target}</td>
                     <td>{item.achieved}</td>
                     <td>{item.available}</td>

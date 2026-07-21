@@ -42,7 +42,8 @@ export function QuotaRowForm({ item }: { item: QuotaProgress }) {
     <tr className={!item.active ? styles.inactiveRow : undefined}>
       <td>{item.country}</td>
       <td>{item.region}</td>
-      <td>{item.nseLevel}</td>
+      <td>{item.dimensionType}</td>
+      <td>{item.dimensionValue}</td>
       <td>
         <input
           type="number"

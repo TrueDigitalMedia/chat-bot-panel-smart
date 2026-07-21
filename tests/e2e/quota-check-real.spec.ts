@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test'
 
 // Real quota-check smoke test (Quickstart §4). Requires a running dev server with a test
-// Postgres DB. The `checkQuotaAvailability` decision logic itself (available/unavailable,
-// no-target-row, active/inactive) is exhaustively unit-tested with mocks in
-// tests/unit/quota-progress.test.ts — this file only confirms the webhook layer still
-// wires up correctly end-to-end after the call-site signature change in phase-1.ts and
-// handle-confirm.ts (spec 005 T008/T009), the same shallow-smoke style as
+// Postgres DB. The `checkQuotaAvailability` decision logic itself — including the
+// OR-matching across NSE/edad/integrantes that lets a lead qualify via any one dimension
+// regardless of region (spec 011 US1/US2, e.g. the Honduras Nor Occidente I / Centro I
+// examples), the pregnancy/baby exception (US3), and the region aggregate cap (US4) — is
+// exhaustively unit-tested with mocks in tests/unit/quota-check.test.ts and
+// tests/unit/quota-region-caps.test.ts. This file only confirms the webhook layer still
+// wires up correctly end-to-end after the call-site signature changes in phase-1.ts and
+// handle-confirm.ts (spec 005 T008/T009, spec 011 T011/T012 — checkQuotaAvailability now
+// returns a QuotaDecision instead of a boolean), the same shallow-smoke style as
 // tests/e2e/phase-1-qualify.spec.ts and tests/e2e/phase-1-disqualify.spec.ts.
 
 const TEST_CHAT_ID = 999005001

@@ -19,14 +19,38 @@ export const quotaTargets = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     country: varchar('country', { length: 50 }).notNull(),
     region: varchar('region', { length: 100 }).notNull(),
-    nseLevel: varchar('nse_level', { length: 20 }).notNull(),
+    /** 'nse' | 'edad' | 'integrantes' — see specs/011-flexible-quota-matching/data-model.md. */
+    dimensionType: varchar('dimension_type', { length: 20 }).notNull(),
+    dimensionValue: varchar('dimension_value', { length: 20 }).notNull(),
     targetCount: integer('target_count').notNull().default(0),
     active: boolean('active').notNull().default(true),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('quota_targets_country_region_nse_idx').on(t.country, t.region, t.nseLevel)],
+  (t) => [
+    uniqueIndex('quota_targets_country_region_dim_idx').on(
+      t.country,
+      t.region,
+      t.dimensionType,
+      t.dimensionValue,
+    ),
+  ],
+)
+
+export const quotaRegionCaps = pgTable(
+  'quota_region_caps',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    country: varchar('country', { length: 50 }).notNull(),
+    region: varchar('region', { length: 100 }).notNull(),
+    /** NULL = sin tope (no bloquea por saturación). */
+    capCount: integer('cap_count'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('quota_region_caps_country_region_idx').on(t.country, t.region)],
 )
 
 export const leadStatusEnum = pgEnum('lead_status', [
@@ -57,6 +81,9 @@ export const leads = pgTable(
     currentPhase: smallint('current_phase').notNull().default(1),
     surveyQuestionIndex: smallint('survey_question_index').notNull().default(0),
     quotaSegment: varchar('quota_segment', { length: 50 }),
+    /** Qué dimensión calificó al lead: 'nse' | 'edad' | 'integrantes' | 'exception' | NULL. */
+    quotaMatchedDimension: varchar('quota_matched_dimension', { length: 20 }),
+    quotaMatchedValue: varchar('quota_matched_value', { length: 20 }),
     score: smallint('score'),
     optInAccepted: boolean('opt_in_accepted').notNull().default(false),
     d1Accepted: boolean('d1_accepted').notNull().default(false),
