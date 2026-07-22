@@ -50,6 +50,10 @@ const envSchema = z.object({
   CLIENT_MYSQL_TENANT_ID: z.string().min(1).optional(),
   CLIENT_MYSQL_LEAD_VERSION: z.string().min(1).optional(),
   CLIENT_MYSQL_SSL_CA: z.string().min(1).optional(),
+
+  /** TDM's registration_code write-back isn't live yet — deliver a mock code instead of
+   *  polling tb_leads_agente_ia. Toggle off once that side is active. */
+  REGISTRATION_CODE_MOCK_ENABLED: z.coerce.boolean().default(false),
 })
 
 function validateEnv() {

@@ -31,6 +31,11 @@ const receiver = new Receiver({
   nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY,
 })
 
+/** Deterministic per-lead placeholder — only used while REGISTRATION_CODE_MOCK_ENABLED=true. */
+function mockRegistrationCode(leadId: string): string {
+  return `MOCK-${leadId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
   const signature = request.headers.get('Upstash-Signature') ?? ''
@@ -51,7 +56,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // polls for it. First attempt fires PHASE2_CODE_DELAY_SECONDS after link_sent
   // (phase-2.ts); if the column is still empty, this re-schedules itself every
   // REGISTRATION_CODE_POLL_DELAY_SECONDS up to MAX_REGISTRATION_CODE_POLL_ATTEMPTS.
+  // REGISTRATION_CODE_MOCK_ENABLED=true bypasses all of that (TDM's write-back side
+  // isn't live yet) and delivers a mock code immediately — flip it off once it is.
   if (payload.action === 'trigger_code') {
+    if (env.REGISTRATION_CODE_MOCK_ENABLED) {
+      // TDM's registration_code write-back isn't live yet — skip the real lookup
+      // entirely and deliver a mock code, same shape as the old mock-registration.ts.
+      const code = mockRegistrationCode(lead.id)
+      await transitionLead(lead.id, 'waiting_for_code', 'code_triggered', correlationId)
+
+      if (ONBOARDING_VIDEO) {
+        await sendVideo(lead, ONBOARDING_VIDEO, `🎬 Código mock: ${code}`)
+      }
+
+      await sendInlineKeyboard(
+        lead,
+        `✅ Tu código de registro (mock) es: ${code}\n\n` +
+          `Cuando hayas “activado” la app con ese código, confirma aquí:`,
+        [
+          [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
+          [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
+        ],
+      )
+      return NextResponse.json({ outcome: 'code_sent', code, mock: true })
+    }
+
     if (!isClientMysqlSyncEnabled()) {
       // Deliberately no mock fallback — without a real TDM sync there is no
       // registration_code column to read, so this can never succeed (confirmed
