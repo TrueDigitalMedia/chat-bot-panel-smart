@@ -89,3 +89,16 @@ export function isClientMysqlConfigured(): boolean {
 export function isClientMysqlSyncEnabled(): boolean {
   return env.CLIENT_MYSQL_SYNC_ENABLED && isClientMysqlConfigured()
 }
+
+/**
+ * Publicly-reachable base URL for building absolute links (mock app download links,
+ * QStash job callback URLs) — must resolve the same way everywhere it's used. A caller
+ * that only checks `NEXT_PUBLIC_BASE_URL`/`VERCEL_URL` and skips `APP_BASE_URL` will
+ * silently fall back to `localhost`, which QStash cannot call back into.
+ */
+export function appBaseUrl(): string {
+  if (env.APP_BASE_URL) return env.APP_BASE_URL.replace(/\/$/, '')
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '')
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return 'http://localhost:3000'
+}

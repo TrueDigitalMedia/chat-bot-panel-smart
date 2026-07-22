@@ -2,16 +2,21 @@
 
 Supersedes the write side ("§1 Sync qualified lead") of
 [client-mysql-integration.md](../../001-panelsmart-recruitment-bot/contracts/client-mysql-integration.md)
-now that the real target table is known. That doc's §2/§3 (registration code lookup /
-outcome monitoring) are unaffected and remain unimplemented — out of scope here.
+now that the real target table is known. That doc's §2 (registration code lookup) was
+implemented on 2026-07-22 — see [registration-code.ts](../../../src/lib/tdm-mysql/registration-code.ts)
+and the `trigger_code` job handler in
+[api/jobs/re-engage/route.ts](../../../src/app/api/jobs/re-engage/route.ts). §3
+(outcome monitoring) remains Option A only (user confirmation buttons) — unaffected.
 
 ## Direction
 
-**Write-only.** This feature never issues a `SELECT` against `tb_leads_agente_ia` and
-never depends on any column TDM's internal process writes back into it
-(`kantar_panelist_id`, `registration_code`, etc. — see
-[data-model.md](../data-model.md) §2e). Confirming that those columns hold what we expect,
-or reading them, is out of scope for this feature (spec FR-012).
+**Mostly write-only, with one read.** This feature's sync path (`buildLeadRow`/
+`syncLead`) never issues a `SELECT` and never depends on any column TDM's internal
+process writes back (`kantar_panelist_id`, etc. — see [data-model.md](../data-model.md)
+§2e — those remain out of scope, spec FR-012). The one exception is `registration_code`:
+once a lead is `link_sent`, a polling job reads that single column back (keyed by
+`tdmLeadId`) to deliver the real code TDM generated — see
+[client-mysql-integration.md §2](../../001-panelsmart-recruitment-bot/contracts/client-mysql-integration.md).
 
 ## Operations
 

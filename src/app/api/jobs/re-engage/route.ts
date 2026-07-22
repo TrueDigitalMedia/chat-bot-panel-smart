@@ -4,14 +4,21 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { triggerRegistrationCode } from '@/lib/onboarding/mock-registration'
+import { fetchRegistrationCode } from '@/lib/tdm-mysql/registration-code'
+import { isClientMysqlSyncEnabled } from '@/lib/tdm-mysql/client'
+import { logCall } from '@/lib/db/call-log'
 import {
   REGISTER_CALLBACK_NO,
   REGISTER_CALLBACK_YES,
 } from '@/lib/onboarding/registration-choice'
 import { sendText, sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
-import { REENGAGEMENT_DELAY_SECONDS, MAX_REENGAGEMENT_ATTEMPTS } from '@/lib/scheduler/constants'
+import {
+  REENGAGEMENT_DELAY_SECONDS,
+  MAX_REENGAGEMENT_ATTEMPTS,
+  REGISTRATION_CODE_POLL_DELAY_SECONDS,
+  MAX_REGISTRATION_CODE_POLL_ATTEMPTS,
+} from '@/lib/scheduler/constants'
 import { getReEngagementMessage } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
 import { env } from '@/lib/env'
@@ -38,29 +45,85 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, payload.leadId))
   if (!lead) return NextResponse.json({ outcome: 'lead_not_found' })
 
-  // --- Mock registration code (Phase 2 timeout) ---
+  // --- Registration code lookup (client-mysql-integration.md §2) ---
+  // TDM's internal process writes `registration_code` into tb_leads_agente_ia on its
+  // own schedule once it creates the panelist — the bot never invents this value, it
+  // polls for it. First attempt fires PHASE2_CODE_DELAY_SECONDS after link_sent
+  // (phase-2.ts); if the column is still empty, this re-schedules itself every
+  // REGISTRATION_CODE_POLL_DELAY_SECONDS up to MAX_REGISTRATION_CODE_POLL_ATTEMPTS.
   if (payload.action === 'trigger_code') {
-    const result = await triggerRegistrationCode(lead.id)
-    if (result.ok) {
+    if (!isClientMysqlSyncEnabled()) {
+      // Deliberately no mock fallback — without a real TDM sync there is no
+      // registration_code column to read, so this can never succeed (confirmed
+      // tradeoff: local/dev testing of this step requires real TDM MySQL credentials).
+      await transitionLead(lead.id, 'abandono', 'code_lookup_sync_disabled', correlationId)
+      return NextResponse.json({ outcome: 'sync_disabled' })
+    }
+
+    if (lead.tdmLeadId == null) {
+      // Sync never actually completed for this lead (write failed or still pending) —
+      // nothing to key the lookup on.
+      await transitionLead(lead.id, 'abandono', 'code_lookup_no_tdm_id', correlationId)
+      return NextResponse.json({ outcome: 'no_tdm_id' })
+    }
+
+    const start = Date.now()
+    let code: string | null = null
+    try {
+      code = await fetchRegistrationCode(lead.tdmLeadId)
+      await logCall({
+        leadId: lead.id,
+        callType: 'tdm_mysql_code_lookup',
+        latencyMs: Date.now() - start,
+        correlationId,
+      })
+    } catch (err) {
+      await logCall({
+        leadId: lead.id,
+        callType: 'tdm_mysql_code_lookup',
+        latencyMs: Date.now() - start,
+        correlationId,
+        error: String(err),
+      }).catch(() => {})
+    }
+
+    if (code) {
       await transitionLead(lead.id, 'waiting_for_code', 'code_triggered', correlationId)
 
       if (ONBOARDING_VIDEO) {
-        await sendVideo(lead, ONBOARDING_VIDEO, `🎬 Código mock: ${result.code}`)
+        await sendVideo(lead, ONBOARDING_VIDEO, `🎬 Código: ${code}`)
       }
 
       await sendInlineKeyboard(
         lead,
-        `✅ Tu código de registro (mock) es: ${result.code}\n\n` +
-          `Cuando hayas “activado” la app con ese código, confirma aquí:`,
+        `✅ Tu código de registro es: ${code}\n\n` +
+          `Cuando hayas activado la app con ese código, confirma aquí:`,
         [
           [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
           [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
         ],
       )
-    } else {
-      await transitionLead(lead.id, 'code_delivered_not_registered', 'code_trigger_failed', correlationId)
+      return NextResponse.json({ outcome: 'code_sent', code })
     }
-    return NextResponse.json({ outcome: result.ok ? 'code_sent' : 'code_failed', code: result.code })
+
+    if (payload.attemptNumber < MAX_REGISTRATION_CODE_POLL_ATTEMPTS) {
+      await scheduleJob(
+        lead.id,
+        payload.phase,
+        payload.attemptNumber + 1,
+        REGISTRATION_CODE_POLL_DELAY_SECONDS,
+        'trigger_code',
+      )
+      return NextResponse.json({ outcome: 'code_pending_retry_scheduled' })
+    }
+
+    // Polling budget exhausted — TDM never wrote a code within the window. From
+    // `link_sent` the only valid next statuses are `waiting_for_code`/`abandono`
+    // (transitions.ts); `code_delivered_not_registered` is reserved for "a code WAS
+    // delivered and the user declined/failed" (registration-choice.ts), which doesn't
+    // apply here since no code was ever sent — `abandono` is the correct give-up state.
+    await transitionLead(lead.id, 'abandono', 'code_lookup_timeout', correlationId)
+    return NextResponse.json({ outcome: 'code_lookup_timeout' })
   }
 
   // --- Registration inactivity freeze (20h) ---

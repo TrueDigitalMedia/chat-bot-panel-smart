@@ -56,6 +56,15 @@ before (or at the start of) Phase 2 link delivery.
 
 ## 2. Registration code lookup (read)
 
+> **Implemented 2026-07-22** — with polling instead of a user-confirmation trigger (the
+> "primary path" below was never built): `phase-2.ts` schedules the first lookup
+> `PHASE2_CODE_DELAY_SECONDS` after `link_sent`; the `trigger_code` job handler
+> ([re-engage/route.ts](../../../src/app/api/jobs/re-engage/route.ts)) re-polls every
+> `REGISTRATION_CODE_POLL_DELAY_SECONDS` up to `MAX_REGISTRATION_CODE_POLL_ATTEMPTS`
+> (`scheduler/constants.ts`) before giving up (→ `abandono`, since no code was ever
+> delivered — `code_delivered_not_registered` doesn't apply, see transitions.ts). No mock
+> fallback when `CLIENT_MYSQL_SYNC_ENABLED=false` (deliberate — confirmed tradeoff).
+
 **Called by**: Chatbot after the user confirms they downloaded the app (primary path).
 
 **Query**: Read the panelist ID / registration code column(s) for the synced lead row.

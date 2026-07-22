@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import type { ExecuteValues, ResultSetHeader } from 'mysql2/promise'
+import type { ExecuteValues, RowDataPacket } from 'mysql2/promise'
 import { db } from '@/lib/db/client'
 import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { logCall } from '@/lib/db/call-log'
@@ -41,18 +41,39 @@ function rowEntries(row: TbLeadsAgenteIaRow): [string, ExecuteValues][] {
   return Object.entries(row).map(([key, value]) => [key, (value ?? null) as ExecuteValues])
 }
 
-/** Plain INSERT of a full row into tb_leads_agente_ia. Returns the assigned AUTO_INCREMENT id. */
+/**
+ * INSERT a full row into tb_leads_agente_ia. `id` is a plain `int NOT NULL PRIMARY KEY`
+ * on the real table — no AUTO_INCREMENT, no default (confirmed via `SHOW CREATE TABLE`,
+ * 2026-07-22) — so we must assign one ourselves: `MAX(id) + 1`, read and inserted inside
+ * one transaction on our single-connection pool (client.ts's `connectionLimit: 1`) to
+ * close the read-then-write race against our own concurrent requests. This can't
+ * protect against TDM's own internal process inserting concurrently on their side; a
+ * genuine collision surfaces as a primary-key violation (thrown, caught by syncLead's
+ * caller) rather than silently overwriting their row, which is the best we can do
+ * without TDM exposing a real id-allocation mechanism.
+ */
 async function insertRow(row: TbLeadsAgenteIaRow): Promise<number> {
   const entries = rowEntries(row)
-  const columns = entries.map(([c]) => c)
-  const values = entries.map(([, v]) => v)
+  const columns = ['id', ...entries.map(([c]) => c)]
   const placeholders = columns.map(() => '?').join(', ')
   const pool = getClientMysqlPool()
-  const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO tb_leads_agente_ia (${columns.join(', ')}) VALUES (${placeholders})`,
-    values,
-  )
-  return result.insertId
+  const conn = await pool.getConnection()
+  try {
+    await conn.beginTransaction()
+    const [rows] = await conn.execute<RowDataPacket[]>('SELECT MAX(id) AS maxId FROM tb_leads_agente_ia FOR UPDATE')
+    const id = (rows[0]?.maxId as number | null ?? 0) + 1
+    await conn.execute(
+      `INSERT INTO tb_leads_agente_ia (${columns.join(', ')}) VALUES (${placeholders})`,
+      [id, ...entries.map(([, v]) => v)] as ExecuteValues[],
+    )
+    await conn.commit()
+    return id
+  } catch (err) {
+    await conn.rollback().catch(() => {})
+    throw err
+  } finally {
+    conn.release()
+  }
 }
 
 /** Plain UPDATE of an existing row, keyed by its MySQL id. */

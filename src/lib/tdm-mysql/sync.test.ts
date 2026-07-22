@@ -3,16 +3,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // `db/client.ts` calls `neon(process.env.POSTGRES_URL!)` at module load, and `env.ts`
 // validates required vars eagerly too — mock both so this unit test doesn't need real
 // credentials (same pattern as tests/unit/ficha-hogar-validation.test.ts). The MySQL
-// pool is mocked separately at `tdm-mysql/client.ts` so `execute()` is a plain vi.fn().
-const { dbMock, isClientMysqlSyncEnabled, poolExecute } = vi.hoisted(() => ({
+// pool is mocked separately at `tdm-mysql/client.ts`: `execute` covers plain UPDATEs,
+// `connMock` covers INSERTs — `id` has no AUTO_INCREMENT on the real table (confirmed
+// 2026-07-22), so insertRow reads MAX(id) and inserts inside a transaction on a
+// dedicated connection (client.ts's `connectionLimit: 1`).
+const { dbMock, isClientMysqlSyncEnabled, poolExecute, connMock } = vi.hoisted(() => ({
   dbMock: { select: vi.fn(), update: vi.fn() },
   isClientMysqlSyncEnabled: vi.fn(),
   poolExecute: vi.fn(),
+  connMock: {
+    execute: vi.fn(),
+    beginTransaction: vi.fn(),
+    commit: vi.fn(),
+    rollback: vi.fn(),
+    release: vi.fn(),
+  },
 }))
 vi.mock('@/lib/db/client', () => ({ db: dbMock }))
 vi.mock('@/lib/db/call-log', () => ({ logCall: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/tdm-mysql/client', () => ({
-  getClientMysqlPool: () => ({ execute: poolExecute }),
+  getClientMysqlPool: () => ({ execute: poolExecute, getConnection: () => Promise.resolve(connMock) }),
   isClientMysqlSyncEnabled: () => isClientMysqlSyncEnabled(),
 }))
 
@@ -115,6 +125,9 @@ describe('syncLead', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(logCall).mockResolvedValue(undefined)
+    connMock.beginTransaction.mockResolvedValue(undefined)
+    connMock.commit.mockResolvedValue(undefined)
+    connMock.rollback.mockResolvedValue(undefined)
   })
 
   it('no-ops and returns true immediately when sync is disabled, without touching the pool', async () => {
@@ -127,21 +140,26 @@ describe('syncLead', () => {
     expect(dbMock.select).not.toHaveBeenCalled()
   })
 
-  it('INSERTs on the first sync (tdmLeadId null), writes tdmLeadId back, and logs success', async () => {
+  it('INSERTs on the first sync (tdmLeadId null) with a MAX(id)+1 id, writes it back, and logs success', async () => {
     isClientMysqlSyncEnabled.mockReturnValue(true)
     dbMock.select
       .mockReturnValueOnce(selectChain([LEAD_ROW]))
       .mockReturnValueOnce(selectChain([PROFILE_ROW]))
       .mockReturnValueOnce(selectChain([])) // no ficha_hogar_profiles row yet
-    poolExecute.mockResolvedValue([{ insertId: 123 }])
+    connMock.execute
+      .mockResolvedValueOnce([[{ maxId: 122 }]]) // SELECT MAX(id) ... FOR UPDATE
+      .mockResolvedValueOnce([{}]) // INSERT
     dbMock.update.mockReturnValue(updateChain())
 
     const result = await syncLead('lead-1', 'corr-1')
 
     expect(result).toBe(true)
-    expect(poolExecute).toHaveBeenCalledTimes(1)
-    const [sql, values] = poolExecute.mock.calls[0]
-    expect(sql).toMatch(/^INSERT INTO tb_leads_agente_ia/)
+    expect(connMock.beginTransaction).toHaveBeenCalledTimes(1)
+    expect(connMock.commit).toHaveBeenCalledTimes(1)
+    expect(connMock.execute).toHaveBeenCalledTimes(2)
+    const [sql, values] = connMock.execute.mock.calls[1]
+    expect(sql).toMatch(/^INSERT INTO tb_leads_agente_ia \(id, /)
+    expect(values[0]).toBe(123) // MAX(id)=122 + 1
     expect(values).toContain('50212345678')
     expect(dbMock.update).toHaveBeenCalledTimes(1)
     expect(logCall).toHaveBeenCalledWith(
@@ -157,14 +175,17 @@ describe('syncLead', () => {
       .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, leadStatus: 'not_qualified', tdmLeadId: null }]))
       .mockReturnValueOnce(selectChain([PROFILE_ROW]))
       .mockReturnValueOnce(selectChain([]))
-    poolExecute.mockResolvedValue([{ insertId: 124 }])
+    connMock.execute
+      .mockResolvedValueOnce([[{ maxId: null }]]) // empty table
+      .mockResolvedValueOnce([{}])
     dbMock.update.mockReturnValue(updateChain())
 
     const result = await syncLead('lead-1', 'corr-1')
 
     expect(result).toBe(true)
-    const [sql, values] = poolExecute.mock.calls[0]
+    const [sql, values] = connMock.execute.mock.calls[1]
     expect(sql).toMatch(/^INSERT INTO tb_leads_agente_ia/)
+    expect(values[0]).toBe(1) // no existing rows → starts at 1
     expect(values).toContain('not_qualified')
     expect(values).toContain('rejected')
   })
@@ -194,29 +215,32 @@ describe('syncLead', () => {
       .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, tdmLeadId: null, leadStatus: 'ficha_hogar_completada' }]))
       .mockReturnValueOnce(selectChain([PROFILE_ROW]))
       .mockReturnValueOnce(selectChain([FICHA_HOGAR_ROW]))
-    poolExecute.mockResolvedValue([{ insertId: 77 }])
+    connMock.execute.mockResolvedValueOnce([[{ maxId: 76 }]]).mockResolvedValueOnce([{}])
     dbMock.update.mockReturnValue(updateChain())
 
     const result = await syncLead('lead-1', 'corr-1')
 
     expect(result).toBe(true)
-    const [sql] = poolExecute.mock.calls[0]
+    const [sql, values] = connMock.execute.mock.calls[1]
     expect(sql).toMatch(/^INSERT INTO tb_leads_agente_ia/)
+    expect(values[0]).toBe(77)
     expect(dbMock.update).toHaveBeenCalledTimes(1)
   })
 
-  it('returns false and logs the error without throwing when the MySQL write fails', async () => {
+  it('returns false, rolls back, and logs the error without throwing when the MySQL write fails', async () => {
     isClientMysqlSyncEnabled.mockReturnValue(true)
     dbMock.select
       .mockReturnValueOnce(selectChain([LEAD_ROW]))
       .mockReturnValueOnce(selectChain([PROFILE_ROW]))
       .mockReturnValueOnce(selectChain([]))
-    poolExecute.mockRejectedValue(new Error('ETIMEDOUT'))
+    connMock.execute.mockResolvedValueOnce([[{ maxId: 5 }]]).mockRejectedValueOnce(new Error('ETIMEDOUT'))
     dbMock.update.mockReturnValue(updateChain())
 
     const result = await syncLead('lead-1', 'corr-1')
 
     expect(result).toBe(false)
+    expect(connMock.rollback).toHaveBeenCalledTimes(1)
+    expect(connMock.commit).not.toHaveBeenCalled()
     expect(logCall).toHaveBeenCalledWith(
       expect.objectContaining({
         leadId: 'lead-1',
@@ -235,5 +259,6 @@ describe('syncLead', () => {
 
     expect(result).toBe(false)
     expect(poolExecute).not.toHaveBeenCalled()
+    expect(connMock.execute).not.toHaveBeenCalled()
   })
 })

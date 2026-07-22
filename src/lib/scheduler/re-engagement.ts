@@ -2,7 +2,7 @@ import { Client } from '@upstash/qstash'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { reEngagementSchedules } from '@/lib/db/schema'
-import { env } from '@/lib/env'
+import { env, appBaseUrl } from '@/lib/env'
 
 const qstash = new Client({ token: env.QSTASH_TOKEN })
 
@@ -20,7 +20,11 @@ export async function scheduleJob(
   delaySeconds: number,
   action: JobPayload['action'],
 ): Promise<string> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+  // Must match phase-2.ts's link-building resolution — QStash needs a publicly
+  // reachable URL to call back into; a bare NEXT_PUBLIC_BASE_URL check here (without
+  // the APP_BASE_URL fallback) silently defaulted to localhost whenever only
+  // APP_BASE_URL was configured (the common case — see .env), which QStash can't reach.
+  const baseUrl = appBaseUrl()
   const payload: JobPayload = { leadId, phase, attemptNumber, action }
 
   const result = await qstash.publishJSON({
