@@ -35,26 +35,30 @@ export function mapShoppingCategories(ids: number[] | null): string | null {
   return labels.length > 0 ? labels.join(', ') : null
 }
 
-type BaseColumns = Omit<
-  TbLeadsAgenteIaRow,
-  | 'f1_lead_status'
-  | 'internet_hogar'
-  | 'acceso_internet'
-  | 'parentesco_jefe_familia'
-  | 'fecha_nacimiento_ama_casa'
-  | 'discapacidad_total'
-  | 'plan_datos_ilimitado'
-  | 'num_mascotas'
-  | '_ficha_hogar_completed_at'
->
-
 /**
- * Columns present on every write (Phase 1 insert and both later updates) — spec 010
- * data-model.md §2a/§2b. `thread_summary`/`json_raw` are set here as defaults and
- * overridden by each caller with the right content for that moment.
+ * Builds the full row to write to `tb_leads_agente_ia` for the lead's CURRENT state,
+ * whatever that is — qualified or not, any phase (spec 010 amendment: every status
+ * transition syncs, not just the "happy path"). Called once per transition from
+ * `transitionLead` (`src/lib/state-machine/index.ts`), so `lead`/`profile` are always
+ * freshly loaded (never a stale pre-transition snapshot — see research.md R11).
+ *
+ * `fichaHogar` is `null` until the lead reaches Fase 4 — household columns (§2c) are
+ * simply omitted from the row until then, and once present, ride along on every later
+ * sync (registration retries, etc.) same as any other column.
+ *
+ * `isFirstSync` controls whether `f1_lead_status` is included: it's write-once, frozen
+ * at whatever status the lead had at its FIRST sync ever, and must never be touched by
+ * later updates — so subsequent calls simply omit the key from the row entirely (an
+ * UPDATE only SETs the columns present in the object, so omitting it preserves the
+ * value already stored in MySQL).
  */
-function buildBaseRow(lead: Lead, profile: SurveyProfile): BaseColumns {
-  return {
+export function buildLeadRow(
+  lead: Lead,
+  profile: SurveyProfile,
+  fichaHogar: FichaHogarProfile | null,
+  isFirstSync: boolean,
+): TbLeadsAgenteIaRow {
+  const row: TbLeadsAgenteIaRow = {
     tenant_id: env.CLIENT_MYSQL_TENANT_ID ?? null,
     lead_version: env.CLIENT_MYSQL_LEAD_VERSION ?? null,
     source: lead.channel,
@@ -93,52 +97,29 @@ function buildBaseRow(lead: Lead, profile: SurveyProfile): BaseColumns {
     parroquia: profile.stateProvince,
     provincia: profile.municipality,
     canton: profile.neighborhood,
-    thread_summary: null,
-    json_raw: null,
+    // Populated by phase-4.ts before it transitions the lead — null until then.
+    thread_summary: lead.conversationSummary,
+    // hasBabyUnder3/conflictOfInterest have no dedicated tb_leads_agente_ia column yet
+    // (data-model.md §2f) — they still ride along here so the raw answer isn't lost.
+    json_raw: JSON.stringify(fichaHogar ? { ...profile, ...fichaHogar } : { ...profile }),
   }
-}
 
-/** Phase 1 complete + quota available — INSERT-only row. */
-export function buildPhase1InsertRow(lead: Lead, profile: SurveyProfile): TbLeadsAgenteIaRow {
-  return {
-    ...buildBaseRow(lead, profile),
-    // Write-once: frozen at the moment quota was confirmed available, never touched again.
-    f1_lead_status: lead.leadStatus,
-    thread_summary: null,
-    json_raw: JSON.stringify(profile),
+  if (isFirstSync) {
+    row.f1_lead_status = lead.leadStatus
   }
-}
 
-/** Ficha Hogar completed — enriches the existing row with household data. */
-export function buildFichaHogarUpdateRow(
-  lead: Lead,
-  profile: SurveyProfile,
-  fichaHogar: FichaHogarProfile,
-  summary: string | null,
-): TbLeadsAgenteIaRow {
-  return {
-    ...buildBaseRow(lead, profile),
-    thread_summary: summary,
-    json_raw: JSON.stringify({ ...profile, ...fichaHogar }),
-    internet_hogar: fichaHogar.hasInternet,
-    acceso_internet: fichaHogar.hasInternet,
-    parentesco_jefe_familia: fichaHogar.relationshipToHoh,
-    fecha_nacimiento_ama_casa: fichaHogar.dateOfBirth,
+  if (fichaHogar) {
+    row.internet_hogar = fichaHogar.hasInternet
+    row.acceso_internet = fichaHogar.hasInternet
+    row.parentesco_jefe_familia = fichaHogar.relationshipToHoh
+    row.fecha_nacimiento_ama_casa = fichaHogar.dateOfBirth
     // Interpretive — not a verified semantic match, pending TDM confirmation (spec Assumptions).
-    discapacidad_total: fichaHogar.hasHealthCondition,
-    plan_datos_ilimitado: fichaHogar.unlimitedDataPlan,
-    num_mascotas: fichaHogar.petCount,
-    _ficha_hogar_completed_at: fichaHogar.completedAt,
+    row.discapacidad_total = fichaHogar.hasHealthCondition
+    row.plan_datos_ilimitado = fichaHogar.unlimitedDataPlan
+    row.num_mascotas = fichaHogar.petCount
+    row._ficha_hogar_completed_at = fichaHogar.completedAt
+    row._ficha_hogar_launched_at = fichaHogar.createdAt
   }
-}
 
-/** Ficha Hogar Q1 discard — same base shape, discard status override, no household columns. */
-export function buildDiscardUpdateRow(lead: Lead, profile: SurveyProfile): TbLeadsAgenteIaRow {
-  return {
-    ...buildBaseRow(lead, profile),
-    status: mapCoarseStatus('ficha_hogar_descartado'),
-    lead_status: 'ficha_hogar_descartado' satisfies LeadStatus,
-    thread_summary: null,
-    json_raw: JSON.stringify(profile),
-  }
+  return row
 }

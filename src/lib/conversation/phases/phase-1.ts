@@ -5,7 +5,7 @@ import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
-import { checkQuotaAvailability, finalizeQuotaPassedLead } from '@/lib/scoring/quota'
+import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS } from '../exit-messages'
 import {
@@ -320,9 +320,8 @@ export async function handlePhase1(
     })
     .where(eq(leads.id, lead.id))
 
-  // Advance to Phase 2
+  // Advance to Phase 2 — transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment)
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
-  await finalizeQuotaPassedLead(lead, correlationId)
   // Phase 2 handler will be called by the router on next tick
   const { handlePhase2 } = await import('./phase-2')
   await handlePhase2(lead, correlationId)

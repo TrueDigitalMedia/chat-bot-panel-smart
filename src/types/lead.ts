@@ -74,7 +74,10 @@ export type ScoringFields = Pick<
   'educationPsh' | 'cars' | 'domesticHelp' | 'householdSize' | 'bedrooms'
 >
 
-// Survey question field names in order
+// Survey question field names in order — must match SURVEY_QUESTIONS in
+// survey-questions.ts exactly (age/isPregnant/hasBabyUnder3 moved to match the actual
+// Excel question order: age right after gender, isPregnant/hasBabyUnder3 right after
+// householdSize — see tests/unit/survey-question-count.test.ts).
 export const SURVEY_FIELDS = [
   'fullName',
   'country',
@@ -83,18 +86,18 @@ export const SURVEY_FIELDS = [
   'neighborhood',
   'email',
   'gender',
+  'age',
   'educationPsh',
   'cars',
   'domesticHelp',
   'householdSize',
+  'isPregnant',
+  'hasBabyUnder3',
   'bedrooms',
   'shoppingFrequency',
   'shoppingCategories',
   'contactChannel',
   'contactSchedule',
-  'age',
-  'isPregnant',
-  'hasBabyUnder3',
 ] as const satisfies (keyof SurveyProfile)[]
 
 export type SurveyFieldName = (typeof SURVEY_FIELDS)[number]
@@ -139,6 +142,7 @@ export interface FichaHogarProfile {
   unlimitedDataPlan: boolean | null
   petCount: number | null
   completedAt: Date | null
+  createdAt: Date
 }
 
 // Ficha Hogar question field names in order

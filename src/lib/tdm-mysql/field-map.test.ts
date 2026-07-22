@@ -1,19 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // env.ts validates required vars eagerly at import time; field-map.ts reads
 // CLIENT_MYSQL_TENANT_ID/LEAD_VERSION from it — mock so this pure unit test doesn't
 // need real credentials, same pattern as tests/unit/ficha-hogar-validation.test.ts.
+import { vi } from 'vitest'
 vi.mock('@/lib/env', () => ({
   env: { CLIENT_MYSQL_TENANT_ID: undefined, CLIENT_MYSQL_LEAD_VERSION: undefined },
 }))
 
-import {
-  mapCoarseStatus,
-  mapShoppingCategories,
-  buildPhase1InsertRow,
-  buildFichaHogarUpdateRow,
-  buildDiscardUpdateRow,
-} from './field-map'
+import { mapCoarseStatus, mapShoppingCategories, buildLeadRow } from './field-map'
 import type { FichaHogarProfile, Lead, SurveyProfile } from '@/types/lead'
 
 function baseLead(overrides: Partial<Lead> = {}): Lead {
@@ -88,6 +83,7 @@ function baseFichaHogar(overrides: Partial<FichaHogarProfile> = {}): FichaHogarP
     unlimitedDataPlan: true,
     petCount: 2,
     completedAt: new Date('2026-07-20T11:00:00Z'),
+    createdAt: new Date('2026-07-20T10:30:00Z'),
     ...overrides,
   }
 }
@@ -139,9 +135,9 @@ describe('mapShoppingCategories', () => {
   })
 })
 
-describe('buildPhase1InsertRow', () => {
-  it('maps config, lead, and survey profile fields', () => {
-    const row = buildPhase1InsertRow(baseLead(), baseProfile())
+describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () => {
+  it('maps config, lead, and survey profile fields for whatever status the lead currently has', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
 
     expect(row.source).toBe('whatsapp')
     expect(row.status).toBe('active')
@@ -164,8 +160,23 @@ describe('buildPhase1InsertRow', () => {
     expect(row.embarazo).toBe(false)
   })
 
+  it('maps a disqualified lead (not_qualified/rejected) just as completely as a qualified one', () => {
+    const row = buildLeadRow(
+      baseLead({ leadStatus: 'not_qualified', quotaSegment: null, score: null }),
+      baseProfile({ fullName: null, email: null }),
+      null,
+      true,
+    )
+    expect(row.status).toBe('rejected')
+    expect(row.lead_status).toBe('not_qualified')
+    expect(row.f1_lead_status).toBe('not_qualified')
+    // Every registration counts as a lead even when it never qualifies (spec 010 amendment).
+    expect(row.source).toBe('whatsapp')
+    expect(row.phone).toBe('50212345678')
+  })
+
   it('falls back parroquia/provincia/canton (and _residencia variants) generically', () => {
-    const row = buildPhase1InsertRow(baseLead(), baseProfile())
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
     expect(row.parroquia_residencia).toBe('Guatemala')
     expect(row.provincia_residencia).toBe('Mixco')
     expect(row.canton_residencia).toBe('Colonia Primavera')
@@ -174,15 +185,15 @@ describe('buildPhase1InsertRow', () => {
     expect(row.canton).toBe('Colonia Primavera')
   })
 
-  it('leaves thread_summary null and json_raw as the survey profile only', () => {
+  it('thread_summary reflects lead.conversationSummary (null before Ficha Hogar); json_raw is the survey profile only', () => {
     const profile = baseProfile()
-    const row = buildPhase1InsertRow(baseLead(), profile)
+    const row = buildLeadRow(baseLead({ conversationSummary: null }), profile, null, true)
     expect(row.thread_summary).toBeNull()
     expect(JSON.parse(row.json_raw as string)).toMatchObject({ fullName: 'Ana López' })
   })
 
-  it('leaves deliberately-out-of-scope columns undefined', () => {
-    const row = buildPhase1InsertRow(baseLead(), baseProfile())
+  it('leaves Ficha Hogar columns undefined when no ficha hogar profile exists yet', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
     expect(row.internet_hogar).toBeUndefined()
     expect(row.acceso_internet).toBeUndefined()
     expect(row.parentesco_jefe_familia).toBeUndefined()
@@ -191,23 +202,35 @@ describe('buildPhase1InsertRow', () => {
     expect(row.plan_datos_ilimitado).toBeUndefined()
     expect(row.num_mascotas).toBeUndefined()
     expect(row._ficha_hogar_completed_at).toBeUndefined()
+    expect(row._ficha_hogar_launched_at).toBeUndefined()
   })
 
   it('uses tenant_id/lead_version from env, not invented values', () => {
-    const row = buildPhase1InsertRow(baseLead(), baseProfile())
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
     // Test env has no CLIENT_MYSQL_TENANT_ID/LEAD_VERSION set — must be null, not a guess.
     expect(row.tenant_id).toBeNull()
     expect(row.lead_version).toBeNull()
   })
 })
 
-describe('buildFichaHogarUpdateRow', () => {
-  it('adds household columns and a non-null thread_summary', () => {
-    const row = buildFichaHogarUpdateRow(
-      baseLead({ leadStatus: 'ficha_hogar_completada' }),
+describe('buildLeadRow — subsequent syncs (UPDATE-shaped)', () => {
+  it('never sets f1_lead_status when isFirstSync is false — write-once, frozen at the first sync', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, false)
+    expect(row.f1_lead_status).toBeUndefined()
+  })
+
+  it('reflects whatever lead_status/status the lead currently has, not a hardcoded override', () => {
+    const row = buildLeadRow(baseLead({ leadStatus: 'ficha_hogar_descartado' }), baseProfile(), null, false)
+    expect(row.status).toBe('rejected')
+    expect(row.lead_status).toBe('ficha_hogar_descartado')
+  })
+
+  it('adds household columns once a Ficha Hogar profile exists', () => {
+    const row = buildLeadRow(
+      baseLead({ leadStatus: 'ficha_hogar_completada', conversationSummary: 'Resumen generado por IA' }),
       baseProfile(),
       baseFichaHogar(),
-      'Resumen generado por IA',
+      false,
     )
 
     expect(row.status).toBe('qualified')
@@ -221,37 +244,23 @@ describe('buildFichaHogarUpdateRow', () => {
     expect(row.plan_datos_ilimitado).toBe(true)
     expect(row.num_mascotas).toBe(2)
     expect(row._ficha_hogar_completed_at).toEqual(new Date('2026-07-20T11:00:00Z'))
+    expect(row._ficha_hogar_launched_at).toEqual(new Date('2026-07-20T10:30:00Z'))
   })
 
-  it('never sets f1_lead_status — write-once, owned only by the Phase 1 insert', () => {
-    const row = buildFichaHogarUpdateRow(baseLead(), baseProfile(), baseFichaHogar(), null)
-    expect(row.f1_lead_status).toBeUndefined()
-  })
-
-  it('combines survey + ficha hogar profiles into json_raw', () => {
-    const row = buildFichaHogarUpdateRow(baseLead(), baseProfile(), baseFichaHogar(), null)
+  it('combines survey + ficha hogar profiles into json_raw, including conflictOfInterest', () => {
+    const row = buildLeadRow(
+      baseLead({ leadStatus: 'ficha_hogar_descartado' }),
+      baseProfile(),
+      baseFichaHogar({ conflictOfInterest: true }),
+      false,
+    )
     const parsed = JSON.parse(row.json_raw as string)
-    expect(parsed).toMatchObject({ fullName: 'Ana López', hasInternet: true, petCount: 2 })
-  })
-})
-
-describe('buildDiscardUpdateRow', () => {
-  it('overrides status/lead_status to the discard bucket', () => {
-    const row = buildDiscardUpdateRow(baseLead({ leadStatus: 'link_sent' }), baseProfile())
-    expect(row.status).toBe('rejected')
-    expect(row.lead_status).toBe('ficha_hogar_descartado')
+    expect(parsed).toMatchObject({ fullName: 'Ana López', hasInternet: true, petCount: 2, conflictOfInterest: true })
   })
 
-  it('leaves household columns undefined (same base shape as Phase 1, no ficha hogar data)', () => {
-    const row = buildDiscardUpdateRow(baseLead(), baseProfile())
-    expect(row.internet_hogar).toBeUndefined()
-    expect(row.fecha_nacimiento_ama_casa).toBeUndefined()
-    expect(row.num_mascotas).toBeUndefined()
-    expect(row.f1_lead_status).toBeUndefined()
-  })
-
-  it('leaves thread_summary null', () => {
-    const row = buildDiscardUpdateRow(baseLead(), baseProfile())
-    expect(row.thread_summary).toBeNull()
+  it('includes hasBabyUnder3 in json_raw even though there is no dedicated column for it yet', () => {
+    const row = buildLeadRow(baseLead(), baseProfile({ hasBabyUnder3: true }), null, false)
+    const parsed = JSON.parse(row.json_raw as string)
+    expect(parsed).toMatchObject({ hasBabyUnder3: true })
   })
 })

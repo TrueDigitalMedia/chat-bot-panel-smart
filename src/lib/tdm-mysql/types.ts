@@ -54,4 +54,6 @@ export interface TbLeadsAgenteIaRow {
   plan_datos_ilimitado?: boolean | null
   num_mascotas?: number | null
   _ficha_hogar_completed_at?: Date | null
+  /** `ficha_hogar_profiles.created_at` — when the Ficha Hogar questionnaire first opened for this lead. */
+  _ficha_hogar_launched_at?: Date | null
 }

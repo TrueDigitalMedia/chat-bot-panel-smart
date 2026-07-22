@@ -54,5 +54,16 @@ export async function transitionLead(
       })
   }
 
+  // Fire-and-forget TDM MySQL sync — every status transition is the end of some phase
+  // and must sync regardless of outcome, qualified or not (spec 010 amendment: "todo
+  // registro cuenta como lead así no califique como panelista"). Centralized here
+  // (rather than at each of the ~20 call sites across phase-1/2/3/4, registration-choice,
+  // gps-capture, re-engage) so no current or future transition can be missed.
+  void import('@/lib/tdm-mysql/sync')
+    .then(({ syncLead }) => syncLead(leadId, correlationId))
+    .catch((err) => {
+      console.error('[tdm-sync] transition sync failed', { leadId, newStatus, err: String(err) })
+    })
+
   return { previousStatus: from, newStatus }
 }

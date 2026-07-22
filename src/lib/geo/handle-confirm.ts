@@ -9,7 +9,7 @@ import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import { SURVEY_QUESTION_COUNT } from '@/lib/conversation/survey-questions'
 import { EXIT_B, EXIT_B_THANKS } from '@/lib/conversation/exit-messages'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
-import { checkQuotaAvailability, finalizeQuotaPassedLead } from '@/lib/scoring/quota'
+import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { transitionLead } from '@/lib/state-machine'
 import type { Lead } from '@/types/lead'
 
@@ -120,8 +120,8 @@ export async function persistSurveyFieldAndAdvance(
     })
     .where(eq(leads.id, lead.id))
 
+  // transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment)
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
-  await finalizeQuotaPassedLead(lead, correlationId)
   const { handlePhase2 } = await import('@/lib/conversation/phases/phase-2')
   await handlePhase2(lead, correlationId)
 }

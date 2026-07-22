@@ -93,6 +93,12 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   },
   {
     index: 8,
+    fieldName: 'age',
+    text: '¿Cuántos años cumplidos tienes?',
+    inputType: 'free_text',
+  },
+  {
+    index: 9,
     fieldName: 'educationPsh',
     text: '📋💚 Importante: Las siguientes preguntas son solo para segmentar el hogar. 🔒 Tus datos están seguros y nunca serán compartidos. 👉 Recuerda: lo único que se analiza son tus registros de compra 🛒.\n\n¿Cuál es el nivel educativo alcanzado por la persona que se identifica como Principal Sostén del Hogar (PSH)?',
     inputType: 'button',
@@ -127,7 +133,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 9,
+    index: 10,
     fieldName: 'cars',
     text: '¿De cuántos autos dispone regularmente este hogar?',
     inputType: 'button',
@@ -140,7 +146,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 10,
+    index: 11,
     fieldName: 'domesticHelp',
     text: '¿Este hogar cuenta actualmente con apoyo de servicio doméstico?',
     inputType: 'button',
@@ -152,19 +158,43 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 11,
+    index: 12,
     fieldName: 'householdSize',
     text: '¿Cuántas personas residen habitualmente en este hogar?',
     inputType: 'free_text',
   },
   {
-    index: 12,
+    index: 13,
+    fieldName: 'isPregnant',
+    text: '¿Te encuentras actualmente embarazada?',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: 'Sí', callback_data: 'isPregnant:true' },
+        { text: 'No', callback_data: 'isPregnant:false' },
+      ],
+    ],
+  },
+  {
+    index: 14,
+    fieldName: 'hasBabyUnder3',
+    text: '¿Vive usted con un bebé menor de 3 años?',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: 'Sí', callback_data: 'hasBabyUnder3:true' },
+        { text: 'No', callback_data: 'hasBabyUnder3:false' },
+      ],
+    ],
+  },
+  {
+    index: 15,
     fieldName: 'bedrooms',
     text: '¿Cuántas habitaciones destinadas exclusivamente para dormir tiene este hogar?',
     inputType: 'free_text',
   },
   {
-    index: 13,
+    index: 16,
     fieldName: 'shoppingFrequency',
     text: '¿Con qué frecuencia realizas las compras para el hogar?',
     inputType: 'button',
@@ -181,13 +211,13 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 14,
+    index: 17,
     fieldName: 'shoppingCategories',
     text: `🛍️ ¿Cuáles de estas categorías compras en una semana típica? Puedes elegir todas las que apliquen:\n\n${SHOPPING_CATEGORIES_TEXT}\n\n(Puedes responder indicando los números de las categorías directamente)`,
     inputType: 'free_text',
   },
   {
-    index: 15,
+    index: 18,
     fieldName: 'contactChannel',
     text: '¿Cómo te gustaría ser contactado/a por PanelSmart?',
     inputType: 'button',
@@ -199,7 +229,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 16,
+    index: 19,
     fieldName: 'contactSchedule',
     text: '¿En qué horario del día puedes ser contactado/a?',
     inputType: 'button',
@@ -208,36 +238,6 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
         { text: 'Mañana (9-12hs)', callback_data: 'contactSchedule:Mañana (9-12hs)' },
         { text: 'Tarde (13-17hs)', callback_data: 'contactSchedule:Tarde (13-17hs)' },
         { text: 'Noche (18-21hs)', callback_data: 'contactSchedule:Noche (18-21hs)' },
-      ],
-    ],
-  },
-  {
-    index: 17,
-    fieldName: 'age',
-    text: '¿Cuántos años cumplidos tienes?',
-    inputType: 'free_text',
-  },
-  {
-    index: 18,
-    fieldName: 'isPregnant',
-    text: '¿Te encuentras actualmente embarazada?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: 'Sí', callback_data: 'isPregnant:true' },
-        { text: 'No', callback_data: 'isPregnant:false' },
-      ],
-    ],
-  },
-  {
-    index: 19,
-    fieldName: 'hasBabyUnder3',
-    text: '¿Vive usted con un bebé menor de 3 años?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: 'Sí', callback_data: 'hasBabyUnder3:true' },
-        { text: 'No', callback_data: 'hasBabyUnder3:false' },
       ],
     ],
   },

@@ -15,7 +15,6 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
-import { syncLeadFichaHogarComplete, syncLeadFichaHogarDiscarded } from '@/lib/tdm-mysql/sync'
 import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
 import { matchButtonChoice } from '../match-button-choice'
 import type { ChannelRecipient } from '@/types/channel'
@@ -138,7 +137,8 @@ export async function handleFichaHogar(
       .update(fichaHogarProfiles)
       .set({ conflictOfInterest: true, completedAt: new Date(), updatedAt: new Date() })
       .where(eq(fichaHogarProfiles.leadId, lead.id))
-    await syncLeadFichaHogarDiscarded(lead.id, correlationId).catch(() => {})
+    // transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment) — runs
+    // after this update, so it correctly picks up conflictOfInterest=true in json_raw.
     await transitionLead(
       lead.id,
       'ficha_hogar_descartado',
@@ -224,9 +224,6 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
     await db.update(leads).set({ conversationSummary: summary }).where(eq(leads.id, lead.id))
   }
 
-  // Unrelated side effect from Treinta's persistence below — must not be gated on its outcome.
-  await syncLeadFichaHogarComplete(lead.id, correlationId, summary).catch(() => {})
-
   const persisted = await persistTreintaPanelist({
     leadId: lead.id,
     profile,
@@ -240,11 +237,21 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
     return
   }
 
+  // transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment) — runs after
+  // conversationSummary is saved above, so thread_summary picks it up correctly.
   await transitionLead(lead.id, 'ficha_hogar_completada', 'phase4_complete', correlationId)
 
+  await sendText(
+    lead,
+    '¡Listo! 🙌 Has completado tu Ficha Hogar. Muchas gracias por tu tiempo. Si en algún momento tienes dudas con la app, escríbeme.',
+  )
+
   if (THANK_YOU_VIDEO) {
-    await sendVideo(lead, THANK_YOU_VIDEO, '🎉 ¡Gracias por unirte a PanelSmart!')
-  } else {
-    await sendText(lead, '🎉 ¡Gracias por unirte a PanelSmart! Pronto recibirás más información sobre cómo ganar premios.')
+    await sendVideo(lead, THANK_YOU_VIDEO, '📹 Así registras tus compras en la app')
   }
+
+  await sendText(
+    lead,
+    'Gracias por tu interés y por el tiempo que has dedicado. 🙌\n\n💬 Si necesitas ayuda, escríbenos y nuestro equipo de atención al cliente te apoyará.',
+  )
 }

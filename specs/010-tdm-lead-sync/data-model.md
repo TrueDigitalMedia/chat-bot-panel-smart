@@ -37,14 +37,23 @@ feature writes — a partial type, not the full external schema.
 | `tenant_id` | `env.CLIENT_MYSQL_TENANT_ID` |
 | `lead_version` | `env.CLIENT_MYSQL_LEAD_VERSION` |
 
-### 2b. Written on Phase 1 insert, carried through on every later update
+> **Amendment (2026-07-21):** sync is no longer limited to the Phase 1 success path plus
+> the two Ficha Hogar outcomes. Every lead syncs regardless of qualification outcome
+> ("todo registro cuenta como lead así no califique como panelista"), and every
+> status transition — Phase 1 exits (opt-in decline, D1/D2 decline, D3=No, quota
+> exhausted, quota available), Phase 2/3 responses, and both Ficha Hogar outcomes —
+> triggers its own sync. See §3/§4 for the unified `buildLeadRow`/`syncLead`
+> implementation that replaced the three phase-specific builders/functions described
+> below in earlier revisions.
+
+### 2b. Written on first sync (INSERT), carried through on every later update
 
 | Column | Source | Notes |
 |---|---|---|
 | `source` | `leads.channel` | |
 | `status` | `mapCoarseStatus(leads.leadStatus)` | See §3 |
 | `lead_status` | `leads.leadStatus` (raw) | |
-| `f1_lead_status` | `leads.leadStatus` at Phase 1 sync time only | Frozen at insert; never overwritten by later updates |
+| `f1_lead_status` | `leads.leadStatus` at first sync only | Frozen at insert (whatever status the lead was in the first time it ever synced — not necessarily a Phase 1 status); never overwritten by later updates |
 | `created_at` / `updated_at` | `leads.createdAt` / `leads.updatedAt` | |
 | `phone` | `leads.phoneNumber` | |
 | `lead_score` | `leads.score` | |
@@ -68,10 +77,10 @@ feature writes — a partial type, not the full external schema.
 | `edad_ama_casa` | `survey_profiles.age` | Interpretive mapping — code comment flags it, not a verified semantic match (open question for TDM) |
 | `embarazo` | `survey_profiles.isPregnant` | |
 | `parroquia_residencia`/`provincia_residencia`/`canton_residencia`, `parroquia`/`provincia`/`canton` | `survey_profiles.stateProvince`/`municipality`/`neighborhood` | Generic fallback; country-specific admin-division naming is not refined (spec Out of Scope) |
-| `thread_summary` | `leads.conversationSummary` | `NULL` at Phase 1; populated at Ficha Hogar completion |
-| `json_raw` | `{...surveyProfile, ...fichaHogarProfile}` | Same combined-object shape already built in `completeFichaHogar` ([phase-4.ts](../../src/lib/conversation/phases/phase-4.ts)); at Phase 1 time, `fichaHogarProfile` doesn't exist yet so it's just `{...surveyProfile}` |
+| `thread_summary` | `leads.conversationSummary` | `NULL` until a conversation summary exists (populated at Ficha Hogar completion); carried through unchanged on syncs before/after that point |
+| `json_raw` | `{...surveyProfile, ...fichaHogarProfile}` when a Ficha Hogar row exists, else `{...surveyProfile}` | Built by `buildLeadRow` on every sync (not just Phase 1/Ficha-Hogar) — this also means `hasBabyUnder3` (from `surveyProfile`) and `conflictOfInterest` (from `fichaHogarProfile`) always ride along here, since neither has a dedicated target column (see §2e) |
 
-### 2c. Added only by the Ficha Hogar update
+### 2c. Added once a Ficha Hogar row exists (any sync from that point on, not just the completion/discard sync)
 
 | Column | Source |
 |---|---|
@@ -82,12 +91,17 @@ feature writes — a partial type, not the full external schema.
 | `plan_datos_ilimitado` | `ficha_hogar_profiles.unlimitedDataPlan` |
 | `num_mascotas` | `ficha_hogar_profiles.petCount` |
 | `_ficha_hogar_completed_at` | `ficha_hogar_profiles.completedAt` |
+| `_ficha_hogar_launched_at` | `ficha_hogar_profiles.createdAt` | Added in the 2026-07-21 amendment — when the Ficha Hogar questionnaire first opened for this lead |
 
-### 2d. Discard update
+### 2d. Discard sync
 
 Same row shape as §2b, with `lead_status` = `'ficha_hogar_descartado'` and
-`status` = `mapCoarseStatus('ficha_hogar_descartado')` = `'rejected'`. Ficha Hogar
-columns (§2c) stay `NULL` — the discard happens on Q1, before any of that data exists.
+`status` = `mapCoarseStatus('ficha_hogar_descartado')` = `'rejected'`. The discard
+happens on Ficha Hogar Q1, so a `ficha_hogar_profiles` row already exists at that point
+(created when the questionnaire launched) — §2c columns ARE populated, including
+`conflictOfInterest` via `json_raw` (§2b). Earlier revisions of this feature discarded
+without the `fichaHogarProfile` object, so `conflictOfInterest` was silently dropped
+from `json_raw`; fixed by the unified `buildLeadRow`.
 
 ### 2e. Deliberately left `NULL` (never written by this feature)
 
@@ -100,6 +114,12 @@ reads or depends on them), plus any column with no corresponding data on our sid
 (`banos_completos`, `personas_trabajando`, `seguro_salud`, `material_piso`,
 `acabados_vivienda`, `codigo_postal`, `tipo_internet`, `ocupacion_psh`, and the `_ec`
 suffixed Ecuador-specific columns).
+
+Two fields have local data but no dedicated target column, confirmed during the
+2026-07-21 field audit against the full `tb_leads_agente_ia` column list: `hasBabyUnder3`
+(`survey_profiles`) and `conflictOfInterest` (`ficha_hogar_profiles`). Both ride along
+inside `json_raw` (§2b) instead — no partner-side column exists to map them to, and this
+feature does not invent new columns in TDM's external schema.
 
 ## 3. Pure mapping functions (`src/lib/tdm-mysql/field-map.ts`, zero I/O)
 
@@ -124,29 +144,43 @@ suffixed Ecuador-specific columns).
   Cuidado del bebé, Mascotas. Unknown ids are dropped rather than throwing; `null`/empty
   input → `null`.
 
-- **`buildPhase1InsertRow(lead, surveyProfile): TbLeadsAgenteIaRow`** — §2a + §2b, no
-  Ficha Hogar columns.
+- **`buildLeadRow(lead, surveyProfile, fichaHogarProfile, isFirstSync): TbLeadsAgenteIaRow`**
+  (`src/lib/tdm-mysql/field-map.ts`) — the single row builder used on every sync,
+  replacing the three phase-specific builders from earlier revisions
+  (`buildPhase1InsertRow` / `buildFichaHogarUpdateRow` / `buildDiscardUpdateRow`). Always
+  reads `lead.leadStatus` fresh, so the row reflects whatever status the lead is
+  currently in — §2a + §2b always; §2c only `if (fichaHogarProfile)`; `f1_lead_status`
+  only `if (isFirstSync)`. The caller (`syncLead`, §4) determines `isFirstSync` from
+  `lead.tdmLeadId == null` and doesn't otherwise need to know which "phase" triggered
+  the call.
 
-- **`buildFichaHogarUpdateRow(lead, surveyProfile, fichaHogarProfile, summary): TbLeadsAgenteIaRow`**
-  — §2a + §2b (refreshed) + §2c, `thread_summary` populated.
+## 4. Sync trigger and state transitions (local, per lead)
 
-- **`buildDiscardUpdateRow(lead, surveyProfile): TbLeadsAgenteIaRow`** — §2a + §2b with
-  the discard `status`/`lead_status` override, §2c omitted (all `NULL`).
-
-## 4. Sync state transitions (local, per lead)
+**Trigger (amended 2026-07-21):** earlier revisions called sync explicitly from two or
+three call sites (Phase 1 success, Ficha Hogar complete/discard). `syncLead(leadId,
+correlationId)` (`src/lib/tdm-mysql/sync.ts`) is now called once, centrally, as a
+fire-and-forget side effect inside `transitionLead`
+([state-machine/index.ts](../../src/lib/state-machine/index.ts)) — every status
+transition is the end of some phase, so every one of the ~20 `transitionLead(` call
+sites across the codebase (Phase 1, Phase 4, geo-confirm, GPS capture, registration
+choice, re-engage job, registration webhook, admin status route) syncs automatically
+without needing its own explicit sync call. This covers every Phase 1 exit (opt-in
+decline, D1/D2 decline, D3=No, quota exhausted, quota available) and every Phase 2/3
+response, not just the previous "successful path only" set of triggers.
 
 ```text
 tdm_lead_id = NULL, tdm_sync_status = NULL
-        │  syncLeadPhase1Complete() succeeds
+        │  syncLead() — first call for this lead, any transitionLead() outcome
+        │  (isFirstSync = true since lead.tdmLeadId is null → INSERT)
         ▼
 tdm_lead_id = <MySQL insertId>, tdm_sync_status = 'synced', tdm_last_sync_at = now()
-        │  syncLeadFichaHogarComplete() / syncLeadFichaHogarDiscarded()
-        │  (UPDATE WHERE id = tdm_lead_id if set, else INSERT — see research.md R3)
+        │  syncLead() — every subsequent transitionLead() call for this lead
+        │  (UPDATE WHERE id = tdm_lead_id if set, else INSERT fallback — research.md R3)
         ▼
 tdm_sync_status = 'synced' | 'failed' (re-evaluated), tdm_last_sync_at refreshed,
 tdm_lead_id set if this was the fallback INSERT path
 ```
 
 A failed attempt at any stage sets `tdm_sync_status = 'failed'` but never clears an
-already-set `tdm_lead_id` — a previously successful Phase 1 sync's id must survive a
-later failed Ficha Hogar update so a subsequent retry still targets the right row.
+already-set `tdm_lead_id` — a previously successful sync's id must survive a later
+failed sync so a subsequent retry still targets the right row.

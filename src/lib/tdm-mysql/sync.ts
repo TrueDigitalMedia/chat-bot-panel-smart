@@ -4,7 +4,7 @@ import { db } from '@/lib/db/client'
 import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { logCall } from '@/lib/db/call-log'
 import { getClientMysqlPool, isClientMysqlSyncEnabled } from './client'
-import { buildPhase1InsertRow, buildFichaHogarUpdateRow, buildDiscardUpdateRow } from './field-map'
+import { buildLeadRow } from './field-map'
 import type { TbLeadsAgenteIaRow } from './types'
 import type { FichaHogarProfile, Lead, SurveyProfile } from '@/types/lead'
 
@@ -66,7 +66,7 @@ async function updateRow(tdmLeadId: number, row: TbLeadsAgenteIaRow): Promise<vo
 
 /**
  * UPDATE the existing TDM row when `existingTdmLeadId` is known, else fall back to an
- * INSERT (covers a lead that never got a successful Phase 1 sync — data-model.md §4).
+ * INSERT (covers a lead whose first sync attempt never succeeded — data-model.md §4).
  * Returns the id to persist locally either way.
  */
 async function upsertRow(existingTdmLeadId: number | null, row: TbLeadsAgenteIaRow): Promise<number> {
@@ -78,75 +78,40 @@ async function upsertRow(existingTdmLeadId: number | null, row: TbLeadsAgenteIaR
 }
 
 /**
- * Phase 1 complete + quota available → INSERT a new TDM row. No-op (returns `true`
- * immediately) when sync is disabled/unconfigured, or when this lead already has a
- * `tdmLeadId` (idempotency guard covering retries — spec 010 data-model.md §4). Never
- * throws; every attempt is logged via `logCall`.
+ * Syncs a lead's CURRENT state to `tb_leads_agente_ia` — called once per status
+ * transition from `transitionLead` (`src/lib/state-machine/index.ts`), so every phase
+ * outcome syncs, qualified or not (spec 010 amendment: "todo registro cuenta como lead
+ * así no califique como panelista"). INSERTs on the lead's first-ever sync, UPDATEs the
+ * same row (keyed by `tdmLeadId`) on every subsequent one — the fallback logic in
+ * `upsertRow` already handles both without the caller needing to know which applies.
+ *
+ * No-op (returns `true` immediately) when sync is disabled/unconfigured. Never throws;
+ * every attempt is logged via `logCall`.
  */
-export async function syncLeadPhase1Complete(leadId: string, correlationId: string): Promise<boolean> {
+export async function syncLead(leadId: string, correlationId: string): Promise<boolean> {
   if (!isClientMysqlSyncEnabled()) return true
 
   const start = Date.now()
   try {
     const lead = await loadLead(leadId)
     if (!lead) return false
-    if (lead.tdmLeadId != null) return true
 
+    // `upsertLead` always creates an empty survey_profiles row on first contact
+    // (src/lib/db/leads.ts) — this should never actually be null, but don't sync a
+    // malformed row if it somehow is.
     const profile = await loadSurveyProfile(leadId)
     if (!profile) return false
 
-    const row = buildPhase1InsertRow(lead, profile)
-    const tdmLeadId = await insertRow(row)
-
-    await markSynced(leadId, tdmLeadId)
-    await logCall({
-      leadId,
-      callType: 'tdm_mysql_sync_phase1',
-      latencyMs: Date.now() - start,
-      correlationId,
-    })
-    return true
-  } catch (err) {
-    await markFailed(leadId).catch(() => {})
-    await logCall({
-      leadId,
-      callType: 'tdm_mysql_sync_phase1',
-      latencyMs: Date.now() - start,
-      correlationId,
-      error: String(err),
-    }).catch(() => {})
-    return false
-  }
-}
-
-/**
- * Ficha Hogar complete → enrich the existing TDM row with household data (or create it,
- * if Phase 1's sync never succeeded — data-model.md §4). No-op when sync is
- * disabled/unconfigured. Never throws; every attempt is logged via `logCall`.
- */
-export async function syncLeadFichaHogarComplete(
-  leadId: string,
-  correlationId: string,
-  summary: string | null,
-): Promise<boolean> {
-  if (!isClientMysqlSyncEnabled()) return true
-
-  const start = Date.now()
-  try {
-    const lead = await loadLead(leadId)
-    if (!lead) return false
-
-    const profile = await loadSurveyProfile(leadId)
     const fichaHogar = await loadFichaHogarProfile(leadId)
-    if (!profile || !fichaHogar) return false
+    const isFirstSync = lead.tdmLeadId == null
 
-    const row = buildFichaHogarUpdateRow(lead, profile, fichaHogar, summary)
+    const row = buildLeadRow(lead, profile, fichaHogar, isFirstSync)
     const tdmLeadId = await upsertRow(lead.tdmLeadId, row)
 
     await markSynced(leadId, tdmLeadId)
     await logCall({
       leadId,
-      callType: 'tdm_mysql_sync_ficha_hogar',
+      callType: 'tdm_mysql_sync',
       latencyMs: Date.now() - start,
       correlationId,
     })
@@ -155,47 +120,7 @@ export async function syncLeadFichaHogarComplete(
     await markFailed(leadId).catch(() => {})
     await logCall({
       leadId,
-      callType: 'tdm_mysql_sync_ficha_hogar',
-      latencyMs: Date.now() - start,
-      correlationId,
-      error: String(err),
-    }).catch(() => {})
-    return false
-  }
-}
-
-/**
- * Ficha Hogar Q1 discard → mark the existing TDM row as discarded (or create it, if
- * Phase 1's sync never succeeded — same fallback as `syncLeadFichaHogarComplete`).
- * No-op when sync is disabled/unconfigured. Never throws; every attempt is logged.
- */
-export async function syncLeadFichaHogarDiscarded(leadId: string, correlationId: string): Promise<boolean> {
-  if (!isClientMysqlSyncEnabled()) return true
-
-  const start = Date.now()
-  try {
-    const lead = await loadLead(leadId)
-    if (!lead) return false
-
-    const profile = await loadSurveyProfile(leadId)
-    if (!profile) return false
-
-    const row = buildDiscardUpdateRow(lead, profile)
-    const tdmLeadId = await upsertRow(lead.tdmLeadId, row)
-
-    await markSynced(leadId, tdmLeadId)
-    await logCall({
-      leadId,
-      callType: 'tdm_mysql_sync_discard',
-      latencyMs: Date.now() - start,
-      correlationId,
-    })
-    return true
-  } catch (err) {
-    await markFailed(leadId).catch(() => {})
-    await logCall({
-      leadId,
-      callType: 'tdm_mysql_sync_discard',
+      callType: 'tdm_mysql_sync',
       latencyMs: Date.now() - start,
       correlationId,
       error: String(err),

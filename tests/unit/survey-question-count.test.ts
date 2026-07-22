@@ -9,15 +9,6 @@ describe('SURVEY_QUESTIONS / SURVEY_FIELDS stay in sync (research.md R4)', () =>
     expect(SURVEY_FIELDS.length).toBe(SURVEY_QUESTION_COUNT)
   })
 
-  it('the last 3 entries of both arrays are age, isPregnant, hasBabyUnder3 in that order (research.md R1)', () => {
-    expect(SURVEY_FIELDS.slice(-3)).toEqual(['age', 'isPregnant', 'hasBabyUnder3'])
-    expect(SURVEY_QUESTIONS.slice(-3).map((q) => q.fieldName)).toEqual([
-      'age',
-      'isPregnant',
-      'hasBabyUnder3',
-    ])
-  })
-
   it('every SURVEY_QUESTIONS entry field name matches SURVEY_FIELDS at the same position', () => {
     SURVEY_QUESTIONS.forEach((q, i) => {
       expect(q.fieldName).toBe(SURVEY_FIELDS[i])
@@ -25,8 +16,12 @@ describe('SURVEY_QUESTIONS / SURVEY_FIELDS stay in sync (research.md R4)', () =>
     })
   })
 
-  it('the original 16 questions kept their exact positions (production-safety regression guard)', () => {
-    expect(SURVEY_FIELDS.slice(0, 16)).toEqual([
+  it('age/isPregnant/hasBabyUnder3 sit at their actual Kantar-questionnaire positions, not appended at the end', () => {
+    // Reordered to match the literal question order in docs/Preguntas_Kantar_CAM_Ecuador_México
+    // (...xlsx) — age right after gender (Q8), isPregnant/hasBabyUnder3 right after
+    // householdSize (Q13-14). Previously all three were appended after Q16 (contactSchedule);
+    // that was a deliberate simplification, not a requirement — see spec 010 amendment.
+    expect(SURVEY_FIELDS).toEqual([
       'fullName',
       'country',
       'stateProvince',
@@ -34,10 +29,13 @@ describe('SURVEY_QUESTIONS / SURVEY_FIELDS stay in sync (research.md R4)', () =>
       'neighborhood',
       'email',
       'gender',
+      'age',
       'educationPsh',
       'cars',
       'domesticHelp',
       'householdSize',
+      'isPregnant',
+      'hasBabyUnder3',
       'bedrooms',
       'shoppingFrequency',
       'shoppingCategories',

@@ -2,8 +2,6 @@ import { ageBand, householdBand } from '@/lib/quotas/quota-bands'
 import { getQuotaProgressForTarget } from '@/lib/quotas/quota-progress'
 import { getRegionCapProgress } from '@/lib/quotas/region-caps'
 import type { DimensionType } from '@/lib/quotas/quota-targets'
-import { syncLeadPhase1Complete } from '@/lib/tdm-mysql/sync'
-import type { Lead } from '@/types/lead'
 
 interface CheckQuotaAvailabilityParams {
   country: string
@@ -98,15 +96,4 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
   const decision: QuotaDecision = { qualifies: false, matchedDimension: null, matchedValue: null }
   logQuotaCheck(params, decision, { regionCapBlocked: false })
   return decision
-}
-
-/**
- * Fire-and-forget side effect shared by the two call sites that transition a lead to
- * `link_sent` after quota confirms available (handle-confirm.ts and phase-1.ts) — kept
- * as one helper so the TDM sync call isn't duplicated across both paths. Never blocks
- * or breaks the caller: `syncLeadPhase1Complete` never throws on its own, and the
- * `.catch` here is a second line of defense.
- */
-export async function finalizeQuotaPassedLead(lead: Lead, correlationId: string): Promise<void> {
-  await syncLeadPhase1Complete(lead.id, correlationId).catch(() => {})
 }
