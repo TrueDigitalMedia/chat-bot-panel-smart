@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "chat-bot-ai — Fase 1 Happy Path (web channel)",
+    "description": "Corre el flujo completo de Fase 1 (opt-in → D1/D2/D3 → teléfono → encuesta de 19 preguntas) contra el canal web local, terminando en link_sent (\"🎉 ¡Felicidades!...\"). Usa `isPregnant:true` en la Q13 para calificar por la excepción de cupo (scoring/quota.ts) sin depender de que existan filas en quota_targets para tu entorno local. Corre los requests EN ORDEN (Collection Runner) — cada uno depende del estado que dejó el anterior. Postman mantiene la cookie `web_session_id` automáticamente entre requests del mismo dominio.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "00 - Bootstrap (GET, crea el lead + mensaje de opt-in)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "console.log('leadStatus:', body.leadStatus);",
+              "body.messages.forEach(m => console.log(`[${m.direction}/${m.contentType}]`, m.body));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Opt-in: Inscribirme",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"optin:accept\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "02 - D1: Acepta Términos y Condiciones",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"d1:accept\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "03 - D2: Quiere ganar premios",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"d2:accept\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "04 - D3: Es quien hace las compras (sí)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"d3:yes\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "05 - Teléfono",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"+50255512345\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "06 - Q1 Nombre completo",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"Ana Test\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "07 - GPS: omitir y escribir ubicación a mano",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"Escribir mi ubicación\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "08 - Q2 País: Panamá",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"country:Panamá\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "09 - Q3 Provincia/Departamento: Bocas del Toro",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"Bocas del Toro\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "10 - Q4 Municipio: Bocas del Toro (dentro del allowlist NSE-CAM)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"Bocas del Toro\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "11 - Q5 Barrio/Distrito",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"Centro\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "12 - Q6 Email",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"ana.test@example.com\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "13 - Q7 Género: Femenino",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"gender:Femenino\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "14 - Q8 Edad",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"32\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "15 - Q9 Educación PSH",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"educationPsh:Universidad Completa\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "16 - Q10 Autos",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"cars:1\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "17 - Q11 Servicio doméstico",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"domesticHelp:false\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "18 - Q12 Integrantes del hogar",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"4\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "19 - Q13 Embarazada: Sí (garantiza cupo por excepción, scoring/quota.ts)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"isPregnant:true\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "20 - Q14 Bebé menor de 3 años",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"hasBabyUnder3:false\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "21 - Q15 Habitaciones",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"2\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "22 - Q16 Frecuencia de compra",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"shoppingFrequency:Semanal\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "23 - Q17 Categorías de compra",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"text\": \"1,2,5\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "24 - Q18 Canal de contacto",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"contactChannel:WhatsApp\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));", "pm.response.json().messages.forEach(m => console.log(`[out]`, m.body));"], "type": "text/javascript" } }]
+    },
+    {
+      "name": "25 - Q19 Horario de contacto (última pregunta → debe llegar link_sent)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{ \"callbackData\": \"contactSchedule:Mañana (9-12hs)\" }" },
+        "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "body.messages.forEach(m => console.log(`[out]`, m.body));",
+              "pm.test('lead reached link_sent (Fase 1 happy path completo)', () => {",
+              "  pm.expect(body.leadStatus).to.eql('link_sent');",
+              "});",
+              "pm.test('recibió mensaje de Felicidades + links de descarga', () => {",
+              "  const hasCongrats = body.messages.some(m => m.body.includes('Felicidades'));",
+              "  pm.expect(hasCongrats).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
