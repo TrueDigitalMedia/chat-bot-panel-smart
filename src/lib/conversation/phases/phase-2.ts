@@ -4,21 +4,20 @@ import { leads } from '@/lib/db/schema'
 import { sendText } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import { PHASE2_CODE_DELAY_SECONDS } from '@/lib/scheduler/constants'
-import { appBaseUrl } from '@/lib/env'
 import type { Lead } from '@/types/lead'
+
+const IOS_APP_LINK = 'https://apps.apple.com/us/app/panelsmart/id900007535?l=es'
+const ANDROID_APP_LINK = 'https://play.google.com/store/apps/details?id=com.lumi.kwpsmartpanel&hl=es_US&gl=US'
 
 export async function handlePhase2(lead: Lead, _correlationId: string): Promise<void> {
   const chatId = lead
-  const base = appBaseUrl()
-  const iosLink = `${base}/mock/app/ios`
-  const androidLink = `${base}/mock/app/android`
 
   await db.update(leads).set({ currentPhase: 2, updatedAt: new Date() }).where(eq(leads.id, lead.id))
 
   await sendText(
     chatId,
     `🎉 ¡Felicidades! Tienes un cupo disponible.\n\n` +
-      `Descarga la app (mock):\n📱 iOS: ${iosLink}\n🤖 Android: ${androidLink}\n\n` +
+      `Descarga la app:\n📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}\n\n` +
       `Una vez “descargada”, recibirás un código de registro simulado.`,
   )
 
