@@ -29,6 +29,11 @@ type TurnPayload =
   | { callbackData: string; label: string }
   | { location: { latitude: number; longitude: number } }
 
+// Background jobs (mock registration code, download reminders, freeze) send bot
+// messages outside any request the visitor's browser makes — polling is how the
+// widget ever sees them without the visitor manually reloading the page.
+const POLL_INTERVAL_MS = 5000
+
 export function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +41,7 @@ export function ChatWindow() {
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const sendingRef = useRef(false)
 
   useEffect(() => {
     void bootstrap()
@@ -43,8 +49,34 @@ export function ChatWindow() {
   }, [])
 
   useEffect(() => {
+    sendingRef.current = sending
+  }, [sending])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Skip while a turn is in flight — its own response already refreshes state,
+      // and a poll landing mid-turn could momentarily hide the optimistic echo.
+      if (!sendingRef.current && document.visibilityState === 'visible') {
+        void poll()
+      }
+    }, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function poll(): Promise<void> {
+    try {
+      const res = await fetch('/api/chat/web')
+      if (!res.ok) return
+      const data = (await res.json()) as ChatResponse
+      setMessages(data.messages)
+    } catch {
+      // Silent — next interval tick retries.
+    }
+  }
 
   async function bootstrap(): Promise<void> {
     setLoading(true)
