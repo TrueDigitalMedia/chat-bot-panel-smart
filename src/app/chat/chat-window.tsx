@@ -34,6 +34,30 @@ type TurnPayload =
 // widget ever sees them without the visitor manually reloading the page.
 const POLL_INTERVAL_MS = 5000
 
+/**
+ * Polling and a turn's own POST response can land in either order (a poll in flight
+ * when the turn started can resolve after it, overwriting its messages). Merging by id
+ * and re-sorting by createdAt — rather than either replacing wholesale or blindly
+ * appending — keeps the transcript correct regardless of which resolves first.
+ * `dropLocalEchoes` clears optimistic echoes once authoritative full history (which
+ * must already include the corresponding real row) is in hand.
+ */
+function mergeMessages(
+  prev: ChatMessage[],
+  incoming: ChatMessage[],
+  { dropLocalEchoes }: { dropLocalEchoes: boolean },
+): ChatMessage[] {
+  const byId = new Map<string, ChatMessage>()
+  for (const m of prev) {
+    if (dropLocalEchoes && m.id.startsWith('local-')) continue
+    byId.set(m.id, m)
+  }
+  for (const m of incoming) byId.set(m.id, m)
+  return [...byId.values()].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  )
+}
+
 export function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +96,7 @@ export function ChatWindow() {
       const res = await fetch('/api/chat/web')
       if (!res.ok) return
       const data = (await res.json()) as ChatResponse
-      setMessages(data.messages)
+      setMessages((prev) => mergeMessages(prev, data.messages, { dropLocalEchoes: true }))
     } catch {
       // Silent — next interval tick retries.
     }
@@ -87,7 +111,7 @@ export function ChatWindow() {
       const data = (await res.json()) as ChatResponse
       // Hydrate full history on every mount, including a reload mid-survey (US2) —
       // not just a visitor's very first-ever visit.
-      setMessages(data.messages)
+      setMessages((prev) => mergeMessages(prev, data.messages, { dropLocalEchoes: true }))
     } catch {
       setError('No se pudo conectar con el chat. Intenta recargar la página.')
     } finally {
@@ -106,7 +130,9 @@ export function ChatWindow() {
       })
       if (!res.ok) throw new Error('send_failed')
       const data = (await res.json()) as ChatResponse
-      setMessages((prev) => [...prev, ...data.messages])
+      // Only this turn's new outbound messages — the matching inbound row isn't in
+      // here, so keep the local echo until the next poll confirms it (dropLocalEchoes: false).
+      setMessages((prev) => mergeMessages(prev, data.messages, { dropLocalEchoes: false }))
     } catch {
       setError('No se pudo enviar tu mensaje. Intenta de nuevo.')
     } finally {
