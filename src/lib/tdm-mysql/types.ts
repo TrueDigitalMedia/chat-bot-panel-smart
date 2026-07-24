@@ -17,6 +17,11 @@ export interface TbLeadsAgenteIaRow {
   phone: string | null
   lead_score: number | null
   score_category: string | null
+  /** Our own lead UUID — NOT a real Kantar-issued panelist id (see field-map.ts). */
+  kantar_panelist_id: string | null
+  /** Set to this row's own MySQL `id` once known — see buildLeadRow/insertRow. */
+  thread_id?: number | null
+  display_thread_id?: number | null
   nombre_completo: string | null
   correo_electronico: string | null
   genero: string | null

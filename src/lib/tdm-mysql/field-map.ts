@@ -51,12 +51,18 @@ export function mapShoppingCategories(ids: number[] | null): string | null {
  * later updates — so subsequent calls simply omit the key from the row entirely (an
  * UPDATE only SETs the columns present in the object, so omitting it preserves the
  * value already stored in MySQL).
+ *
+ * `existingTdmLeadId` is this row's own MySQL `id` (`leads.tdmLeadId`) once known —
+ * `null` on the very first sync (the INSERT that assigns it; `insertRow` in sync.ts
+ * stamps `thread_id`/`display_thread_id` itself in that case), set on every sync after
+ * that so this UPDATE keeps them pointed at the row's own id.
  */
 export function buildLeadRow(
   lead: Lead,
   profile: SurveyProfile,
   fichaHogar: FichaHogarProfile | null,
   isFirstSync: boolean,
+  existingTdmLeadId: number | null,
 ): TbLeadsAgenteIaRow {
   const row: TbLeadsAgenteIaRow = {
     tenant_id: env.CLIENT_MYSQL_TENANT_ID ?? null,
@@ -65,6 +71,13 @@ export function buildLeadRow(
     status: mapCoarseStatus(lead.leadStatus),
     lead_status: lead.leadStatus,
     created_at: lead.createdAt,
+    // Our own lead UUID, NOT a real Kantar/GPM-issued panelist id — Kantar's actual
+    // CreatePanelist flow is out of scope (client-mysql-integration.md §6). Written so
+    // TDM/our own tooling can trace this row back to a specific bot conversation,
+    // since nothing else in this row does that reliably (spec 010 follow-up).
+    kantar_panelist_id: lead.id,
+    thread_id: existingTdmLeadId,
+    display_thread_id: existingTdmLeadId,
     updated_at: lead.updatedAt,
     phone: lead.phoneNumber,
     lead_score: lead.score,

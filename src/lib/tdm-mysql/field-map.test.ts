@@ -137,7 +137,7 @@ describe('mapShoppingCategories', () => {
 
 describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () => {
   it('maps config, lead, and survey profile fields for whatever status the lead currently has', () => {
-    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
 
     expect(row.source).toBe('whatsapp')
     expect(row.status).toBe('active')
@@ -166,6 +166,7 @@ describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () =
       baseProfile({ fullName: null, email: null }),
       null,
       true,
+      null,
     )
     expect(row.status).toBe('rejected')
     expect(row.lead_status).toBe('not_qualified')
@@ -176,7 +177,7 @@ describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () =
   })
 
   it('falls back parroquia/provincia/canton (and _residencia variants) generically', () => {
-    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
     expect(row.parroquia_residencia).toBe('Guatemala')
     expect(row.provincia_residencia).toBe('Mixco')
     expect(row.canton_residencia).toBe('Colonia Primavera')
@@ -187,13 +188,13 @@ describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () =
 
   it('thread_summary reflects lead.conversationSummary (null before Ficha Hogar); json_raw is the survey profile only', () => {
     const profile = baseProfile()
-    const row = buildLeadRow(baseLead({ conversationSummary: null }), profile, null, true)
+    const row = buildLeadRow(baseLead({ conversationSummary: null }), profile, null, true, null)
     expect(row.thread_summary).toBeNull()
     expect(JSON.parse(row.json_raw as string)).toMatchObject({ fullName: 'Ana López' })
   })
 
   it('leaves Ficha Hogar columns undefined when no ficha hogar profile exists yet', () => {
-    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
     expect(row.internet_hogar).toBeUndefined()
     expect(row.acceso_internet).toBeUndefined()
     expect(row.parentesco_jefe_familia).toBeUndefined()
@@ -206,23 +207,40 @@ describe('buildLeadRow — first sync (INSERT-shaped), no Ficha Hogar yet', () =
   })
 
   it('uses tenant_id/lead_version from env, not invented values', () => {
-    const row = buildLeadRow(baseLead(), baseProfile(), null, true)
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
     // Test env has no CLIENT_MYSQL_TENANT_ID/LEAD_VERSION set — must be null, not a guess.
     expect(row.tenant_id).toBeNull()
     expect(row.lead_version).toBeNull()
+  })
+
+  it('kantar_panelist_id is always our own lead UUID, never a fabricated Kantar id', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
+    expect(row.kantar_panelist_id).toBe('lead-1')
+  })
+
+  it('thread_id/display_thread_id are null on the first sync — insertRow stamps them once the row id is known', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, true, null)
+    expect(row.thread_id).toBeNull()
+    expect(row.display_thread_id).toBeNull()
   })
 })
 
 describe('buildLeadRow — subsequent syncs (UPDATE-shaped)', () => {
   it('never sets f1_lead_status when isFirstSync is false — write-once, frozen at the first sync', () => {
-    const row = buildLeadRow(baseLead(), baseProfile(), null, false)
+    const row = buildLeadRow(baseLead(), baseProfile(), null, false, 42)
     expect(row.f1_lead_status).toBeUndefined()
   })
 
   it('reflects whatever lead_status/status the lead currently has, not a hardcoded override', () => {
-    const row = buildLeadRow(baseLead({ leadStatus: 'ficha_hogar_descartado' }), baseProfile(), null, false)
+    const row = buildLeadRow(baseLead({ leadStatus: 'ficha_hogar_descartado' }), baseProfile(), null, false, 42)
     expect(row.status).toBe('rejected')
     expect(row.lead_status).toBe('ficha_hogar_descartado')
+  })
+
+  it('thread_id/display_thread_id are stamped to the row own id on later syncs', () => {
+    const row = buildLeadRow(baseLead(), baseProfile(), null, false, 42)
+    expect(row.thread_id).toBe(42)
+    expect(row.display_thread_id).toBe(42)
   })
 
   it('adds household columns once a Ficha Hogar profile exists', () => {
@@ -231,6 +249,7 @@ describe('buildLeadRow — subsequent syncs (UPDATE-shaped)', () => {
       baseProfile(),
       baseFichaHogar(),
       false,
+      42,
     )
 
     expect(row.status).toBe('qualified')
@@ -253,13 +272,14 @@ describe('buildLeadRow — subsequent syncs (UPDATE-shaped)', () => {
       baseProfile(),
       baseFichaHogar({ conflictOfInterest: true }),
       false,
+      42,
     )
     const parsed = JSON.parse(row.json_raw as string)
     expect(parsed).toMatchObject({ fullName: 'Ana López', hasInternet: true, petCount: 2, conflictOfInterest: true })
   })
 
   it('includes hasBabyUnder3 in json_raw even though there is no dedicated column for it yet', () => {
-    const row = buildLeadRow(baseLead(), baseProfile({ hasBabyUnder3: true }), null, false)
+    const row = buildLeadRow(baseLead(), baseProfile({ hasBabyUnder3: true }), null, false, 42)
     const parsed = JSON.parse(row.json_raw as string)
     expect(parsed).toMatchObject({ hasBabyUnder3: true })
   })

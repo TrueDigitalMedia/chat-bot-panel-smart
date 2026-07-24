@@ -53,15 +53,19 @@ function rowEntries(row: TbLeadsAgenteIaRow): [string, ExecuteValues][] {
  * without TDM exposing a real id-allocation mechanism.
  */
 async function insertRow(row: TbLeadsAgenteIaRow): Promise<number> {
-  const entries = rowEntries(row)
-  const columns = ['id', ...entries.map(([c]) => c)]
-  const placeholders = columns.map(() => '?').join(', ')
   const pool = getClientMysqlPool()
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
     const [rows] = await conn.execute<RowDataPacket[]>('SELECT MAX(id) AS maxId FROM tb_leads_agente_ia FOR UPDATE')
     const id = (rows[0]?.maxId as number | null ?? 0) + 1
+    // Only known once `id` is computed above — stamp it here rather than in
+    // buildLeadRow, which never sees the not-yet-assigned id on a first sync.
+    row.thread_id = id
+    row.display_thread_id = id
+    const entries = rowEntries(row)
+    const columns = ['id', ...entries.map(([c]) => c)]
+    const placeholders = columns.map(() => '?').join(', ')
     await conn.execute(
       `INSERT INTO tb_leads_agente_ia (${columns.join(', ')}) VALUES (${placeholders})`,
       [id, ...entries.map(([, v]) => v)] as ExecuteValues[],
@@ -126,7 +130,7 @@ export async function syncLead(leadId: string, correlationId: string): Promise<b
     const fichaHogar = await loadFichaHogarProfile(leadId)
     const isFirstSync = lead.tdmLeadId == null
 
-    const row = buildLeadRow(lead, profile, fichaHogar, isFirstSync)
+    const row = buildLeadRow(lead, profile, fichaHogar, isFirstSync, lead.tdmLeadId)
     const tdmLeadId = await upsertRow(lead.tdmLeadId, row)
 
     await markSynced(leadId, tdmLeadId)
