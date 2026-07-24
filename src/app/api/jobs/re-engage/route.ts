@@ -18,6 +18,8 @@ import {
   MAX_REENGAGEMENT_ATTEMPTS,
   REGISTRATION_CODE_POLL_DELAY_SECONDS,
   MAX_REGISTRATION_CODE_POLL_ATTEMPTS,
+  REGISTRATION_FREEZE_DELAY_SECONDS,
+  FREEZE_REGISTRATION_ATTEMPT_NUMBER,
 } from '@/lib/scheduler/constants'
 import { getReEngagementMessage } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
@@ -34,6 +36,20 @@ const receiver = new Receiver({
 /** Deterministic per-lead placeholder — only used while REGISTRATION_CODE_MOCK_ENABLED=true. */
 function mockRegistrationCode(leadId: string): string {
   return `MOCK-${leadId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
+}
+
+/**
+ * Schedules the 20h inactivity freeze right after the code is delivered (mock or
+ * real) — tasks.md T035 documented this but the actual scheduleJob call was never
+ * wired up, so a lead that never taps a button just sat in `waiting_for_code` forever.
+ * Safe to leave scheduled even if the user confirms early: the handler above checks
+ * `leadStatus === 'waiting_for_code'` before acting, so it no-ops once confirmed.
+ */
+async function scheduleFreezeRegistration(leadId: string, phase: number): Promise<void> {
+  const delay = Number(process.env.RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS) || REGISTRATION_FREEZE_DELAY_SECONDS
+  await scheduleJob(leadId, phase, FREEZE_REGISTRATION_ATTEMPT_NUMBER, delay, 'freeze_registration').catch((err) => {
+    console.error('[jobs/re-engage] scheduleJob(freeze_registration) failed', { leadId, err: String(err) })
+  })
 }
 
 /**
@@ -119,6 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
         ],
       )
+      await scheduleFreezeRegistration(lead.id, payload.phase)
       return NextResponse.json({ outcome: 'code_sent', code, mock: true })
     }
 
@@ -173,6 +190,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
         ],
       )
+      await scheduleFreezeRegistration(lead.id, payload.phase)
       return NextResponse.json({ outcome: 'code_sent', code })
     }
 

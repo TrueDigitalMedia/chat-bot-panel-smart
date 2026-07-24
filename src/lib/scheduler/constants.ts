@@ -14,3 +14,11 @@ export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
 }
 
 export const MAX_REENGAGEMENT_ATTEMPTS = 3
+
+// Scheduled right after the registration code is delivered (mock or real) — if the
+// lead is still `waiting_for_code` when this fires, it's marked `code_delivered_no_response`.
+export const REGISTRATION_FREEZE_DELAY_SECONDS = 72000 // 20 hours
+// Sentinel attemptNumber for freeze_registration jobs — distinct from trigger_code's
+// own 0-5 poll attempts sharing the same phase, so their re_engagement_schedules rows
+// (unique on leadId+phase+attemptNumber) never collide.
+export const FREEZE_REGISTRATION_ATTEMPT_NUMBER = 99
