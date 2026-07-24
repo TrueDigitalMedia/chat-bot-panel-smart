@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "chat-bot-ai — Fase 1 Happy Path (web channel)",
-    "description": "Corre el flujo completo de Fase 1 (opt-in → D1/D2/D3 → teléfono → encuesta de 19 preguntas) contra el canal web local, terminando en link_sent (\"🎉 ¡Felicidades!...\"). Usa `isPregnant:true` en la Q13 para calificar por la excepción de cupo (scoring/quota.ts) sin depender de que existan filas en quota_targets para tu entorno local. Corre los requests EN ORDEN (Collection Runner) — cada uno depende del estado que dejó el anterior. Postman mantiene la cookie `web_session_id` automáticamente entre requests del mismo dominio.",
+    "description": "Corre el flujo completo de Fase 1 (opt-in → D1/D2/D3 → teléfono → encuesta de 19 preguntas) contra el canal web local, terminando en link_sent (\"🎉 ¡Felicidades!...\"). Usa `isPregnant:true` en la Q13 para calificar por la excepción de cupo (scoring/quota.ts) sin depender de que existan filas en quota_targets para tu entorno local. Corre los requests EN ORDEN (Collection Runner) — cada uno depende del estado que dejó el anterior. Postman mantiene la cookie `web_session_id` automáticamente entre requests del mismo dominio — el request 00 la limpia primero (pre-request script) para que CADA corrida cree un lead nuevo en vez de reusar el de la corrida anterior.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -16,6 +16,20 @@
         "url": { "raw": "{{baseUrl}}/api/chat/web", "host": ["{{baseUrl}}"], "path": ["api", "chat", "web"] }
       },
       "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Postman's cookie jar persists ACROSS runs, not just within one — without this,",
+              "// re-running the collection reuses the previous run's web_session_id and hits the",
+              "// same (already-completed) lead instead of creating a new one.",
+              "pm.cookies.jar().unset(pm.variables.get('baseUrl'), 'web_session_id', (err) => {",
+              "  if (err) console.log('cookie clear error', err);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
         {
           "listen": "test",
           "script": {
