@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Receiver } from '@upstash/qstash'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
@@ -36,6 +36,30 @@ function mockRegistrationCode(leadId: string): string {
   return `MOCK-${leadId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
 }
 
+/**
+ * Stamps the matching re_engagement_schedules row so it's visible from the DB (admin/
+ * SQL) whether a given job actually reached this handler — without this, a QStash
+ * callback that never lands (e.g. APP_BASE_URL pointing at a dead tunnel) is
+ * indistinguishable in our own data from "still scheduled, hasn't fired yet".
+ */
+async function markScheduleDelivered(
+  leadId: string,
+  phase: number,
+  attemptNumber: number,
+  outcome: string,
+): Promise<void> {
+  await db
+    .update(reEngagementSchedules)
+    .set({ deliveredAt: new Date(), outcome })
+    .where(
+      and(
+        eq(reEngagementSchedules.leadId, leadId),
+        eq(reEngagementSchedules.phase, phase),
+        eq(reEngagementSchedules.attemptNumber, attemptNumber),
+      ),
+    )
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
   const signature = request.headers.get('Upstash-Signature') ?? ''
@@ -47,8 +71,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const payload = JSON.parse(body) as JobPayload
   const correlationId = generateCorrelationId()
 
+  // First line of defense for "is QStash even reaching us" — this appears in the
+  // server's own stdout the instant a callback lands, before any DB/business logic.
+  console.info('[jobs/re-engage] received', {
+    action: payload.action,
+    leadId: payload.leadId,
+    phase: payload.phase,
+    attemptNumber: payload.attemptNumber,
+    correlationId,
+  })
+
   const [lead] = await db.select().from(leads).where(eq(leads.id, payload.leadId))
   if (!lead) return NextResponse.json({ outcome: 'lead_not_found' })
+
+  // Stamp deliveredAt as soon as we know QStash's callback actually reached this
+  // handler for this specific (leadId, phase, attemptNumber) — before any branch-
+  // specific outcome is decided. Without this, a job that's scheduled but whose
+  // callback never lands (e.g. APP_BASE_URL pointing at a dead tunnel) looks
+  // identical in re_engagement_schedules to one that just hasn't fired yet.
+  await markScheduleDelivered(payload.leadId, payload.phase, payload.attemptNumber, 'received')
 
   // --- Registration code lookup (client-mysql-integration.md §2) ---
   // TDM's internal process writes `registration_code` into tb_leads_agente_ia on its
