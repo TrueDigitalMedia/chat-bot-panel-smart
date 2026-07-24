@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { listConversations } from '@/lib/db/conversation-messages'
 import { BackfillEvalsButton } from './backfill-button'
+import { DeleteConversationButton } from './delete-conversation-button'
 import styles from './conversations.module.css'
 
 function formatWhen(d: Date | string | null | undefined): string {
@@ -101,9 +102,12 @@ export default async function ConversationsPage() {
                   </td>
                   <td className={styles.muted}>{formatWhen(c.lastActivityAt)}</td>
                   <td>
-                    <Link href={`/admin/conversations/${c.id}`} className={styles.open}>
-                      Abrir
-                    </Link>
+                    <div className={styles.rowActions}>
+                      <Link href={`/admin/conversations/${c.id}`} className={styles.open}>
+                        Abrir
+                      </Link>
+                      <DeleteConversationButton leadId={c.id} />
+                    </div>
                   </td>
                 </tr>
               ))

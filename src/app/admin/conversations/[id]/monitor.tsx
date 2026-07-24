@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import styles from '../conversations.module.css'
+import { DeleteConversationButton } from '../delete-conversation-button'
 
 type Message = {
   id: string
@@ -298,6 +299,7 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
             <span className={styles.dot} aria-hidden />
             Actualiza cada 3s
           </span>
+          <DeleteConversationButton leadId={leadId} redirectTo="/admin/conversations" />
         </div>
         <div className={styles.thread}>
           {messages.length === 0 ? (

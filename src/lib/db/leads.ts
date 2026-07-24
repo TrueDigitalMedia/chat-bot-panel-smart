@@ -1,6 +1,15 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
-import { leads, surveyProfiles, flowStates } from './schema'
+import {
+  leads,
+  surveyProfiles,
+  flowStates,
+  fichaHogarProfiles,
+  reEngagementSchedules,
+  systemCallLogs,
+  treintaPanelistRecords,
+  treintaPanelistEmbeddings,
+} from './schema'
 import type { Channel } from '@/types/channel'
 import type { Lead } from '@/types/lead'
 
@@ -66,6 +75,43 @@ export async function getLeadByChatId(chatId: bigint): Promise<Lead | null> {
 export async function getLeadById(id: string): Promise<Lead | null> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, id)).limit(1)
   return (lead as Lead) ?? null
+}
+
+/**
+ * Permanently deletes a lead and everything tied to it. `conversation_messages` and
+ * `conversation_evals` cascade automatically (schema.ts); the rest reference `leads.id`
+ * with no cascade, so they're deleted here first, children before parents. Neon's
+ * HTTP driver doesn't support interactive transactions (no other code in this repo
+ * uses db.transaction), so these run sequentially rather than atomically.
+ */
+export async function deleteConversation(leadId: string): Promise<boolean> {
+  const lead = await getLeadById(leadId)
+  if (!lead) return false
+
+  const { cancelAllPendingJobsForLead } = await import('@/lib/scheduler/re-engagement')
+  await cancelAllPendingJobsForLead(leadId).catch(() => {})
+
+  const records = await db
+    .select({ id: treintaPanelistRecords.id })
+    .from(treintaPanelistRecords)
+    .where(eq(treintaPanelistRecords.leadId, leadId))
+  if (records.length > 0) {
+    await db.delete(treintaPanelistEmbeddings).where(
+      inArray(
+        treintaPanelistEmbeddings.recordId,
+        records.map((r) => r.id),
+      ),
+    )
+  }
+  await db.delete(treintaPanelistRecords).where(eq(treintaPanelistRecords.leadId, leadId))
+  await db.delete(systemCallLogs).where(eq(systemCallLogs.leadId, leadId))
+  await db.delete(reEngagementSchedules).where(eq(reEngagementSchedules.leadId, leadId))
+  await db.delete(flowStates).where(eq(flowStates.leadId, leadId))
+  await db.delete(fichaHogarProfiles).where(eq(fichaHogarProfiles.leadId, leadId))
+  await db.delete(surveyProfiles).where(eq(surveyProfiles.leadId, leadId))
+  await db.delete(leads).where(eq(leads.id, leadId))
+
+  return true
 }
 
 /**

@@ -58,6 +58,20 @@ export async function cancelPendingJobs(leadId: string, phase: number): Promise<
       ),
     )
 
+  await cancelJobs(pending)
+}
+
+/** Same as cancelPendingJobs but across every phase — used when a lead is being deleted entirely. */
+export async function cancelAllPendingJobsForLead(leadId: string): Promise<void> {
+  const pending = await db
+    .select()
+    .from(reEngagementSchedules)
+    .where(eq(reEngagementSchedules.leadId, leadId))
+
+  await cancelJobs(pending)
+}
+
+async function cancelJobs(pending: Array<typeof reEngagementSchedules.$inferSelect>): Promise<void> {
   for (const job of pending) {
     if (job.qstashMessageId && !job.outcome) {
       try {

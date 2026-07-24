@@ -173,6 +173,34 @@
   background: var(--accent);
 }
 
+.rowActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.deleteBtn {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d1a3a3;
+  background: #fff;
+  color: #9b2c2c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: #9b2c2c;
+  color: #fff;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .empty {
   text-align: center;
   color: var(--muted);
