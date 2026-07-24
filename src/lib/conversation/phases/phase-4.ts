@@ -61,6 +61,16 @@ export function isPlausibleBirthDate(value: string): boolean {
 }
 
 /**
+ * Same purpose as phase-1.ts's maybeAnswerFaq — a button question can also get a
+ * question typed at it instead of tapped, not just free-text fields.
+ */
+async function maybeAnswerFaq(lead: Lead, messageText: string, correlationId: string): Promise<void> {
+  if (!messageText.trim()) return
+  const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
+  await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId)
+}
+
+/**
  * Ficha Hogar entry point + continuation handler — same dual role as handlePhase1.
  * Call with empty text/callbackData to send question 1 (from handlePhase3Success).
  */
@@ -97,6 +107,7 @@ export async function handleFichaHogar(
       if (matched) resolvedCallback = matched
     }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
+      await maybeAnswerFaq(lead, messageText, correlationId)
       await sendFichaHogarQuestion(to, idx)
       return
     }
@@ -117,7 +128,11 @@ export async function handleFichaHogar(
       { leadId: lead.id },
     )
     if (!result.ok) {
-      await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
+      const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId)
+      if (!answered) {
+        await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      }
       await sendFichaHogarQuestion(to, idx)
       return
     }

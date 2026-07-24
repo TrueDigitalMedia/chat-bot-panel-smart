@@ -57,6 +57,31 @@ export async function handleOutOfFlow(
   await resendPendingQuestion(lead, pendingIdx, to)
 }
 
+/**
+ * Called when free-text field extraction fails during a survey question (Fase 1 or
+ * Ficha Hogar) — the strongest signal available that the message wasn't an answer at
+ * all, e.g. the user asked something ("¿es gratis participar?") instead of giving
+ * their name. Answers via FAQ if there's a match; the caller re-sends the pending
+ * question itself either way (same as handleOutOfFlow), and falls back to its own
+ * generic retry prompt only when this returns false.
+ */
+export async function tryAnswerFaqOnExtractionFailure(
+  lead: Lead,
+  query: string,
+  correlationId: string,
+): Promise<boolean> {
+  const faqEntry = await findFaq(query, { leadId: lead.id, correlationId })
+  if (!faqEntry) return false
+
+  const answer = faqEntry.answer
+  if (validateBotResponse(answer)) {
+    await sendText(lead, answer)
+  } else {
+    await sendText(lead, SAFE_FALLBACK)
+  }
+  return true
+}
+
 async function resendPendingQuestion(
   lead: Lead,
   questionIdx: number,
