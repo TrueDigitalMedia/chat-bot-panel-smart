@@ -1,0 +1,106 @@
+[
+  {
+    "question": "¿En qué países está disponible PanelSmart?",
+    "answer": "Por ahora PanelSmart está disponible en Guatemala, Honduras, El Salvador, Nicaragua, Costa Rica, República Dominicana y Panamá."
+  },
+  {
+    "question": "¿Qué es PanelSmart y cómo funciona?",
+    "answer": "PanelSmart es una plataforma donde registras tus compras desde la app usando solo tu móvil. Ganas puntos canjeables por beneficios, participas en dinámicas con premios y contribuyes a mejorar productos que millones de personas consumen cada día."
+  },
+  {
+    "question": "¿Cuánto tiempo me tomará al día?",
+    "answer": "Solo unos minutos. Entra a la app y registra tu compra. Es fácil y rápido, no necesitas experiencia previa."
+  },
+  {
+    "question": "¿Es gratis participar?",
+    "answer": "Sí, participar es totalmente gratuito. Solo descarga la app y registra tus compras habituales."
+  },
+  {
+    "question": "¿Dónde descargo Panel Smart?",
+    "answer": "Descárgala buscando Panel Smart en App Store (iPhone) o Google Play (Android)."
+  },
+  {
+    "question": "¿En qué celulares funciona?",
+    "answer": "Funciona en dispositivos Android e iOS compatibles."
+  },
+  {
+    "question": "¿Ocupa mucho espacio?",
+    "answer": "No, Panel Smart es una app liviana y optimizada para bajo consumo de batería y datos."
+  },
+  {
+    "question": "¿Necesito crear una cuenta?",
+    "answer": "Sí, necesitas registrarte para acceder. Abre la app, toca Crear cuenta e ingresa tu correo y contraseña. El proceso toma menos de 2 minutos."
+  },
+  {
+    "question": "¿Qué datos me piden al registrarme?",
+    "answer": "Solo tu correo electrónico, una contraseña y aceptar los términos. También puedes registrarte con tu cuenta de Google o Apple ID."
+  },
+  {
+    "question": "No me llegó el correo de verificación",
+    "answer": "Revisa tus mensajes de texto o toca Reenviar código desde la app. La verificación es obligatoria para activar tu cuenta."
+  },
+  {
+    "question": "Olvidé mi contraseña",
+    "answer": "Toca ¿Olvidaste tu contraseña? en la pantalla de inicio y sigue las instrucciones. Puedes cambiarla las veces que necesites desde tu perfil."
+  },
+  {
+    "question": "¿Necesito internet para usar la app?",
+    "answer": "Sí, Panel Smart requiere conexión a internet para registrar compras y sincronizar tu información."
+  },
+  {
+    "question": "Ya me registré, ¿ahora qué sigo?",
+    "answer": "Inicia sesión y accede a tu Panel principal. Desde ahí puedes registrar tus compras, ver tus puntos y participar en dinámicas."
+  },
+  {
+    "question": "No veo información en mi panel",
+    "answer": "Asegúrate de que tu cuenta esté activa y sincronizada. Si el problema continúa, contacta a soporte."
+  },
+  {
+    "question": "¿Dónde configuro mi perfil?",
+    "answer": "Puedes gestionar tu perfil desde la sección de configuración dentro de la app. Para cualquier cambio en tus datos de acceso, contacta con soporte."
+  },
+  {
+    "question": "¿Puedo usar mi cuenta en otro celular?",
+    "answer": "Sí, puedes iniciar sesión en varios dispositivos con la misma cuenta."
+  },
+  {
+    "question": "¿Por qué la app pide permisos?",
+    "answer": "Para habilitar funciones como notificaciones importantes sobre tus puntos y dinámicas."
+  },
+  {
+    "question": "¿Puedo desactivar notificaciones?",
+    "answer": "Sí, desde la configuración de tu celular."
+  },
+  {
+    "question": "La app no abre o se queda cargando",
+    "answer": "Cierra la app, verifica tu conexión a internet y vuelve a intentar. Si el problema continúa, actualiza la app a la última versión o contacta soporte."
+  },
+  {
+    "question": "¿Cómo gano puntos?",
+    "answer": "Registrando todos los productos que compras en el mes, respondiendo encuestas semanales y participando en dinámicas especiales. Si mantienes una participación activa puedes subir de nivel y acceder a mejores recompensas."
+  },
+  {
+    "question": "¿Qué premios o beneficios puedo recibir?",
+    "answer": "Tienes acceso a sorteos y beneficios exclusivos. Todos los puntos que acumules los puedes canjear por saldo en una tarjeta digital."
+  },
+  {
+    "question": "¿Mi información personal está segura?",
+    "answer": "Sí. Está protegida por la normativa vigente de privacidad de datos, se usa únicamente para investigación de hábitos de consumo y nunca se comparte con terceros."
+  },
+  {
+    "question": "¿Recibiré ayuda si tengo dudas sobre la app?",
+    "answer": "Sí. Puedes contactar con soporte y te ayudarán a resolver cualquier duda."
+  },
+  {
+    "question": "¿Quién puede participar?",
+    "answer": "Personas mayores de edad responsables de las compras del hogar que superen el proceso de selección. Si no eres seleccionado/a, tu información se trata con total privacidad."
+  },
+  {
+    "question": "¿Cómo contacto a soporte?",
+    "answer": "Desde la sección de ayuda dentro de la app"
+  },
+  {
+    "question": "¿Puedo cerrar o eliminar mi cuenta?",
+    "answer": "Sí. Para cualquier gestión relacionada con tu cuenta, contacta con soporte."
+  }
+]
