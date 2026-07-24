@@ -25,7 +25,7 @@ const ENABLED_COUNTRIES = (SURVEY_QUESTIONS.find((q) => q.fieldName === 'country
  * some FAQ happens to mention that exact word, forcing a new FAQ row per variant
  * (country name, phrasing, etc.) instead of the model reasoning from real context.
  */
-const BOT_CONTEXT = `PanelSmart es una plataforma de investigación de mercados (Kantar) donde las personas registran sus compras del hogar desde una app móvil y ganan puntos canjeables por premios. Este chatbot es el paso de reclutamiento: encuesta al usuario (términos y condiciones, si le interesa ganar premios, si administra las compras del hogar, datos demográficos), verifica si hay cupo disponible para su perfil, y si califica le pide descargar la app PanelSmart y activarla con un código de registro. Países habilitados actualmente: ${ENABLED_COUNTRIES}. Cualquier otro país no está soportado.`
+export const BOT_CONTEXT = `PanelSmart es una plataforma de investigación de mercados (Kantar) donde las personas registran sus compras del hogar desde una app móvil y ganan puntos canjeables por premios. Este chatbot es el paso de reclutamiento: encuesta al usuario (términos y condiciones, si le interesa ganar premios, si administra las compras del hogar, datos demográficos), verifica si hay cupo disponible para su perfil, y si califica le pide descargar la app PanelSmart y activarla con un código de registro. Países habilitados actualmente: ${ENABLED_COUNTRIES}. Cualquier otro país no está soportado.`
 
 const MATCH_SCHEMA = z.object({
   reasoning: z

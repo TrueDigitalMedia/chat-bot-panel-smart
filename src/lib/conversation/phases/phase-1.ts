@@ -20,16 +20,27 @@ import type { ChannelRecipient } from '@/types/channel'
 
 const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
 
+const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
+const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
+const D2_TEXT =
+  'A continuación te haremos unas preguntas que nos ayudarán a clasificar tu hogar dentro del panel, y poder ganar premios más rápido.\n¿Quieres ganar premios por decirnos qué compras?'
+const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
+
 /**
  * Decision-point gates (opt-in/D1/D2/D3) only ever expect a button tap — free text
  * that doesn't match one might be a question ("¿de qué sirve esto?") rather than
  * junk. Checks FAQ before the caller re-shows the same gate; no-ops on empty text
  * (e.g. the very first bootstrap message, which has none to check).
  */
-async function maybeAnswerFaq(lead: Lead, messageText: string, correlationId: string): Promise<void> {
+async function maybeAnswerFaq(
+  lead: Lead,
+  messageText: string,
+  correlationId: string,
+  pendingQuestionText: string,
+): Promise<void> {
   if (!messageText.trim()) return
   const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-  await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId)
+  await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
 }
 
 // Handle Phase 1: opt-in gate, decision points D1→D2→D3, then the survey (SURVEY_QUESTION_COUNT questions)
@@ -54,7 +65,7 @@ export async function handlePhase1(
     } else {
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
-      await maybeAnswerFaq(lead, messageText, correlationId)
+      await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
       await sendOptIn(to)
     }
     return
@@ -69,7 +80,7 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId)
+      await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
       await sendD1(to)
     }
     return
@@ -85,7 +96,7 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'not_qualified', 'd2_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId)
+      await maybeAnswerFaq(lead, messageText, correlationId, D2_TEXT)
       await sendD2(to)
     }
     return
@@ -105,7 +116,7 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'quota_exhausted', 'd3_no', correlationId)
       await sendText(to, EXIT_B)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId)
+      await maybeAnswerFaq(lead, messageText, correlationId, D3_TEXT)
       await sendD3(to)
     }
     return
@@ -147,7 +158,7 @@ export async function handlePhase1(
       if (matched) resolvedCallback = matched
     }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
-      await maybeAnswerFaq(lead, messageText, correlationId)
+      await maybeAnswerFaq(lead, messageText, correlationId, question.text)
       await sendSurveyQuestion(to, idx, lead.id)
       return
     }
@@ -195,7 +206,7 @@ export async function handlePhase1(
       } else {
         console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
         const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-        const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId)
+        const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
         if (!answered) {
           await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
         }
@@ -353,7 +364,7 @@ export async function handlePhase1(
 async function sendOptIn(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(
     to,
-    '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?',
+    OPT_IN_TEXT,
     [
       [
         { text: 'Inscribirme', callback_data: 'optin:accept' },
@@ -366,7 +377,7 @@ async function sendOptIn(to: ChannelRecipient): Promise<void> {
 async function sendD1(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(
     to,
-    `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`,
+    D1_TEXT,
     [
       [
         { text: 'Confirmo y acepto', callback_data: 'd1:accept' },
@@ -379,7 +390,7 @@ async function sendD1(to: ChannelRecipient): Promise<void> {
 async function sendD2(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(
     to,
-    'A continuación te haremos unas preguntas que nos ayudarán a clasificar tu hogar dentro del panel, y poder ganar premios más rápido.\n¿Quieres ganar premios por decirnos qué compras?',
+    D2_TEXT,
     [
       [
         { text: 'Sí quiero', callback_data: 'd2:accept' },
@@ -392,7 +403,7 @@ async function sendD2(to: ChannelRecipient): Promise<void> {
 async function sendD3(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(
     to,
-    '¿Eres quién administra y organiza las compras del hogar?',
+    D3_TEXT,
     [
       [
         { text: 'Sí', callback_data: 'd3:yes' },

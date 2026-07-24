@@ -1,8 +1,10 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { flowStates } from '@/lib/db/schema'
+import { getRecentMessages } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { findFaq } from '@/lib/rag/search'
+import { answerClarification } from '@/lib/rag/clarify'
 import { validateBotResponse, SAFE_FALLBACK } from '@/lib/ai/validate-output'
 import { supportRedirect } from './exit-messages'
 import { isTerminal } from '@/lib/state-machine/transitions'
@@ -61,25 +63,40 @@ export async function handleOutOfFlow(
  * Called when free-text field extraction fails during a survey question (Fase 1 or
  * Ficha Hogar) — the strongest signal available that the message wasn't an answer at
  * all, e.g. the user asked something ("¿es gratis participar?") instead of giving
- * their name. Answers via FAQ if there's a match; the caller re-sends the pending
- * question itself either way (same as handleOutOfFlow), and falls back to its own
- * generic retry prompt only when this returns false.
+ * their name. Answers via FAQ if there's a match; if no FAQ covers it, falls back to
+ * an ad-hoc clarification grounded in the pending question text and recent history
+ * (e.g. "para que es esta pregunta" won't match any seeded FAQ, but can still be
+ * explained using the question that's actually pending). The caller re-sends the
+ * pending question itself either way (same as handleOutOfFlow), and falls back to its
+ * own generic retry prompt only when this returns false.
  */
 export async function tryAnswerFaqOnExtractionFailure(
   lead: Lead,
   query: string,
   correlationId: string,
+  pendingQuestionText: string,
 ): Promise<boolean> {
   const faqEntry = await findFaq(query, { leadId: lead.id, correlationId })
-  if (!faqEntry) return false
-
-  const answer = faqEntry.answer
-  if (validateBotResponse(answer)) {
-    await sendText(lead, answer)
-  } else {
-    await sendText(lead, SAFE_FALLBACK)
+  if (faqEntry) {
+    const answer = faqEntry.answer
+    if (validateBotResponse(answer)) {
+      await sendText(lead, answer)
+    } else {
+      await sendText(lead, SAFE_FALLBACK)
+    }
+    return true
   }
-  return true
+
+  const history = await getRecentMessages(lead.id)
+  const clarification = await answerClarification(query, pendingQuestionText, history, {
+    leadId: lead.id,
+    correlationId,
+  })
+  if (clarification && validateBotResponse(clarification)) {
+    await sendText(lead, clarification)
+    return true
+  }
+  return false
 }
 
 async function resendPendingQuestion(

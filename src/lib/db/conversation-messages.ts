@@ -38,6 +38,25 @@ export async function logConversationMessage(input: LogMessageInput): Promise<vo
   }
 }
 
+export interface RecentMessage {
+  direction: MessageDirection
+  body: string
+}
+
+/** Last `limit` turns for a lead, oldest → newest — used to ground LLM context in what was actually said. */
+export async function getRecentMessages(leadId: string, limit = 8): Promise<RecentMessage[]> {
+  const rows = await db
+    .select({
+      direction: conversationMessages.direction,
+      body: conversationMessages.body,
+    })
+    .from(conversationMessages)
+    .where(eq(conversationMessages.leadId, leadId))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(limit)
+  return rows.reverse()
+}
+
 export type ConversationListItem = {
   id: string
   channel: Channel
