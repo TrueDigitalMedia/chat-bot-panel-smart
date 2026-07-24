@@ -4,7 +4,6 @@ import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard, sendVideo } from '@/lib/messaging/send'
 import { supportRedirect, EXIT_A } from '../exit-messages'
-import { env } from '@/lib/env'
 import type { Lead } from '@/types/lead'
 import { FICHA_HOGAR_BUTTON_FIELDS } from '@/types/lead'
 import { generateObject } from 'ai'
@@ -233,7 +232,7 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
   })
 
   if (!persisted) {
-    await sendText(lead, supportRedirect(env.SUPPORT_CONTACT))
+    await sendText(lead, supportRedirect())
     return
   }
 

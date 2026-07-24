@@ -22,3 +22,9 @@ export const REGISTRATION_FREEZE_DELAY_SECONDS = 72000 // 20 hours
 // own 0-5 poll attempts sharing the same phase, so their re_engagement_schedules rows
 // (unique on leadId+phase+attemptNumber) never collide.
 export const FREEZE_REGISTRATION_ATTEMPT_NUMBER = 99
+
+// Scheduled right after the download links are sent (link_sent) — if the lead still
+// hasn't downloaded/moved past link_sent when this fires, it re-asks once.
+export const LINK_SENT_REMINDER_DELAY_SECONDS = 7200 // 2 hours
+// Own sentinel, distinct from trigger_code's 0-5 and freeze_registration's 99.
+export const LINK_SENT_REMINDER_ATTEMPT_NUMBER = 98

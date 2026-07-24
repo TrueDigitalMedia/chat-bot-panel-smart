@@ -6,7 +6,6 @@ import { findFaq } from '@/lib/rag/search'
 import { validateBotResponse, SAFE_FALLBACK } from '@/lib/ai/validate-output'
 import { supportRedirect } from './exit-messages'
 import { isTerminal } from '@/lib/state-machine/transitions'
-import { env } from '@/lib/env'
 import { SURVEY_QUESTION_COUNT } from './survey-questions'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelRecipient } from '@/types/channel'
@@ -24,7 +23,7 @@ export async function handleOutOfFlow(
 
   // Terminal state → short support redirect
   if (isTerminal(status)) {
-    await sendText(to, supportRedirect(env.SUPPORT_CONTACT))
+    await sendText(to, supportRedirect())
     return
   }
 

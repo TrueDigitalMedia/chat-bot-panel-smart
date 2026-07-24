@@ -13,7 +13,6 @@ import { handleCorrectionFlow, handleCorrectionIntent } from './correction'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { supportRedirect } from './exit-messages'
-import { env } from '@/lib/env'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -114,7 +113,7 @@ export async function routeMessage(
   if (status === 'link_sent') {
     await sendText(
       lead,
-      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, escríbenos a ${env.SUPPORT_CONTACT}.`,
+      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo.`,
     )
     return
   }
@@ -186,7 +185,7 @@ export async function routeMessage(
 
   // Terminal (or other leftover statuses): short message + restart hint — don't loop the long support blurb alone
   if (isTerminal(status)) {
-    await sendText(lead, supportRedirect(env.SUPPORT_CONTACT))
+    await sendText(lead, supportRedirect())
     return
   }
 

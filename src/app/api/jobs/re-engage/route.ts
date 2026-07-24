@@ -11,6 +11,7 @@ import {
   REGISTER_CALLBACK_NO,
   REGISTER_CALLBACK_YES,
 } from '@/lib/onboarding/registration-choice'
+import { IOS_APP_LINK, ANDROID_APP_LINK } from '@/lib/conversation/exit-messages'
 import { sendText, sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import {
@@ -212,6 +213,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // apply here since no code was ever sent — `abandono` is the correct give-up state.
     await transitionLead(lead.id, 'abandono', 'code_lookup_timeout', correlationId)
     return NextResponse.json({ outcome: 'code_lookup_timeout' })
+  }
+
+  // --- Link-sent reminder (2h) — asks once if the lead never moved past link_sent ---
+  if (payload.action === 'link_sent_reminder') {
+    if (lead.leadStatus === 'link_sent') {
+      await sendText(
+        lead,
+        `¿Ya descargaste la app? Cuando la tengas, te enviaremos tu código de registro.\n\n` +
+          `📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}`,
+      )
+      return NextResponse.json({ outcome: 'reminder_sent' })
+    }
+    return NextResponse.json({ outcome: 'skipped_not_link_sent' })
   }
 
   // --- Registration inactivity freeze (20h) ---

@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { sendText } from '@/lib/messaging/send'
-import { env } from '@/lib/env'
 import { supportRedirect } from '../exit-messages'
 import type { Lead } from '@/types/lead'
 
@@ -16,6 +15,6 @@ export async function handlePhase3Success(lead: Lead, correlationId: string): Pr
 export async function handlePhase3Failure(lead: Lead): Promise<void> {
   await sendText(
     lead,
-    `${supportRedirect(env.SUPPORT_CONTACT)}\n\nHubo un error al completar tu registro (mock). Nuestro equipo te ayudará a resolverlo.`,
+    `${supportRedirect()}\n\nHubo un error al completar tu registro (mock). Nuestro equipo te ayudará a resolverlo.`,
   )
 }

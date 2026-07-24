@@ -8,6 +8,9 @@ export const EXIT_B =
 
 export const EXIT_B_THANKS = '🎉 ¡Gracias por tus respuestas!'
 
-export function supportRedirect(contact: string): string {
-  return `Te invito a escribir a nuestro canal de atención en el ${contact} para resolver tus dudas sobre los productos que ofrecemos. Estoy aquí para ayudarte con tu inscripción cuando quieras.`
+export const IOS_APP_LINK = 'https://apps.apple.com/us/app/panelsmart/id900007535?l=es'
+export const ANDROID_APP_LINK = 'https://play.google.com/store/apps/details?id=com.lumi.kwpsmartpanel&hl=es_US&gl=US'
+
+export function supportRedirect(): string {
+  return `Gracias por tu interés. Nuestro equipo se pondrá en contacto contigo para ayudarte a resolver tus dudas.\n\nMientras tanto, aquí estaré si quieres retomar tu inscripción.`
 }
