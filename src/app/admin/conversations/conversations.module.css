@@ -450,3 +450,68 @@
   overflow: auto;
   max-height: 10rem;
 }
+
+.chipBtn {
+  composes: chip;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chipBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.chipBtn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.replyBar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+
+.replyInput {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.replyInput:disabled {
+  opacity: 0.6;
+}
+
+.replySendBtn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.replySendBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.replySendBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.replyDisabledNote {
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
