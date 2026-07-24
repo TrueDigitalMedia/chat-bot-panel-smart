@@ -56,7 +56,13 @@ export async function routeMessage(
   const messageText = inbound.text
   const callbackData = inbound.callbackData
 
-  if (!isTerminal(status)) {
+  // Only cancel pending jobs for the phase-1 flow, where 're-engage' reminders are the
+  // only thing ever scheduled (line ~176 below). cancelPendingJobs cancels by phase, not
+  // by action — running it unconditionally here used to also cancel the phase-2
+  // `trigger_code` job (the one that actually delivers the registration code) the moment
+  // the user sent any message while `link_sent`/`waiting_for_code`, permanently stranding
+  // them since nothing ever reschedules it.
+  if (status === 'incomplete') {
     await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
   }
 
@@ -108,7 +114,7 @@ export async function routeMessage(
   if (status === 'link_sent') {
     await sendText(
       lead,
-      'Ya te envié los links de descarga. Cuando tengas el código de registro, sigue las instrucciones del bot.\n\nSi quieres empezar de nuevo, escribe /start',
+      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, escríbenos a ${env.SUPPORT_CONTACT}.`,
     )
     return
   }
@@ -180,10 +186,7 @@ export async function routeMessage(
 
   // Terminal (or other leftover statuses): short message + restart hint — don't loop the long support blurb alone
   if (isTerminal(status)) {
-    await sendText(
-      lead,
-      `${supportRedirect(env.SUPPORT_CONTACT)}\n\nSi quieres volver a intentarlo, escribe /start`,
-    )
+    await sendText(lead, supportRedirect(env.SUPPORT_CONTACT))
     return
   }
 

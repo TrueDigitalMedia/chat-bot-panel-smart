@@ -22,12 +22,9 @@ export async function handleOutOfFlow(
   const to = lead
   const status = lead.leadStatus as LeadStatus
 
-  // Terminal state → short support redirect (full loop handled in router with /start hint)
+  // Terminal state → short support redirect
   if (isTerminal(status)) {
-    await sendText(
-      to,
-      `${supportRedirect(env.SUPPORT_CONTACT)}\n\nSi quieres volver a intentarlo, escribe /start`,
-    )
+    await sendText(to, supportRedirect(env.SUPPORT_CONTACT))
     return
   }
 
