@@ -11,6 +11,7 @@ import { EXIT_A, EXIT_B, EXIT_B_THANKS } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
+import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
@@ -183,21 +184,29 @@ export async function handlePhase1(
       { leadId: lead.id },
     )
 
-    // If AI fails on Guatemala geo fields, fall back to raw text and let geo validation decide
+    // If AI fails on geo fields with real validation data, fall back to raw text
+    // and let geo validation decide.
     const isGeoField =
       question.fieldName === 'stateProvince' ||
       question.fieldName === 'municipality' ||
       question.fieldName === 'neighborhood'
+    const isDeptOrMuni = question.fieldName === 'stateProvince' || question.fieldName === 'municipality'
 
     const [profileForCountry] = await db
       .select()
       .from(surveyProfiles)
       .where(eq(surveyProfiles.leadId, lead.id))
       .limit(1)
-    const isGuatemala = profileForCountry?.country === 'Guatemala'
+    const country = profileForCountry?.country ?? null
+    const isGuatemala = country === 'Guatemala'
+    // Guatemala validates all 3 geo fields (incl. zona/barrio); the other 6 countries
+    // only have department/municipality data (data/geo/cam-nse-regions.json) — no
+    // barrio-level catalog exists, so neighborhood there stays unvalidated free text.
+    const hasGenericGeoValidation = isDeptOrMuni && country !== null && isSupportedGeoCountry(country)
+    const hasGeoValidation = (isGeoField && isGuatemala) || hasGenericGeoValidation
 
     if (!result.ok) {
-      if (isGeoField && isGuatemala && messageText.trim().length >= 2) {
+      if (hasGeoValidation && messageText.trim().length >= 2) {
         console.warn('[phase-1] extraction failed — using raw text for geo', {
           leadId: lead.id,
           field: question.fieldName,
@@ -217,19 +226,26 @@ export async function handlePhase1(
       fieldValue = result.value
     }
 
-    // Guatemala geo validation (departamento → municipio → zona/barrio)
-    if (isGeoField && isGuatemala) {
-      const geo = validateGuatemalaGeoField(
-        question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
-        String(fieldValue ?? ''),
-        {
-          stateProvince: profileForCountry?.stateProvince,
-          municipality:
-            question.fieldName === 'municipality'
-              ? String(fieldValue)
-              : profileForCountry?.municipality,
-        },
-      )
+    // Geo validation (departamento/provincia → municipio, + zona/barrio for Guatemala)
+    if (hasGeoValidation) {
+      const geo = isGuatemala
+        ? validateGuatemalaGeoField(
+            question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
+            String(fieldValue ?? ''),
+            {
+              stateProvince: profileForCountry?.stateProvince,
+              municipality:
+                question.fieldName === 'municipality'
+                  ? String(fieldValue)
+                  : profileForCountry?.municipality,
+            },
+          )
+        : validateCountryGeoField(
+            country!,
+            question.fieldName as 'stateProvince' | 'municipality',
+            String(fieldValue ?? ''),
+            { stateProvince: profileForCountry?.stateProvince },
+          )
       if (!geo.ok) {
         await sendText(
           to,
