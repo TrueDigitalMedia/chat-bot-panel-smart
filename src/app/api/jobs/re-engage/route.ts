@@ -21,6 +21,9 @@ import {
   MAX_REGISTRATION_CODE_POLL_ATTEMPTS,
   REGISTRATION_FREEZE_DELAY_SECONDS,
   FREEZE_REGISTRATION_ATTEMPT_NUMBER,
+  MAX_LINK_SENT_REMINDER_ATTEMPTS,
+  LINK_SENT_REMINDER_ATTEMPT_BASE,
+  linkSentReminderDelaySeconds,
 } from '@/lib/scheduler/constants'
 import { getReEngagementMessage } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
@@ -215,13 +218,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'code_lookup_timeout' })
   }
 
-  // --- Link-sent reminder (2h) — asks once if the lead never moved past link_sent ---
+  // --- Link-sent reminder (2h, up to MAX_LINK_SENT_REMINDER_ATTEMPTS) — re-asks if the
+  // lead never moved past link_sent, then reschedules itself until the max is hit ---
   if (payload.action === 'link_sent_reminder') {
     if (lead.leadStatus === 'link_sent') {
+      const attempt = payload.attemptNumber - LINK_SENT_REMINDER_ATTEMPT_BASE
       await sendText(
         lead,
         `¿Ya descargaste la app? Cuando la tengas, te enviaremos tu código de registro.\n\n` +
           `📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}`,
+      )
+      if (attempt >= MAX_LINK_SENT_REMINDER_ATTEMPTS) {
+        await transitionLead(lead.id, 'abandono', 'link_sent_reminder_exhausted', correlationId)
+        return NextResponse.json({ outcome: 'reminder_sent_marked_abandono' })
+      }
+      await scheduleJob(
+        lead.id,
+        payload.phase,
+        LINK_SENT_REMINDER_ATTEMPT_BASE + attempt + 1,
+        linkSentReminderDelaySeconds(),
+        'link_sent_reminder',
       )
       return NextResponse.json({ outcome: 'reminder_sent' })
     }

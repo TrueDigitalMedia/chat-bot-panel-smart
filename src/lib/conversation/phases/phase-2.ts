@@ -5,8 +5,8 @@ import { sendText } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import {
   PHASE2_CODE_DELAY_SECONDS,
-  LINK_SENT_REMINDER_DELAY_SECONDS,
-  LINK_SENT_REMINDER_ATTEMPT_NUMBER,
+  LINK_SENT_REMINDER_ATTEMPT_BASE,
+  linkSentReminderDelaySeconds,
 } from '@/lib/scheduler/constants'
 import { IOS_APP_LINK, ANDROID_APP_LINK } from '../exit-messages'
 import type { Lead } from '@/types/lead'
@@ -33,14 +33,16 @@ export async function handlePhase2(lead: Lead, _correlationId: string): Promise<
     console.error('[phase-2] scheduleJob(trigger_code) failed', { leadId: lead.id, err: String(err) })
   })
 
-  // If the lead goes quiet after this and never moves past link_sent, ask once more
-  // whether they downloaded the app — same RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS knob
-  // as the other scheduled delays above, for local testing.
-  const reminderDelay =
-    Number(process.env.RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS) || LINK_SENT_REMINDER_DELAY_SECONDS
-  await scheduleJob(lead.id, 2, LINK_SENT_REMINDER_ATTEMPT_NUMBER, reminderDelay, 'link_sent_reminder').catch(
-    (err) => {
-      console.error('[phase-2] scheduleJob(link_sent_reminder) failed', { leadId: lead.id, err: String(err) })
-    },
-  )
+  // If the lead goes quiet after this and never moves past link_sent, ask again every
+  // linkSentReminderDelaySeconds() (2h by default), up to MAX_LINK_SENT_REMINDER_ATTEMPTS
+  // times — re-engage/route.ts reschedules this itself after each attempt.
+  await scheduleJob(
+    lead.id,
+    2,
+    LINK_SENT_REMINDER_ATTEMPT_BASE + 1,
+    linkSentReminderDelaySeconds(),
+    'link_sent_reminder',
+  ).catch((err) => {
+    console.error('[phase-2] scheduleJob(link_sent_reminder) failed', { leadId: lead.id, err: String(err) })
+  })
 }
