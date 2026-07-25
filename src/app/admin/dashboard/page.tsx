@@ -1,6 +1,6 @@
 import { listQuotaProgress, type QuotaProgress } from '@/lib/quotas/quota-progress'
-import { groupProgressByCountry } from '@/lib/dashboard/country-summary'
-import { getConversionFunnel } from '@/lib/dashboard/funnel'
+import { buildCountrySummary } from '@/lib/dashboard/country-summary'
+import { getConversionFunnel, countQualifiedLeadsTotal, countQualifiedLeadsByCountry } from '@/lib/dashboard/funnel'
 import { NSE_LEVELS } from '@/lib/quotas/quota-targets'
 import { listCatalogCountries, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
 import { isChannel } from '@/types/channel'
@@ -54,19 +54,23 @@ export default async function DashboardPage({
     dateTo,
   })
 
-  const summary = items.reduce(
-    (acc, item) => {
-      acc.totalTarget += item.target
-      acc.totalAchieved += item.achieved
-      acc.totalAvailable += item.available
-      return acc
-    },
-    { totalTarget: 0, totalAchieved: 0, totalAvailable: 0 },
-  )
+  // "Conseguidos"/"Progreso por país" count every lead that actually qualified — nse,
+  // edad, integrantes, or the pregnancy/baby exception — not just the ones attributed
+  // to an nse quota cell. The per-region/NSE table further below stays nse-only on
+  // purpose (it's tracking each specific cell's remaining capacity).
+  const qualifiedFilters = { country: params.country || undefined, channel, dateFrom, dateTo }
+  const totalAchieved = await countQualifiedLeadsTotal(qualifiedFilters)
+  const totalTarget = items.reduce((sum, item) => sum + item.target, 0)
+  const summary = {
+    totalTarget,
+    totalAchieved,
+    totalAvailable: Math.max(0, totalTarget - totalAchieved),
+  }
   const totalPct =
     summary.totalTarget > 0 ? Math.round((summary.totalAchieved / summary.totalTarget) * 100) : 0
 
-  const countryChart = groupProgressByCountry(items)
+  const qualifiedByCountry = await countQualifiedLeadsByCountry(qualifiedFilters)
+  const countryChart = buildCountrySummary(items, qualifiedByCountry)
 
   const catalogCountries = listCatalogCountries()
   const regionsByCountry = Object.fromEntries(

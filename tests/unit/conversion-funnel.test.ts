@@ -17,7 +17,7 @@ vi.mock('@/lib/db/client', () => ({
   },
 }))
 
-import { getConversionFunnel } from '@/lib/dashboard/funnel'
+import { getConversionFunnel, countQualifiedLeadsTotal } from '@/lib/dashboard/funnel'
 
 describe('getConversionFunnel', () => {
   beforeEach(() => {
@@ -59,5 +59,20 @@ describe('getConversionFunnel', () => {
     const funnel = await getConversionFunnel()
     expect(funnel.stages.every((s) => s.pctOfTotal === 0)).toBe(true)
     expect(funnel.stages[0].pctOfPrevious).toBe(0)
+  })
+})
+
+describe('countQualifiedLeadsTotal', () => {
+  beforeEach(() => {
+    callIndex = 0
+  })
+
+  // Same QUALIFIED_STATUSES-filtered count the funnel's "qualified" stage uses — this
+  // is the dashboard's "Conseguidos" total, which must include every qualifying path
+  // (nse/edad/integrantes cells AND the pregnancy/baby exception), not just nse cells.
+  it('returns the qualified-status count regardless of which dimension/exception qualified them', async () => {
+    mockCounts = [19]
+    const total = await countQualifiedLeadsTotal({})
+    expect(total).toBe(19)
   })
 })

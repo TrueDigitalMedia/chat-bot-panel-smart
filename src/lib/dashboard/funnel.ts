@@ -36,6 +36,41 @@ export interface FunnelFilters {
   // Deliberately no region/nseLevel — research.md R4 (assigned upstream of NSE/region).
 }
 
+/**
+ * Total qualified leads (any dimension — nse/edad/integrantes — or the pregnancy/baby
+ * exception), for the dashboard's top-level "Conseguidos" card. Unlike
+ * listQuotaProgress's per-cell `achieved` (scoped to a single dimension type so a
+ * region's target isn't triple-counted across its OR-matched dimensions), this counts
+ * every lead that actually qualified, matching the funnel's own "qualified" stage.
+ */
+export async function countQualifiedLeadsTotal(filters: FunnelFilters): Promise<number> {
+  return countLeads(filters, [inArray(leads.leadStatus, QUALIFIED_STATUSES)])
+}
+
+/** Same as countQualifiedLeadsTotal, grouped by country — for the per-country chart. */
+export async function countQualifiedLeadsByCountry(
+  filters: Omit<FunnelFilters, 'country'> & { country?: string },
+): Promise<Map<string, number>> {
+  const conditions: SQL[] = [inArray(leads.leadStatus, QUALIFIED_STATUSES)]
+  if (filters.channel) conditions.push(eq(leads.channel, filters.channel))
+  if (filters.dateFrom) conditions.push(gte(leads.createdAt, filters.dateFrom))
+  if (filters.dateTo) conditions.push(lte(leads.createdAt, filters.dateTo))
+  if (filters.country) conditions.push(eq(surveyProfiles.country, filters.country))
+
+  const rows = await db
+    .select({ country: surveyProfiles.country, count: sql<number>`count(*)::int` })
+    .from(leads)
+    .innerJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
+    .where(and(...conditions))
+    .groupBy(surveyProfiles.country)
+
+  const map = new Map<string, number>()
+  for (const row of rows) {
+    if (row.country) map.set(row.country, row.count)
+  }
+  return map
+}
+
 async function countLeads(filters: FunnelFilters, extra: SQL[]): Promise<number> {
   const conditions: SQL[] = [...extra]
   if (filters.channel) conditions.push(eq(leads.channel, filters.channel))
