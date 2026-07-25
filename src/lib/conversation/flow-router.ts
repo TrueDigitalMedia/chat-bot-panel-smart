@@ -185,6 +185,20 @@ export async function routeMessage(
 
   // Terminal (or other leftover statuses): short message + restart hint — don't loop the long support blurb alone
   if (isTerminal(status)) {
+    // not_qualified/quota_exhausted reached via an opt-in/D1/D2/D3 decline aren't
+    // necessarily final — "me equivoqué", "sí quiero inscribirme" etc. mean the user
+    // regrets saying no. Resume right at the declined gate instead of dead-ending them.
+    if ((status === 'not_qualified' || status === 'quota_exhausted') && messageText.trim()) {
+      const { detectDeclineReversalIntent } = await import('./detect-decline-reversal')
+      if (await detectDeclineReversalIntent(messageText, { leadId: lead.id, correlationId })) {
+        const { reviveDeclinedLead } = await import('@/lib/db/leads')
+        const revived = await reviveDeclinedLead(lead)
+        if (revived) {
+          await handlePhase1(revived, '', undefined, correlationId)
+          return
+        }
+      }
+    }
     await sendText(lead, supportRedirect())
     return
   }

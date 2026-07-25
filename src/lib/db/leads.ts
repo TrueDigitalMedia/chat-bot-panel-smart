@@ -115,6 +115,36 @@ export async function deleteConversation(leadId: string): Promise<boolean> {
 }
 
 /**
+ * Un-declines a lead stuck in `not_qualified`/`quota_exhausted` from saying "No" at the
+ * opt-in/D1/D2/D3 gate (not the other paths to those statuses, e.g. a real no-quota
+ * result after finishing the survey — that has d3IsShopper: true, so it falls through
+ * to `null` below and this returns null). Resumes exactly at the declined gate: earlier
+ * accepted gates are left untouched, that gate and everything after it go back to their
+ * unanswered defaults, and leadStatus returns to `incomplete` (bypassing the state
+ * machine deliberately, same as resetLeadConversation's restart path).
+ */
+export async function reviveDeclinedLead(lead: Lead): Promise<Lead | null> {
+  let patch: Record<string, unknown> | null = null
+  if (!lead.optInAccepted) {
+    patch = {}
+  } else if (!lead.d1Accepted) {
+    patch = {}
+  } else if (lead.d2Accepted === false) {
+    patch = { d2Accepted: null, d3IsShopper: null }
+  } else if (lead.d3IsShopper === false) {
+    patch = { d3IsShopper: null }
+  }
+  if (!patch) return null
+
+  const [revived] = await db
+    .update(leads)
+    .set({ ...patch, leadStatus: 'incomplete', updatedAt: new Date() })
+    .where(eq(leads.id, lead.id))
+    .returning()
+  return revived as Lead
+}
+
+/**
  * Hard-reset a lead so they can start the recruitment flow again (/start).
  * Clears survey answers and flow/correction state.
  */
