@@ -32,7 +32,6 @@ describe('state machine transitions', () => {
     const terminals: LeadStatus[] = [
       'not_qualified',
       'quota_exhausted',
-      'code_delivered_no_response',
       'ficha_hogar_completada',
       'abandono',
     ]
@@ -42,5 +41,15 @@ describe('state machine transitions', () => {
   it('non-terminal statuses are not terminal', () => {
     const active: LeadStatus[] = ['incomplete', 'link_sent', 'waiting_for_code']
     active.forEach((s) => expect(isTerminal(s)).toBe(false))
+  })
+
+  // code_delivered_no_response means the inactivity freeze fired before the user
+  // replied — not a dead end: a late "Ya me registré"/"No pude registrarme" tap must
+  // still be honored (registration-choice.ts), so it's deliberately not terminal.
+  it('allows a late registration reply after the freeze (code_delivered_no_response)', () => {
+    expect(isTerminal('code_delivered_no_response')).toBe(false)
+    expect(validateTransition('code_delivered_no_response', 'code_delivered_registered')).toBe(true)
+    expect(validateTransition('code_delivered_no_response', 'code_delivered_not_registered')).toBe(true)
+    expect(validateTransition('code_delivered_no_response', 'incomplete')).toBe(false)
   })
 })

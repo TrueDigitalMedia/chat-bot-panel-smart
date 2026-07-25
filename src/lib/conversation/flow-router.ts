@@ -74,8 +74,22 @@ export async function routeMessage(
     return
   }
 
-  if (status === 'waiting_for_code' && isRegistrationCallback(callbackData)) {
+  // code_delivered_no_response means the inactivity freeze fired before the user
+  // replied (routinely 20h, or as little as RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS in
+  // tests) — a late tap on the real buttons should still be honored, not discarded.
+  if (
+    (status === 'waiting_for_code' || status === 'code_delivered_no_response') &&
+    isRegistrationCallback(callbackData)
+  ) {
     await handleRegistrationChoice(lead, callbackData!, correlationId)
+    return
+  }
+
+  // Freeze already fired and this wasn't a registration button tap — same generic
+  // support message isTerminal() would have given (code_delivered_no_response has a
+  // real transition out now, so it no longer routes through that branch below).
+  if (status === 'code_delivered_no_response') {
+    await sendText(lead, supportRedirect())
     return
   }
 

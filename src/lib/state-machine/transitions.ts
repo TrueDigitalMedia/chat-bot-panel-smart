@@ -14,7 +14,11 @@ const ALLOWED_TRANSITIONS: Record<LeadStatus, Set<LeadStatus>> = {
   ]),
   code_delivered_registered: new Set(['ficha_hogar_completada', 'ficha_hogar_descartado', 'abandono']),
   code_delivered_not_registered: new Set(['abandono']),
-  code_delivered_no_response: new Set([]),
+  // Not a dead end: this only means the freeze timer fired before the user replied
+  // (routinely 20h, but as little as RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS in tests) —
+  // a late "Ya me registré"/"No pude registrarme" tap should still be honored instead
+  // of silently discarded, so the same targets as waiting_for_code stay reachable.
+  code_delivered_no_response: new Set(['code_delivered_registered', 'code_delivered_not_registered']),
   ficha_hogar_completada: new Set([]),
   ficha_hogar_descartado: new Set([]),
   abandono: new Set([]),

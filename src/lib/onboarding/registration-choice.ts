@@ -18,7 +18,9 @@ export async function handleRegistrationChoice(
   callbackData: string,
   correlationId: string,
 ): Promise<void> {
-  if (lead.leadStatus !== 'waiting_for_code') {
+  // code_delivered_no_response means the inactivity freeze fired before the user
+  // replied — a late tap should still count, not just the still-pending case.
+  if (lead.leadStatus !== 'waiting_for_code' && lead.leadStatus !== 'code_delivered_no_response') {
     await sendText(lead, 'Este paso de registro ya no está pendiente.')
     return
   }
