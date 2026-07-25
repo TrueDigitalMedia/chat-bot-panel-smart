@@ -4,6 +4,14 @@ import { BackfillEvalsButton } from './backfill-button'
 import { DeleteConversationButton } from './delete-conversation-button'
 import styles from './conversations.module.css'
 
+// This Server Component queries the DB directly with no dynamic API usage (no
+// searchParams, unlike quotas/dashboard), so Next's Full Route Cache would otherwise
+// statically render it once at build/deploy time and keep serving that snapshot —
+// new leads created afterward silently never appear here (though their detail page
+// still works, since it's client-fetched with cache: 'no-store'). Force per-request
+// rendering so the list always reflects current data.
+export const dynamic = 'force-dynamic'
+
 function formatWhen(d: Date | string | null | undefined): string {
   if (!d) return '—'
   const date = typeof d === 'string' ? new Date(d) : d
