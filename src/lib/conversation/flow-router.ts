@@ -127,6 +127,7 @@ export async function routeMessage(
           await handlePhoneCapture(lead, {
             text: messageText,
             contactPhone: inbound.contactPhone,
+            correlationId,
           })
         ) {
           return

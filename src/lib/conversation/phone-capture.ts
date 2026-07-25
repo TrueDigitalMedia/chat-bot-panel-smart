@@ -68,7 +68,7 @@ export async function proceedAfterShopperYes(lead: Lead): Promise<void> {
  */
 export async function handlePhoneCapture(
   lead: Lead,
-  opts: { text?: string; contactPhone?: string },
+  opts: { text?: string; contactPhone?: string; correlationId?: string },
 ): Promise<boolean> {
   if (!needsPhoneCapture(lead)) return false
   if (lead.d3IsShopper !== true) return false
@@ -81,10 +81,22 @@ export async function handlePhoneCapture(
 
   const phone = normalizePhone(raw)
   if (!phone) {
-    await sendText(
+    // A number-shaped typo and a question ("para que quieres mi numero") look the same
+    // to normalizePhone — check FAQ/clarify first so a real question gets answered
+    // instead of just the generic "no pude validar" retry every time.
+    const { tryAnswerFaqOnExtractionFailure } = await import('./faq-handler')
+    const answered = await tryAnswerFaqOnExtractionFailure(
       lead,
-      'No pude validar ese número. Usa el botón «Compartir mi número» o escríbelo con código de país (ej. +50255551234).',
+      raw,
+      opts.correlationId ?? '',
+      'Para continuar necesitamos tu número de teléfono.',
     )
+    if (!answered) {
+      await sendText(
+        lead,
+        'No pude validar ese número. Usa el botón «Compartir mi número» o escríbelo con código de país (ej. +50255551234).',
+      )
+    }
     await sendPhoneRequest(lead)
     return true
   }

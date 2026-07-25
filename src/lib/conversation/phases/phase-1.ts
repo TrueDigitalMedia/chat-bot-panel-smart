@@ -125,7 +125,7 @@ export async function handlePhase1(
 
   // Phone gate (telegram / web) before survey Q1
   if (needsPhoneCapture(lead)) {
-    await handlePhoneCapture(lead, { text: messageText })
+    await handlePhoneCapture(lead, { text: messageText, correlationId })
     return
   }
 
