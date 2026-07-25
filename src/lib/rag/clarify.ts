@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { chatModel, CHAT_MODEL_ID } from '@/lib/ai/models'
+import { chatModelPrecise, CHAT_MODEL_PRECISE_ID } from '@/lib/ai/models'
 import { sanitizeInput, InputRejectedError } from '@/lib/ai/sanitize'
 import { logCall } from '@/lib/db/call-log'
 import { BOT_CONTEXT } from './search'
@@ -53,12 +53,12 @@ En vez de responder esa pregunta pendiente, el usuario escribió:
 
 Si esto es una duda genuina sobre la pregunta pendiente o el flujo (por ejemplo, para qué sirve, por qué se pregunta, qué pasa según la respuesta), respóndela de forma breve y concreta usando el contexto de arriba. Si no tienes información suficiente para responder con confianza, o el mensaje no es realmente una pregunta/duda, responde canAnswer: false.`
 
-    const result = await generateObject({ model: chatModel(), schema: CLARIFY_SCHEMA, prompt })
+    const result = await generateObject({ model: chatModelPrecise(), schema: CLARIFY_SCHEMA, prompt })
 
     await logCall({
       leadId: opts?.leadId,
       callType: 'faq_clarify',
-      model: CHAT_MODEL_ID,
+      model: CHAT_MODEL_PRECISE_ID,
       inputTokens: (result.usage as unknown as Record<string, number> | undefined)?.promptTokens,
       outputTokens: (result.usage as unknown as Record<string, number> | undefined)?.completionTokens,
       latencyMs: Date.now() - start,

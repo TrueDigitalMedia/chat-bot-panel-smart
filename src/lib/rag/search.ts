@@ -1,7 +1,7 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { sql } from '@/lib/db/client'
-import { chatModel, CHAT_MODEL_ID } from '@/lib/ai/models'
+import { chatModelPrecise, CHAT_MODEL_PRECISE_ID } from '@/lib/ai/models'
 import { sanitizeInput, InputRejectedError } from '@/lib/ai/sanitize'
 import { logCall } from '@/lib/db/call-log'
 import { SURVEY_QUESTIONS } from '@/lib/conversation/survey-questions'
@@ -53,7 +53,7 @@ const MATCH_SCHEMA = z.object({
  */
 export async function findFaq(
   query: string,
-  opts?: { leadId?: string; correlationId?: string },
+  opts?: { leadId?: string; correlationId?: string; pendingQuestionText?: string },
 ): Promise<FAQEntry | null> {
   const start = Date.now()
   const correlationId = opts?.correlationId ?? crypto.randomUUID()
@@ -66,9 +66,18 @@ export async function findFaq(
     `) as FAQEntry[]
     if (candidates.length === 0) return null
 
+    // Without knowing what's actually pending, "datos"/"registro" etc. are generic
+    // enough that the model can match a superficially-related but wrong FAQ (e.g.
+    // "para que quieres mi nombre" during the Q1 name field matched a FAQ about what
+    // the *app* asks for at sign-up, not why the survey wants it) — grounding in the
+    // pending question text lets it correctly tell those apart and say null instead.
+    const pendingContext = opts?.pendingQuestionText
+      ? `\nLa pregunta que el bot le acaba de hacer al usuario, y que sigue pendiente de respuesta, es:\n"${opts.pendingQuestionText}"\n`
+      : ''
+
     const prompt = `Contexto sobre el bot y el flujo actual (úsalo para entender la intención real del usuario, incluso si la pregunta usa palabras distintas a las de las FAQs):
 ${BOT_CONTEXT}
-
+${pendingContext}
 Un usuario escribió este mensaje en lugar de responder la pregunta que el bot le hizo:
 
 "${sanitized}"
@@ -76,14 +85,14 @@ Un usuario escribió este mensaje en lugar de responder la pregunta que el bot l
 Estas son las preguntas frecuentes disponibles, con su respuesta completa:
 ${candidates.map((c, i) => `${i}. P: ${c.question}\n   R: ${c.answer}`).join('\n')}
 
-Elige el índice de la FAQ solo si su RESPUESTA de verdad resuelve lo que el usuario necesita saber, usando el contexto de arriba para interpretar variantes (otro país no listado, otra forma de preguntar lo mismo, etc.) — no basta con que compartan una palabra o tema general. Por ejemplo, "puedo elegir México" pregunta por disponibilidad geográfica, y NO lo responde una FAQ sobre criterios de selección de panelistas, aunque ambas mencionen "elegir/selección". Si ninguna respuesta contesta genuinamente lo que preguntó, responde null — es preferible no responder a responder con la FAQ equivocada.`
+Elige el índice de la FAQ solo si su RESPUESTA de verdad resuelve lo que el usuario necesita saber EN EL CONTEXTO de la pregunta pendiente (si se indicó arriba), usando el contexto general para interpretar variantes (otro país no listado, otra forma de preguntar lo mismo, etc.) — no basta con que compartan una palabra o tema general. Por ejemplo, "puedo elegir México" pregunta por disponibilidad geográfica, y NO lo responde una FAQ sobre criterios de selección de panelistas, aunque ambas mencionen "elegir/selección"; una FAQ sobre qué pide la app al registrarse tampoco responde por qué el bot pide el nombre durante la encuesta de reclutamiento, aunque ambas hablen de "datos". Si ninguna respuesta contesta genuinamente lo que preguntó, responde null — es preferible no responder a responder con la FAQ equivocada.`
 
-    const result = await generateObject({ model: chatModel(), schema: MATCH_SCHEMA, prompt })
+    const result = await generateObject({ model: chatModelPrecise(), schema: MATCH_SCHEMA, prompt })
 
     await logCall({
       leadId: opts?.leadId,
       callType: 'faq_search',
-      model: CHAT_MODEL_ID,
+      model: CHAT_MODEL_PRECISE_ID,
       inputTokens: (result.usage as unknown as Record<string, number> | undefined)?.promptTokens,
       outputTokens: (result.usage as unknown as Record<string, number> | undefined)?.completionTokens,
       latencyMs: Date.now() - start,

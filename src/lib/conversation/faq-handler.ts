@@ -76,7 +76,7 @@ export async function tryAnswerFaqOnExtractionFailure(
   correlationId: string,
   pendingQuestionText: string,
 ): Promise<boolean> {
-  const faqEntry = await findFaq(query, { leadId: lead.id, correlationId })
+  const faqEntry = await findFaq(query, { leadId: lead.id, correlationId, pendingQuestionText })
   if (faqEntry) {
     const answer = faqEntry.answer
     if (validateBotResponse(answer)) {

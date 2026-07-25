@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import { z } from 'zod'
-import { chatModel, CHAT_MODEL_ID } from '@/lib/ai/models'
+import { chatModelPrecise, CHAT_MODEL_PRECISE_ID } from '@/lib/ai/models'
 import { sanitizeInput, InputRejectedError } from '@/lib/ai/sanitize'
 import { logCall } from '@/lib/db/call-log'
 
@@ -37,12 +37,12 @@ Después, el usuario escribió este mensaje:
 
 ¿Este mensaje indica que el usuario se arrepiente de haber dicho que no, y en realidad quiere continuar con la inscripción? Responde wantsToContinue: false si el mensaje es otra cosa (una pregunta, un saludo, ruido, o simplemente no relacionado con retomar la inscripción).`
 
-    const result = await generateObject({ model: chatModel(), schema: SCHEMA, prompt })
+    const result = await generateObject({ model: chatModelPrecise(), schema: SCHEMA, prompt })
 
     await logCall({
       leadId: opts?.leadId,
       callType: 'decline_reversal_intent',
-      model: CHAT_MODEL_ID,
+      model: CHAT_MODEL_PRECISE_ID,
       inputTokens: (result.usage as unknown as Record<string, number> | undefined)?.promptTokens,
       outputTokens: (result.usage as unknown as Record<string, number> | undefined)?.completionTokens,
       latencyMs: Date.now() - start,
