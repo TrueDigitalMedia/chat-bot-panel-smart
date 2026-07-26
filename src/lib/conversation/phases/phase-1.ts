@@ -290,14 +290,16 @@ export async function handlePhase1(
     if (profile?.country && profile.stateProvince) {
       const { applyManualMunicipalityAllowlist } = await import('../gps-capture')
       const fuzzyUsed = false // exact path here; fuzzy goes through geo confirm
-      const result = await applyManualMunicipalityAllowlist(lead, {
+      // A miss just means no NSE cell for quota attribution — checkQuotaAvailability
+      // decides at survey end (still qualifies via the pregnancy/baby exception, if it
+      // applies), so the survey always continues from here.
+      await applyManualMunicipalityAllowlist(lead, {
         country: profile.country,
         stateProvince: profile.stateProvince,
         municipality: String(fieldValue),
         geoSource: fuzzyUsed ? 'text_fuzzy' : 'text_exact',
         correlationId,
       })
-      if (!result.ok) return
     }
   }
 

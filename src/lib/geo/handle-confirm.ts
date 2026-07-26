@@ -46,14 +46,16 @@ export async function persistSurveyFieldAndAdvance(
       const { applyManualMunicipalityAllowlist } = await import(
         '@/lib/conversation/gps-capture'
       )
-      const result = await applyManualMunicipalityAllowlist(lead, {
+      // A miss just means no NSE cell for quota attribution — checkQuotaAvailability
+      // decides at survey end (still qualifies via the pregnancy/baby exception, if it
+      // applies), so the survey always continues from here.
+      await applyManualMunicipalityAllowlist(lead, {
         country: profile.country,
         stateProvince: profile.stateProvince,
         municipality: String(value),
         geoSource: 'text_fuzzy',
         correlationId,
       })
-      if (!result.ok) return
     }
   }
 

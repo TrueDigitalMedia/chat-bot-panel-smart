@@ -13,8 +13,6 @@ import {
   lookupNseRegion,
   type GeoSource,
 } from '@/lib/geo/cam-nse-catalog'
-import { transitionLead } from '@/lib/state-machine'
-import { EXIT_B } from '@/lib/conversation/exit-messages'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import type { Lead } from '@/types/lead'
 
@@ -214,10 +212,20 @@ export async function handleGpsCapture(
   return false
 }
 
+/**
+ * A municipality outside the NSE allowlist no longer dead-ends the conversation here —
+ * it only means quota can't be attributed to a specific NSE/edad/integrantes cell.
+ * checkQuotaAvailability's pregnancy/baby-under-3 exception (scoring/quota.ts) always
+ * qualifies regardless of region, but that check only runs at the end of the survey;
+ * isPregnant/hasBabyUnder3 aren't asked until Q13/Q14, well after municipality (Q4), so
+ * rejecting immediately here shut out exception-qualified leads before the bot ever
+ * knew they applied. Saving inQuotaGeo: false and continuing lets the real quota check
+ * decide once every answer — including the exception — is in.
+ */
 async function applyAllowlistAfterConfirm(
   lead: Lead,
   proposal: PlaceProposal,
-  correlationId: string,
+  _correlationId: string,
 ): Promise<void> {
   const country = canonicalCountry(proposal.country) ?? proposal.country
   const nseRegion = lookupNseRegion(country, proposal.stateProvince, proposal.municipality)
@@ -229,29 +237,13 @@ async function applyAllowlistAfterConfirm(
       stateProvince: proposal.stateProvince,
       municipality: proposal.municipality,
     })
-    await db
-      .update(surveyProfiles)
-      .set({
-        country,
-        stateProvince: proposal.stateProvince,
-        municipality: proposal.municipality,
-        neighborhood: proposal.neighborhood,
-        nseRegion: null,
-        geoSource: 'gps_share' satisfies GeoSource,
-        inQuotaGeo: false,
-      })
-      .where(eq(surveyProfiles.leadId, lead.id))
-    await setGpsState(lead.id, { gpsGateStatus: 'done', gpsProposal: null })
-    await transitionLead(lead.id, 'quota_exhausted', 'nse_geo_out_of_sample', correlationId)
-    await sendText(lead, EXIT_B)
-    return
+  } else {
+    console.info('[gps] nse_allowlist_hit', {
+      leadId: lead.id,
+      country,
+      nseRegion,
+    })
   }
-
-  console.info('[gps] nse_allowlist_hit', {
-    leadId: lead.id,
-    country,
-    nseRegion,
-  })
 
   const neighborhood = proposal.neighborhood?.trim() || null
   await db
@@ -263,7 +255,7 @@ async function applyAllowlistAfterConfirm(
       neighborhood,
       nseRegion,
       geoSource: 'gps_share' satisfies GeoSource,
-      inQuotaGeo: true,
+      inQuotaGeo: nseRegion !== null,
     })
     .where(eq(surveyProfiles.leadId, lead.id))
 
@@ -296,8 +288,10 @@ async function applyAllowlistAfterConfirm(
 }
 
 /**
- * After saving municipality on the manual path — allowlist gate.
- * Returns true if EXIT_B was applied (caller should stop).
+ * After saving municipality on the manual path — allowlist lookup. A miss no longer
+ * ends the conversation (see applyAllowlistAfterConfirm above for why); it just means
+ * this lead won't attribute to a specific quota cell unless the pregnancy/baby
+ * exception applies, decided later by checkQuotaAvailability at survey end.
  */
 export async function applyManualMunicipalityAllowlist(
   lead: Lead,
@@ -308,32 +302,14 @@ export async function applyManualMunicipalityAllowlist(
     geoSource: GeoSource
     correlationId: string
   },
-): Promise<{ ok: true; nseRegion: string } | { ok: false }> {
+): Promise<{ nseRegion: string | null }> {
   const nseRegion = lookupNseRegion(opts.country, opts.stateProvince, opts.municipality)
-  if (!nseRegion) {
-    console.info('[gps] nse_allowlist_miss', {
-      leadId: lead.id,
-      path: 'manual',
-      country: opts.country,
-      stateProvince: opts.stateProvince,
-      municipality: opts.municipality,
-    })
-    await db
-      .update(surveyProfiles)
-      .set({
-        nseRegion: null,
-        geoSource: opts.geoSource,
-        inQuotaGeo: false,
-      })
-      .where(eq(surveyProfiles.leadId, lead.id))
-    await transitionLead(lead.id, 'quota_exhausted', 'nse_geo_out_of_sample_manual', opts.correlationId)
-    await sendText(lead, EXIT_B)
-    return { ok: false }
-  }
-
-  console.info('[gps] nse_allowlist_hit', {
+  console.info(nseRegion ? '[gps] nse_allowlist_hit' : '[gps] nse_allowlist_miss', {
     leadId: lead.id,
     path: 'manual',
+    country: opts.country,
+    stateProvince: opts.stateProvince,
+    municipality: opts.municipality,
     nseRegion,
   })
   await db
@@ -341,8 +317,8 @@ export async function applyManualMunicipalityAllowlist(
     .set({
       nseRegion,
       geoSource: opts.geoSource,
-      inQuotaGeo: true,
+      inQuotaGeo: nseRegion !== null,
     })
     .where(eq(surveyProfiles.leadId, lead.id))
-  return { ok: true, nseRegion }
+  return { nseRegion }
 }
