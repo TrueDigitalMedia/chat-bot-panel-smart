@@ -2,7 +2,10 @@ import { env, isTdmRegistrationRequestConfigured } from '@/lib/env'
 import { getTdmAccessToken } from './oauth'
 import type { RegistrationCodeRequestPayload } from './types'
 
-const DEFAULT_TIMEOUT_MS = 5000
+// TDM's dev /api/ai-lead measured ~6.4s per request during live verification (2026-07-27) —
+// 5s was too tight and aborted otherwise-successful requests. Called from a background
+// QStash job, not a user-facing response, so a more generous budget is safe.
+const DEFAULT_TIMEOUT_MS = 15000
 
 export function requireTdmRegistrationConfigured(): void {
   if (!isTdmRegistrationRequestConfigured()) {
