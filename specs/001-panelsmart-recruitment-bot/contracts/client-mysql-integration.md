@@ -78,24 +78,39 @@ never actually built — polling was used instead, see below).
 
 ## 2b. Registration code request + webhook (current, replaces §2)
 
-> **Implemented 2026-07-27.** Instead of the bot reading TDM's MySQL, the bot now POSTs
-> a JSON request to a TDM-provided endpoint, and TDM calls back a bot-hosted webhook
-> with the code (or a failure). `TDM_REGISTRATION_REQUEST_URL` and the outbound auth
-> mechanism are **TBD — pending TDM**; the mock path
-> (`REGISTRATION_CODE_MOCK_ENABLED=true`) remains the only way to exercise this flow
-> locally until then.
+> **Implemented 2026-07-27, real endpoint + auth confirmed 2026-07-27.** Instead of the
+> bot reading TDM's MySQL, the bot now POSTs a JSON request to TDM's `/api/ai-lead`
+> endpoint, and TDM calls back a bot-hosted webhook with the code (or a failure). The
+> mock path (`REGISTRATION_CODE_MOCK_ENABLED=true`) remains available for local testing
+> without hitting TDM's dev environment.
 
 **Trigger**: `phase-2.ts` schedules the `request_registration_code` job
 `PHASE2_CODE_DELAY_SECONDS` after `link_sent`
 ([re-engage/route.ts](../../../src/app/api/jobs/re-engage/route.ts)).
 
-**Outbound request** — `POST TDM_REGISTRATION_REQUEST_URL` (TBD), built by
-`buildRegistrationCodeRequest` (`src/lib/tdm-registration/build-request.ts`):
+**Auth (outbound)** — TDM's endpoint sits behind Azure AD (Microsoft Entra ID); we must
+obtain a bearer token via the OAuth2 **client_credentials** grant before every request
+(cached in-memory and refreshed before expiry — `src/lib/tdm-registration/oauth.ts`):
+
+```bash
+curl --request POST \
+  "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token" \
+  --header "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "client_id=<client_id>" \
+  --data-urlencode "client_secret=<client_secret>" \
+  --data-urlencode "scope=api://<tdm-app-id>/.default" \
+  --data-urlencode "grant_type=client_credentials"
+```
+
+**Outbound request** — `POST TDM_REGISTRATION_REQUEST_URL` (TDM's dev endpoint:
+`https://kantar-sendleads-fxapp-useast-dev-*.eastus-01.azurewebsites.net/api/ai-lead`),
+header `Authorization: Bearer <access_token>`, built by `buildRegistrationCodeRequest`
+(`src/lib/tdm-registration/build-request.ts`):
 
 ```json
 {
   "lead_id": "uuid-interno-del-bot",
-  "canal": "whatsapp | telegram | web",
+  "canal": "WhatsApp | Telegram | Web",
   "pais_codigo": "GT",
   "pais_residencia": "Guatemala",
   "nombre_completo": "Juan Pérez",
@@ -110,9 +125,12 @@ never actually built — polling was used instead, see below).
   "fecha_nacimiento": null
 }
 ```
-`pais_codigo` covers only the bot's 7 active countries (GT/HN/SV/NI/CR/DO/PA — no
-México). `fecha_nacimiento` is always `null`: DOB isn't collected until Ficha Hogar,
-after registration.
+`canal` is Title Case (`src/lib/tdm-registration/canal.ts`) — confirmed by TDM's example
+for `WhatsApp`; `Telegram`/`Web` follow the same convention but aren't independently
+confirmed. `pais_codigo` covers only the bot's 7 active countries (GT/HN/SV/NI/CR/DO/PA —
+no México). `fecha_nacimiento` is always `null`: DOB isn't collected until Ficha Hogar,
+after registration (TDM's own example shows a real date, but that's illustrative — we
+genuinely don't have DOB at this point in the flow).
 
 **Inbound webhook** — `POST /api/webhooks/tdm-registration-code`
 ([route.ts](../../../src/app/api/webhooks/tdm-registration-code/route.ts)), auth header
@@ -181,8 +199,11 @@ success, failure, or 20h freeze.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `TDM_REGISTRATION_REQUEST_URL` | for real (non-mock) flow | **TBD — TDM-provided** endpoint we POST the request JSON to |
-| `TDM_REGISTRATION_REQUEST_AUTH_HEADER` / `_AUTH_VALUE` | for real flow | **TBD — TDM-provided** outbound auth (header name + value) |
+| `TDM_REGISTRATION_REQUEST_URL` | for real (non-mock) flow | TDM's `/api/ai-lead` endpoint we POST the request JSON to |
+| `TDM_OAUTH_TOKEN_URL` | for real flow | Azure AD token endpoint for TDM's tenant (`https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token`) |
+| `TDM_OAUTH_CLIENT_ID` | for real flow | TDM-provided Azure AD app client ID |
+| `TDM_OAUTH_CLIENT_SECRET` | for real flow | TDM-provided Azure AD app client secret |
+| `TDM_OAUTH_SCOPE` | for real flow | `api://<tdm-app-id>/.default` |
 | `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | no (default 1800) | How long we wait for TDM's webhook before `abandono` |
 | `TDM_REGISTRATION_WEBHOOK_SECRET` | no (dev default set) | Ours — auth secret for the inbound webhook |
 | `REGISTRATION_CODE_MOCK_ENABLED` | no (default false) | Bypasses TDM entirely, delivers a mock code — the only way to test this locally today |

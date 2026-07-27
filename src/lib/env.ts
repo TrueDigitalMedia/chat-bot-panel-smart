@@ -58,11 +58,14 @@ const envSchema = z.object({
 
   // TDM registration-code request+webhook (replaces the old MySQL poll — see
   // specs/001-panelsmart-recruitment-bot/contracts/client-mysql-integration.md §2b).
-  /** TBD — TDM-provided endpoint we POST the registration-code request JSON to. */
+  /** TDM's /api/ai-lead endpoint — we POST the registration-code request JSON here. */
   TDM_REGISTRATION_REQUEST_URL: z.string().url().optional(),
-  /** TBD — TDM-provided outbound auth: header name + value (mechanism not yet specified). */
-  TDM_REGISTRATION_REQUEST_AUTH_HEADER: z.string().min(1).optional(),
-  TDM_REGISTRATION_REQUEST_AUTH_VALUE: z.string().min(1).optional(),
+  /** Azure AD (Microsoft Entra ID) token endpoint for TDM's tenant — client_credentials grant. */
+  TDM_OAUTH_TOKEN_URL: z.string().url().optional(),
+  TDM_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  TDM_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  /** e.g. "api://<app-id>/.default" — TDM's Azure AD app registration scope. */
+  TDM_OAUTH_SCOPE: z.string().min(1).optional(),
   /** How long we wait for TDM's webhook before giving up (→ abandono). */
   TDM_REGISTRATION_CODE_TIMEOUT_SECONDS: z.coerce.number().default(1800),
   /** Ours — auth secret for the inbound POST /api/webhooks/tdm-registration-code. */
@@ -107,9 +110,15 @@ export function isClientMysqlSyncEnabled(): boolean {
   return env.CLIENT_MYSQL_SYNC_ENABLED && isClientMysqlConfigured()
 }
 
-/** False until TDM hands over their real endpoint — callers fall back to logging a warning. */
+/** False until every piece (endpoint + OAuth creds) is set — callers fall back to abandono. */
 export function isTdmRegistrationRequestConfigured(): boolean {
-  return Boolean(env.TDM_REGISTRATION_REQUEST_URL)
+  return Boolean(
+    env.TDM_REGISTRATION_REQUEST_URL &&
+      env.TDM_OAUTH_TOKEN_URL &&
+      env.TDM_OAUTH_CLIENT_ID &&
+      env.TDM_OAUTH_CLIENT_SECRET &&
+      env.TDM_OAUTH_SCOPE,
+  )
 }
 
 /**

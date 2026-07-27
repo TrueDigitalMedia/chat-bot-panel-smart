@@ -5,7 +5,7 @@
  */
 export interface RegistrationCodeRequestPayload {
   lead_id: string
-  canal: 'whatsapp' | 'telegram' | 'web'
+  canal: string
   pais_codigo: string | null
   pais_residencia: string | null
   nombre_completo: string | null

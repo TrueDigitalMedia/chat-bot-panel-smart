@@ -1,4 +1,5 @@
 import { countryCodeFor } from './country-codes'
+import { canalFor } from './canal'
 import type { RegistrationCodeRequestPayload } from './types'
 import type { Lead, SurveyProfile } from '@/types/lead'
 
@@ -9,7 +10,7 @@ export function buildRegistrationCodeRequest(
 ): RegistrationCodeRequestPayload {
   return {
     lead_id: lead.id,
-    canal: lead.channel,
+    canal: canalFor(lead.channel),
     pais_codigo: countryCodeFor(profile.country),
     pais_residencia: profile.country,
     nombre_completo: profile.fullName,

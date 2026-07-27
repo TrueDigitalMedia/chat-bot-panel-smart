@@ -70,7 +70,7 @@ describe('buildRegistrationCodeRequest', () => {
     const payload = buildRegistrationCodeRequest(baseLead(), baseProfile())
     expect(payload).toEqual({
       lead_id: 'lead-1',
-      canal: 'whatsapp',
+      canal: 'WhatsApp',
       pais_codigo: 'GT',
       pais_residencia: 'Guatemala',
       nombre_completo: 'Juan Pérez',
@@ -97,11 +97,11 @@ describe('buildRegistrationCodeRequest', () => {
     expect(payload.region).toBeNull()
   })
 
-  it('reflects the actual channel (telegram/web) in canal', () => {
+  it('reflects the actual channel (telegram/web) in canal, Title Case per TDM convention', () => {
     expect(buildRegistrationCodeRequest(baseLead({ channel: 'telegram' }), baseProfile()).canal).toBe(
-      'telegram',
+      'Telegram',
     )
-    expect(buildRegistrationCodeRequest(baseLead({ channel: 'web' }), baseProfile()).canal).toBe('web')
+    expect(buildRegistrationCodeRequest(baseLead({ channel: 'web' }), baseProfile()).canal).toBe('Web')
   })
 
   it('sets pais_codigo: null for an unrecognized country without throwing', () => {
