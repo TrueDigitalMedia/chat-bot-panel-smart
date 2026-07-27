@@ -35,14 +35,29 @@ interface TdmRegistrationCodeWebhookPayload {
  *     -d '{"lead_id":"<uuid>","event":"code_generation_failed","error_reason":"duplicate_phone"}'
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // Logged before auth/shape validation, on purpose: while confirming TDM's real header
+  // name/casing and payload shape for the first time, a request that fails our checks is
+  // exactly the one we most need to see in full (not just the ones that already match our
+  // assumptions). Remove once the real integration is confirmed stable, if desired.
+  const rawBody = await request.text()
+  console.info('[webhooks/tdm-registration-code] request received', {
+    timestamp: new Date().toISOString(),
+    headers: Object.fromEntries(request.headers.entries()),
+    body: rawBody,
+  })
+
   const secret = request.headers.get('X-TDM-Registration-Secret')
   if (!secret || secret !== env.TDM_REGISTRATION_WEBHOOK_SECRET) {
+    console.warn('[webhooks/tdm-registration-code] unauthorized', {
+      expectedHeader: 'X-TDM-Registration-Secret',
+      receivedSecretPresent: Boolean(secret),
+    })
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 403 })
   }
 
   let body: TdmRegistrationCodeWebhookPayload
   try {
-    body = (await request.json()) as TdmRegistrationCodeWebhookPayload
+    body = JSON.parse(rawBody) as TdmRegistrationCodeWebhookPayload
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid_payload' }, { status: 400 })
   }
