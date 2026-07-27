@@ -23,14 +23,16 @@ export async function handlePhase2(lead: Lead, _correlationId: string): Promise<
       `Una vez “descargada”, recibirás un código de registro simulado.`,
   )
 
-  // Schedule job to trigger mock registration code delivery. Caught — a QStash/network
-  // hiccup here must never throw back through handlePhase1's caller and 500 the whole
-  // turn, which would silently swallow the felicidades+link message just sent above
-  // (the web channel's HTTP response IS that message; the client never re-fetches full
-  // history except on page load, so a 500 here made the link look like it was never sent).
+  // Schedule the job that requests the registration code from TDM (or delivers a mock
+  // one, per REGISTRATION_CODE_MOCK_ENABLED — see jobs/re-engage.ts). Caught — a
+  // QStash/network hiccup here must never throw back through handlePhase1's caller and
+  // 500 the whole turn, which would silently swallow the felicidades+link message just
+  // sent above (the web channel's HTTP response IS that message; the client never
+  // re-fetches full history except on page load, so a 500 here made the link look like
+  // it was never sent).
   const delay = Number(process.env.RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS) || PHASE2_CODE_DELAY_SECONDS
-  await scheduleJob(lead.id, 2, 0, delay, 'trigger_code').catch((err) => {
-    console.error('[phase-2] scheduleJob(trigger_code) failed', { leadId: lead.id, err: String(err) })
+  await scheduleJob(lead.id, 2, 0, delay, 'request_registration_code').catch((err) => {
+    console.error('[phase-2] scheduleJob(request_registration_code) failed', { leadId: lead.id, err: String(err) })
   })
 
   // If the lead goes quiet after this and never moves past link_sent, ask again every

@@ -99,6 +99,15 @@ export const leads = pgTable(
     /** 'synced' | 'failed', code-managed like flowStates.gpsGateStatus. */
     tdmSyncStatus: varchar('tdm_sync_status', { length: 20 }),
     tdmLastSyncAt: timestamp('tdm_last_sync_at', { withTimezone: true }),
+    /**
+     * Stamped when the registration-code JSON request is POSTed to TDM — lets the
+     * registration_code_timeout job (jobs/re-engage) tell "never asked" apart from
+     * "asked, no webhook reply yet" (both would otherwise look identical from just
+     * leadStatus === 'link_sent').
+     */
+    tdmRegistrationRequestedAt: timestamp('tdm_registration_requested_at', { withTimezone: true }),
+    /** Code delivered by TDM's webhook — persisted for idempotency/audit (never stored before this). */
+    tdmRegistrationCode: varchar('tdm_registration_code', { length: 64 }),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )

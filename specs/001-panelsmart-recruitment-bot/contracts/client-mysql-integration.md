@@ -54,22 +54,19 @@ before (or at the start of) Phase 2 link delivery.
 
 ---
 
-## 2. Registration code lookup (read)
+## 2. Registration code lookup (read) — SUPERSEDED by §2b
 
-> **Implemented 2026-07-22** — with polling instead of a user-confirmation trigger (the
-> "primary path" below was never built): `phase-2.ts` schedules the first lookup
-> `PHASE2_CODE_DELAY_SECONDS` after `link_sent`; the `trigger_code` job handler
-> ([re-engage/route.ts](../../../src/app/api/jobs/re-engage/route.ts)) re-polls every
-> `REGISTRATION_CODE_POLL_DELAY_SECONDS` up to `MAX_REGISTRATION_CODE_POLL_ATTEMPTS`
-> (`scheduler/constants.ts`) before giving up (→ `abandono`, since no code was ever
-> delivered — `code_delivered_not_registered` doesn't apply, see transitions.ts). No mock
-> fallback when `CLIENT_MYSQL_SYNC_ENABLED=false` (deliberate — confirmed tradeoff).
+> **Implemented 2026-07-22, replaced 2026-07-27** — this MySQL-poll approach is no
+> longer used. TDM is instead providing a request/webhook contract: see §2b below. Kept
+> here for history — `fetchRegistrationCode` (`tdm-mysql/registration-code.ts`) and the
+> old `trigger_code` job action have been removed from the codebase.
 
-**Called by**: Chatbot after the user confirms they downloaded the app (primary path).
+**Was called by**: Chatbot after the user confirms they downloaded the app (primary path,
+never actually built — polling was used instead, see below).
 
-**Query**: Read the panelist ID / registration code column(s) for the synced lead row.
+**Was querying**: Read the panelist ID / registration code column(s) for the synced lead row.
 
-**Expected outcomes**:
+**Old expected outcomes**:
 
 | Result | Chatbot action |
 |--------|----------------|
@@ -77,9 +74,74 @@ before (or at the start of) Phase 2 link delivery.
 | Code not yet written | Short retry/backoff; optional “estamos generando tu código”; then re-query |
 | Sync never succeeded / permanent miss | Log (`call_type = client_mysql_code_lookup`); handoff / `code_delivered_not_registered` |
 
-**Idempotency**: Re-sending the same code to the same chat after a retry MUST be safe
-(user may tap confirm more than once). Prefer reading the already-stored local
-`panelistCode` if present.
+---
+
+## 2b. Registration code request + webhook (current, replaces §2)
+
+> **Implemented 2026-07-27.** Instead of the bot reading TDM's MySQL, the bot now POSTs
+> a JSON request to a TDM-provided endpoint, and TDM calls back a bot-hosted webhook
+> with the code (or a failure). `TDM_REGISTRATION_REQUEST_URL` and the outbound auth
+> mechanism are **TBD — pending TDM**; the mock path
+> (`REGISTRATION_CODE_MOCK_ENABLED=true`) remains the only way to exercise this flow
+> locally until then.
+
+**Trigger**: `phase-2.ts` schedules the `request_registration_code` job
+`PHASE2_CODE_DELAY_SECONDS` after `link_sent`
+([re-engage/route.ts](../../../src/app/api/jobs/re-engage/route.ts)).
+
+**Outbound request** — `POST TDM_REGISTRATION_REQUEST_URL` (TBD), built by
+`buildRegistrationCodeRequest` (`src/lib/tdm-registration/build-request.ts`):
+
+```json
+{
+  "lead_id": "uuid-interno-del-bot",
+  "canal": "whatsapp | telegram | web",
+  "pais_codigo": "GT",
+  "pais_residencia": "Guatemala",
+  "nombre_completo": "Juan Pérez",
+  "telefono": "+50255551234",
+  "correo_electronico": "juan@example.com",
+  "region": "Centro II",
+  "departamento_provincia": "Guatemala",
+  "municipio_canton": "Mixco",
+  "barrio_parroquia": "Zona 10",
+  "metodo_contacto_preferido": "WhatsApp",
+  "horario_contacto_preferido": "Noche (18-21hs)",
+  "fecha_nacimiento": null
+}
+```
+`pais_codigo` covers only the bot's 7 active countries (GT/HN/SV/NI/CR/DO/PA — no
+México). `fecha_nacimiento` is always `null`: DOB isn't collected until Ficha Hogar,
+after registration.
+
+**Inbound webhook** — `POST /api/webhooks/tdm-registration-code`
+([route.ts](../../../src/app/api/webhooks/tdm-registration-code/route.ts)), auth header
+`X-TDM-Registration-Secret` against `TDM_REGISTRATION_WEBHOOK_SECRET`:
+
+```json
+{
+  "lead_id": "uuid-interno-del-bot",
+  "event": "code_generated",
+  "registration_code": "PAN-123456",
+  "panelist_id": "id-opcional-del-lado-de-tdm",
+  "panelist_data": { "cualquier": "dato adicional" },
+  "timestamp": "2026-07-27T18:00:00Z"
+}
+```
+or `"event": "code_generation_failed"` with `"error_reason"` and no `registration_code`.
+
+**Expected outcomes**:
+
+| Result | Chatbot action |
+|--------|----------------|
+| `code_generated` (lead still `link_sent`) | `deliverRegistrationCode()` — transition to `waiting_for_code`, send code + confirm buttons, arm 20h freeze |
+| `code_generation_failed` | `transitionLead(..., 'abandono', 'tdm_registration_request_failed', ...)` |
+| Lead already past `link_sent` (TDM retry) | No-op, `200 already_processed` |
+| Webhook never arrives within `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | `registration_code_timeout` job → `abandono` |
+
+**Idempotency**: guaranteed by checking `leadStatus === 'link_sent'` before acting — a
+retried webhook call after the code was already delivered is a safe no-op, returned as
+`200` (not an error) so TDM's retry logic stops.
 
 ---
 
@@ -114,6 +176,16 @@ success, failure, or 20h freeze.
 | `CLIENT_MYSQL_SYNC_ENABLED` | no (default false) | Feature flag |
 | `CLIENT_MYSQL_LEADS_TABLE` | no | Table name override when schema known |
 | `CLIENT_MYSQL_CODE_COLUMN` | no | Column name for panelist/registration code |
+
+**§2b registration-code request+webhook:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TDM_REGISTRATION_REQUEST_URL` | for real (non-mock) flow | **TBD — TDM-provided** endpoint we POST the request JSON to |
+| `TDM_REGISTRATION_REQUEST_AUTH_HEADER` / `_AUTH_VALUE` | for real flow | **TBD — TDM-provided** outbound auth (header name + value) |
+| `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | no (default 1800) | How long we wait for TDM's webhook before `abandono` |
+| `TDM_REGISTRATION_WEBHOOK_SECRET` | no (dev default set) | Ours — auth secret for the inbound webhook |
+| `REGISTRATION_CODE_MOCK_ENABLED` | no (default false) | Bypasses TDM entirely, delivers a mock code — the only way to test this locally today |
 
 ---
 

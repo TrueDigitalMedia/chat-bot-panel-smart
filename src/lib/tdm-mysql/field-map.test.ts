@@ -35,6 +35,8 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     tdmLeadId: null,
     tdmSyncStatus: null,
     tdmLastSyncAt: null,
+    tdmRegistrationRequestedAt: null,
+    tdmRegistrationCode: null,
     ...overrides,
   }
 }

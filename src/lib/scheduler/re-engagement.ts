@@ -10,7 +10,12 @@ export interface JobPayload {
   leadId: string
   phase: number
   attemptNumber: number
-  action: 'trigger_code' | 're-engage' | 'freeze_registration' | 'link_sent_reminder'
+  action:
+    | 'request_registration_code'
+    | 'registration_code_timeout'
+    | 're-engage'
+    | 'freeze_registration'
+    | 'link_sent_reminder'
 }
 
 export async function scheduleJob(

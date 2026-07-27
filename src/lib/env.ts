@@ -52,9 +52,21 @@ const envSchema = z.object({
   CLIENT_MYSQL_LEAD_VERSION: z.string().min(1).optional(),
   CLIENT_MYSQL_SSL_CA: z.string().min(1).optional(),
 
-  /** TDM's registration_code write-back isn't live yet — deliver a mock code instead of
-   *  polling tb_leads_agente_ia. Toggle off once that side is active. */
+  /** REGISTRATION_CODE_MOCK_ENABLED=true bypasses the TDM request entirely and delivers
+   *  a mock code — the only way to test this flow locally without a real TDM endpoint. */
   REGISTRATION_CODE_MOCK_ENABLED: z.coerce.boolean().default(false),
+
+  // TDM registration-code request+webhook (replaces the old MySQL poll — see
+  // specs/001-panelsmart-recruitment-bot/contracts/client-mysql-integration.md §2b).
+  /** TBD — TDM-provided endpoint we POST the registration-code request JSON to. */
+  TDM_REGISTRATION_REQUEST_URL: z.string().url().optional(),
+  /** TBD — TDM-provided outbound auth: header name + value (mechanism not yet specified). */
+  TDM_REGISTRATION_REQUEST_AUTH_HEADER: z.string().min(1).optional(),
+  TDM_REGISTRATION_REQUEST_AUTH_VALUE: z.string().min(1).optional(),
+  /** How long we wait for TDM's webhook before giving up (→ abandono). */
+  TDM_REGISTRATION_CODE_TIMEOUT_SECONDS: z.coerce.number().default(1800),
+  /** Ours — auth secret for the inbound POST /api/webhooks/tdm-registration-code. */
+  TDM_REGISTRATION_WEBHOOK_SECRET: z.string().default('dev-tdm-registration-secret'),
 })
 
 function validateEnv() {
@@ -93,6 +105,11 @@ export function isClientMysqlConfigured(): boolean {
 
 export function isClientMysqlSyncEnabled(): boolean {
   return env.CLIENT_MYSQL_SYNC_ENABLED && isClientMysqlConfigured()
+}
+
+/** False until TDM hands over their real endpoint — callers fall back to logging a warning. */
+export function isTdmRegistrationRequestConfigured(): boolean {
+  return Boolean(env.TDM_REGISTRATION_REQUEST_URL)
 }
 
 /**

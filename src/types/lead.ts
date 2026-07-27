@@ -38,6 +38,8 @@ export interface Lead {
   tdmLeadId: number | null
   tdmSyncStatus: string | null
   tdmLastSyncAt: Date | null
+  tdmRegistrationRequestedAt: Date | null
+  tdmRegistrationCode: string | null
 }
 
 export interface SurveyProfile {
