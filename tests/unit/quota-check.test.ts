@@ -54,7 +54,7 @@ vi.mock('@/lib/tdm-mysql/sync', () => ({
   syncLeadPhase1Complete: vi.fn(async () => {}),
 }))
 
-import { checkQuotaAvailability } from '@/lib/scoring/quota'
+import { checkQuotaAvailability, describeQuotaMatch } from '@/lib/scoring/quota'
 
 const HONDURAS_NOR_OCCIDENTE_I = { country: 'Honduras', region: 'Nor Occidente I', nseRegion: 'Nor Occidente I' }
 const HONDURAS_CENTRO_I = { country: 'Honduras', region: 'Centro I', nseRegion: 'Centro I' }
@@ -314,5 +314,31 @@ describe('checkQuotaAvailability — region aggregate cap (spec 011 US4)', () =>
     })
 
     expect(result.qualifies).toBe(true)
+  })
+})
+
+describe('describeQuotaMatch', () => {
+  it('describes an nse match with its value', () => {
+    expect(describeQuotaMatch('nse', 'Nivel 2')).toBe('nivel socioeconómico (NSE): Nivel 2')
+  })
+
+  it('describes an edad match with its value', () => {
+    expect(describeQuotaMatch('edad', 'Hasta 34')).toBe('rango de edad: Hasta 34')
+  })
+
+  it('describes an integrantes match with its value', () => {
+    expect(describeQuotaMatch('integrantes', '5+')).toBe('número de integrantes del hogar: 5+')
+  })
+
+  it('describes the pregnancy/baby-under-3 exception without a value', () => {
+    expect(describeQuotaMatch('exception', null)).toBe('excepción por embarazo o bebé menor a 36 meses')
+  })
+
+  it('returns null when there is no match', () => {
+    expect(describeQuotaMatch(null, null)).toBeNull()
+  })
+
+  it('returns null for an unrecognized dimension', () => {
+    expect(describeQuotaMatch('unknown', 'x')).toBeNull()
   })
 })

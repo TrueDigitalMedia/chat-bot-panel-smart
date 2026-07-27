@@ -104,3 +104,24 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
   logQuotaCheck(params, decision, { regionCapBlocked: false })
   return decision
 }
+
+const DIMENSION_LABELS: Record<DimensionType, string> = {
+  nse: 'nivel socioeconómico (NSE)',
+  edad: 'rango de edad',
+  integrantes: 'número de integrantes del hogar',
+}
+
+/** Human-readable (Spanish) explanation of why a lead qualified, for the AI conversation summary. */
+export function describeQuotaMatch(
+  matchedDimension: DimensionType | 'exception' | string | null,
+  matchedValue: string | null,
+): string | null {
+  if (matchedDimension === 'exception') {
+    return 'excepción por embarazo o bebé menor a 36 meses'
+  }
+  if (matchedDimension && matchedDimension in DIMENSION_LABELS) {
+    const label = DIMENSION_LABELS[matchedDimension as DimensionType]
+    return matchedValue ? `${label}: ${matchedValue}` : label
+  }
+  return null
+}

@@ -13,6 +13,8 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     currentPhase: 2,
     surveyQuestionIndex: 19,
     quotaSegment: 'Nivel 2',
+    quotaMatchedDimension: 'nse',
+    quotaMatchedValue: 'Nivel 2',
     score: 42,
     optInAccepted: true,
     d1Accepted: true,

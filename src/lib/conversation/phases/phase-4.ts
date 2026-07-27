@@ -14,6 +14,7 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
+import { describeQuotaMatch } from '@/lib/scoring/quota'
 import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
 import { matchButtonChoice } from '../match-button-choice'
 import type { ChannelRecipient } from '@/types/channel'
@@ -237,6 +238,12 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
       correlationId: summaryCorrelationId,
       error: String(err),
     }).catch(() => {})
+  }
+
+  const quotaReason = describeQuotaMatch(lead.quotaMatchedDimension, lead.quotaMatchedValue)
+  if (quotaReason) {
+    const reasonLine = `Motivo de calificación: ${quotaReason}.`
+    summary = summary ? `${summary}\n\n${reasonLine}` : reasonLine
   }
 
   if (summary) {

@@ -25,6 +25,8 @@ export interface Lead {
   currentPhase: number
   surveyQuestionIndex: number
   quotaSegment: string | null
+  quotaMatchedDimension: string | null
+  quotaMatchedValue: string | null
   score: number | null
   optInAccepted: boolean
   d1Accepted: boolean
