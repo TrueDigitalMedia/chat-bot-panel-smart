@@ -15,6 +15,7 @@ vi.mock('@/lib/env', () => ({
 
 const progressByKey = new Map<string, QuotaProgress>()
 let regionCap: RegionCapProgress | null = null
+let highestVolumeTarget: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
@@ -42,6 +43,7 @@ vi.mock('@/lib/quotas/quota-progress', () => ({
   getQuotaProgressForTarget: vi.fn(async (country: string, region: string, dimensionType: string, dimensionValue: string) => {
     return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
   }),
+  getHighestVolumeTarget: vi.fn(async () => highestVolumeTarget),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
@@ -165,6 +167,7 @@ describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 
   beforeEach(() => {
     progressByKey.clear()
     regionCap = null
+    highestVolumeTarget = null
   })
 
   it('qualifies via exception when isPregnant is true, even with every dimension exhausted', async () => {
@@ -209,6 +212,37 @@ describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 
 
     expect(result.qualifies).toBe(true)
     expect(result.matchedDimension).toBe('exception')
+  })
+
+  it('attributes to the region\'s highest-volume active quota cell instead of leaving it unattributed', async () => {
+    highestVolumeTarget = { dimensionType: 'edad', dimensionValue: 'Hasta 34' }
+
+    const result = await checkQuotaAvailability({
+      ...HONDURAS_CENTRO_I,
+      segment: 'Nivel 1',
+      age: 20,
+      householdSize: 1,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'edad', matchedValue: 'Hasta 34' })
+  })
+
+  it('is never blocked even when the highest-volume cell it attributes to has no availability left', async () => {
+    highestVolumeTarget = { dimensionType: 'nse', dimensionValue: 'Nivel 4' }
+    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 16 })
+
+    const result = await checkQuotaAvailability({
+      ...HONDURAS_CENTRO_I,
+      segment: 'Nivel 1',
+      age: 20,
+      householdSize: 1,
+      isPregnant: false,
+      hasBabyUnder3: true,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
   })
 })
 

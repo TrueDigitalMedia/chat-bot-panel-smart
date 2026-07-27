@@ -1,5 +1,5 @@
 import { ageBand, householdBand } from '@/lib/quotas/quota-bands'
-import { getQuotaProgressForTarget } from '@/lib/quotas/quota-progress'
+import { getQuotaProgressForTarget, getHighestVolumeTarget } from '@/lib/quotas/quota-progress'
 import { getRegionCapProgress } from '@/lib/quotas/region-caps'
 import type { DimensionType } from '@/lib/quotas/quota-targets'
 
@@ -65,8 +65,15 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
   const { country, nseRegion } = params
 
   // 1. Pregnancy / baby-under-36-months exception — always qualifies, never blocked.
+  // Attributed to whichever active quota cell has the highest configured target_count in
+  // this region, so it still decrements a real cell's "achieved" count instead of going
+  // unattributed. Falls back to the unattributed 'exception' marker only if the region has
+  // no active quota targets configured at all.
   if (params.isPregnant || params.hasBabyUnder3) {
-    const decision: QuotaDecision = { qualifies: true, matchedDimension: 'exception', matchedValue: null }
+    const highestVolume = await getHighestVolumeTarget(country, nseRegion)
+    const decision: QuotaDecision = highestVolume
+      ? { qualifies: true, matchedDimension: highestVolume.dimensionType, matchedValue: highestVolume.dimensionValue }
+      : { qualifies: true, matchedDimension: 'exception', matchedValue: null }
     logQuotaCheck(params, decision, { regionCapBlocked: false })
     return decision
   }

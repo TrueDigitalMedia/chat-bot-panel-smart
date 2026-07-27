@@ -1,8 +1,9 @@
-import { and, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { quotaTargets, leads, surveyProfiles } from '@/lib/db/schema'
 import type { LeadStatus } from '@/types/lead'
 import type { Channel } from '@/types/channel'
+import type { DimensionType } from './quota-targets'
 
 /** Lead statuses reached only after passing the quota check (see docs/WIKI.md §3 state machine). */
 export const QUALIFIED_STATUSES: LeadStatus[] = [
@@ -98,6 +99,31 @@ async function countAchieved(
     .innerJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
     .where(and(...conditions))
   return row?.count ?? 0
+}
+
+/**
+ * The single active quota cell with the highest configured target_count for this
+ * country+region, across all dimension types (nse/edad/integrantes) — not a per-type
+ * sum. Used to attribute exception-qualified leads (pregnancy/baby-under-3, which
+ * always qualify regardless of any specific cell's availability — src/lib/scoring/quota.ts)
+ * to a real quota cell instead of leaving them unattributed, so they still count
+ * against something for capacity-planning purposes. Null if the region has no active
+ * targets configured at all (degenerate case — caller falls back to leaving it
+ * unattributed).
+ */
+export async function getHighestVolumeTarget(
+  country: string,
+  region: string,
+): Promise<{ dimensionType: DimensionType; dimensionValue: string } | null> {
+  const [row] = await db
+    .select({ dimensionType: quotaTargets.dimensionType, dimensionValue: quotaTargets.dimensionValue })
+    .from(quotaTargets)
+    .where(and(eq(quotaTargets.country, country), eq(quotaTargets.region, region), eq(quotaTargets.active, true)))
+    .orderBy(desc(quotaTargets.targetCount))
+    .limit(1)
+
+  if (!row) return null
+  return { dimensionType: row.dimensionType as DimensionType, dimensionValue: row.dimensionValue }
 }
 
 /** Progress for a single country+region+dimension combination, or null if no target row exists. */
