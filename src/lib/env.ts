@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { boolEnv } from './env-bool'
 
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1),
@@ -42,7 +43,7 @@ const envSchema = z.object({
   FORCE_EXTRACTION_ERROR: z.string().optional(),
 
   // Client MySQL (TDM/Kantar) — write-only lead sync, see specs/010-tdm-lead-sync
-  CLIENT_MYSQL_SYNC_ENABLED: z.coerce.boolean().default(false),
+  CLIENT_MYSQL_SYNC_ENABLED: boolEnv(false),
   CLIENT_MYSQL_HOST: z.string().min(1).optional(),
   CLIENT_MYSQL_PORT: z.coerce.number().default(3306),
   CLIENT_MYSQL_USER: z.string().min(1).optional(),
@@ -54,7 +55,7 @@ const envSchema = z.object({
 
   /** REGISTRATION_CODE_MOCK_ENABLED=true bypasses the TDM request entirely and delivers
    *  a mock code — the only way to test this flow locally without a real TDM endpoint. */
-  REGISTRATION_CODE_MOCK_ENABLED: z.coerce.boolean().default(false),
+  REGISTRATION_CODE_MOCK_ENABLED: boolEnv(false),
 
   // TDM registration-code request+webhook (replaces the old MySQL poll — see
   // specs/001-panelsmart-recruitment-bot/contracts/client-mysql-integration.md §2b).
