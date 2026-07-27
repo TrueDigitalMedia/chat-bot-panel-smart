@@ -6,6 +6,7 @@ import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
+import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS } from '../exit-messages'
 import {
@@ -21,6 +22,7 @@ import type { ChannelRecipient } from '@/types/channel'
 
 const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
 
+const GREETING_TEXT = '¡Hola! Soy el asistente virtual de PanelSmart'
 const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
 const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
 const D2_TEXT =
@@ -64,6 +66,11 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
+      // Conversation opener goes out once, before anything else the bot ever sends —
+      // must run before the FAQ check below, since that can itself be the first reply.
+      if (!(await hasSentOutboundMessage(lead.id))) {
+        await sendText(to, GREETING_TEXT)
+      }
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
       await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)

@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
@@ -41,6 +41,16 @@ export async function logConversationMessage(input: LogMessageInput): Promise<vo
 export interface RecentMessage {
   direction: MessageDirection
   body: string
+}
+
+/** True once the bot has ever sent this lead a message — used to gate a one-time conversation opener. */
+export async function hasSentOutboundMessage(leadId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: conversationMessages.id })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'out')))
+    .limit(1)
+  return Boolean(row)
 }
 
 /** Last `limit` turns for a lead, oldest → newest — used to ground LLM context in what was actually said. */
