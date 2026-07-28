@@ -134,28 +134,25 @@ genuinely don't have DOB at this point in the flow).
 
 **Inbound webhook** — `POST /api/webhooks/tdm-registration-code`
 ([route.ts](../../../src/app/api/webhooks/tdm-registration-code/route.ts)), auth header
-`X-TDM-Registration-Secret` against `TDM_REGISTRATION_WEBHOOK_SECRET`:
+`X-TDM-Registration-Secret` against `TDM_REGISTRATION_WEBHOOK_SECRET`. Confirmed 2026-07-27
+to be minimal — no `event`/failure signal, TDM only calls this on success:
 
 ```json
 {
   "lead_id": "uuid-interno-del-bot",
-  "event": "code_generated",
-  "registration_code": "PAN-123456",
-  "panelist_id": "id-opcional-del-lado-de-tdm",
-  "panelist_data": { "cualquier": "dato adicional" },
-  "timestamp": "2026-07-27T18:00:00Z"
+  "panelist_id": 22222
 }
 ```
-or `"event": "code_generation_failed"` with `"error_reason"` and no `registration_code`.
+`panelist_id` is stored as `leads.tdmRegistrationCode` (stringified) and sent to the user
+as their registration code.
 
 **Expected outcomes**:
 
 | Result | Chatbot action |
 |--------|----------------|
-| `code_generated` (lead still `link_sent`) | `deliverRegistrationCode()` — transition to `waiting_for_code`, send code + confirm buttons, arm 20h freeze |
-| `code_generation_failed` | `transitionLead(..., 'abandono', 'tdm_registration_request_failed', ...)` |
+| Valid call (lead still `link_sent`) | `deliverRegistrationCode()` — transition to `waiting_for_code`, send code + confirm buttons, arm 20h freeze |
 | Lead already past `link_sent` (TDM retry) | No-op, `200 already_processed` |
-| Webhook never arrives within `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | `registration_code_timeout` job → `abandono` |
+| Webhook never arrives within `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | `registration_code_timeout` job → `abandono` — this is also the **only** failure path, since TDM's payload has no failure signal |
 
 **Idempotency**: guaranteed by checking `leadStatus === 'link_sent'` before acting — a
 retried webhook call after the code was already delivered is a safe no-op, returned as
