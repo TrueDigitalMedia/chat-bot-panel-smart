@@ -71,6 +71,10 @@ const envSchema = z.object({
   TDM_REGISTRATION_CODE_TIMEOUT_SECONDS: z.coerce.number().default(1800),
   /** Ours — auth secret for the inbound POST /api/webhooks/tdm-registration-code. */
   TDM_REGISTRATION_WEBHOOK_SECRET: z.string().default('dev-tdm-registration-secret'),
+  /** TDM has no sandbox environment — while true, every outbound request overrides
+   *  telefono/correo_electronico with fixed test values so TDM can identify and discard
+   *  test records (src/lib/tdm-registration/test-mode.ts). Turn off before real launch. */
+  TDM_TEST_MODE_ENABLED: boolEnv(false),
 })
 
 function validateEnv() {

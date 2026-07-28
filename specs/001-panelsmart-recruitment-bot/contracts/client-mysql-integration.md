@@ -132,6 +132,12 @@ no México). `fecha_nacimiento` is always `null`: DOB isn't collected until Fich
 after registration (TDM's own example shows a real date, but that's illustrative — we
 genuinely don't have DOB at this point in the flow).
 
+**Test mode**: TDM has no sandbox environment, so while `TDM_TEST_MODE_ENABLED=true`,
+every outbound request overrides `telefono`/`correo_electronico` to fixed values
+(`+50255551234` / `test@example.com`, `src/lib/tdm-registration/test-mode.ts`) so TDM can
+identify and discard test records among real ones. Everything else in the payload stays
+real. **Turn this off before real launch.**
+
 **Inbound webhook** — `POST /api/webhooks/tdm-registration-code`
 ([route.ts](../../../src/app/api/webhooks/tdm-registration-code/route.ts)), auth header
 `X-TDM-Registration-Secret` against `TDM_REGISTRATION_WEBHOOK_SECRET`. Confirmed 2026-07-27
@@ -204,6 +210,7 @@ success, failure, or 20h freeze.
 | `TDM_REGISTRATION_CODE_TIMEOUT_SECONDS` | no (default 1800) | How long we wait for TDM's webhook before `abandono` |
 | `TDM_REGISTRATION_WEBHOOK_SECRET` | no (dev default set) | Ours — auth secret for the inbound webhook |
 | `REGISTRATION_CODE_MOCK_ENABLED` | no (default false) | Bypasses TDM entirely, delivers a mock code — the only way to test this locally today |
+| `TDM_TEST_MODE_ENABLED` | no (default false) | Overrides telefono/correo_electronico with fixed test values on every real outbound request — TDM has no sandbox, so this is how they tell test records apart. Turn off before real launch |
 
 ---
 

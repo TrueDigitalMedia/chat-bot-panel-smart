@@ -6,6 +6,7 @@ import { leads, surveyProfiles, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { buildRegistrationCodeRequest } from '@/lib/tdm-registration/build-request'
 import { requestRegistrationCode } from '@/lib/tdm-registration/client'
+import { applyTdmTestModeOverrides } from '@/lib/tdm-registration/test-mode'
 import { deliverRegistrationCode } from '@/lib/onboarding/deliver-registration-code'
 import { logCall } from '@/lib/db/call-log'
 import { IOS_APP_LINK, ANDROID_APP_LINK } from '@/lib/conversation/exit-messages'
@@ -120,7 +121,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'missing_profile' })
     }
 
-    const requestPayload = buildRegistrationCodeRequest(lead, profile as SurveyProfile)
+    let requestPayload = buildRegistrationCodeRequest(lead, profile as SurveyProfile)
+    if (env.TDM_TEST_MODE_ENABLED) {
+      requestPayload = applyTdmTestModeOverrides(requestPayload)
+    }
     const start = Date.now()
     try {
       await requestRegistrationCode(requestPayload)
