@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-29 (spec 012: chat web, integración Panel Smart & QStash recurring schedule — ver §12 y §13)
+> Última actualización: 2026-07-29 (spec 012: chat web, integración Panel Smart & QStash recurring schedule — ver §12 y §13; configuración WhatsApp — ver §14)
 
 ---
 
@@ -20,6 +20,7 @@
 11. [Estado de implementación por feature](#11-estado-de-implementación-por-feature)
 12. [Chat web (canal nuevo)](#12-chat-web-canal-nuevo)
 13. [Integración Panel Smart & Kantar (2026-07-29)](#13-integración-panel-smart--kantar-2026-07-29)
+14. [Configuración de WhatsApp (Canal)](#14-configuración-de-whatsapp-canal)
 
 ---
 
@@ -753,6 +754,144 @@ Esta integración cumple con **Principle II: Observability First** (`.specify/me
 - ✅ Errores se capturan en tabla `panel_smart_syncs` para auditoría
 - ✅ Logs incluyen request/response para debugging
 - ✅ Health checks pueden consultar `panel_smart_syncs` para detectar roturas en la integración
+
+---
+
+## 14. Configuración de WhatsApp (Canal)
+
+### Proveedores soportados
+
+El bot soporta dos proveedores de WhatsApp:
+
+| Proveedor | Tipo | Usado cuando |
+|-----------|------|-------------|
+| **Meta** (default) | WhatsApp Business Cloud API | `WHATSAPP_PROVIDER=meta` o no especificado |
+| **Twilio** | Twilio WhatsApp Sandbox / Production | `WHATSAPP_PROVIDER=twilio` |
+
+### Configuración: Meta WhatsApp Cloud API
+
+#### 1. En Meta Developer Portal
+
+1. Ve a [developers.facebook.com](https://developers.facebook.com)
+2. Crea una App (si no la tienes) o usa una existente
+3. Agrega **WhatsApp** como producto:
+   - En tu App → **Dashboard**
+   - Click en **Agregar producto** → busca **WhatsApp**
+   - Click en **Set Up**
+
+#### 2. Obtener Credenciales
+
+**En WhatsApp → API Setup:**
+- Copia el **Access Token** → usar en `WHATSAPP_ACCESS_TOKEN`
+- Copia el **Phone Number ID** → usar en `WHATSAPP_PHONE_NUMBER_ID`
+- Guarda el **Phone Number ID** (formato: números sin `+`, ej: `5216171234567`)
+
+**En Settings → Basic:**
+- Copia el **App Secret** → usar en `WHATSAPP_APP_SECRET`
+
+**Para Verify Token:**
+- Elige un string seguro (ej: `abc123xyz-secure-token`)
+- Úsalo en `WHATSAPP_VERIFY_TOKEN`
+- Este mismo valor va en la configuración del webhook en Meta
+
+#### 3. Configurar Webhook en Meta
+
+**En WhatsApp → Configuration:**
+
+1. **Callback URL**: `https://chat-ai-panel.vercel.app/api/webhooks/whatsapp`
+2. **Verify Token**: El string que elegiste en paso 2
+3. Click en **Verify and Save**
+
+#### 4. Suscribirse a Eventos
+
+**En Webhooks → Subscribe to webhook events** (marcar):
+- ✅ `messages` — recibir mensajes del usuario
+- ✅ `message_template_status_update` — estado de plantillas (opcional pero recomendado)
+- ✅ `message_status` — confirmación de entrega (opcional)
+
+#### 5. Vinculación de Número
+
+**En Getting Started:**
+- Vincula tu número de teléfono (recibe SMS de verificación)
+- Obtén el **Phone Number ID** (si no lo hiciste en paso 2)
+
+### Configuración en Vercel
+
+1. Ve a **Vercel Dashboard** → Tu proyecto `chat-ai-panel` → **Settings** → **Environment Variables**
+
+2. Agrega estas variables:
+
+```
+WHATSAPP_PROVIDER=meta
+WHATSAPP_ACCESS_TOKEN=<valor-de-meta>
+WHATSAPP_PHONE_NUMBER_ID=<tu-phone-number-id>
+WHATSAPP_VERIFY_TOKEN=<tu-string-seguro>
+WHATSAPP_APP_SECRET=<app-secret-de-meta>
+WHATSAPP_GRAPH_VERSION=v21.0
+```
+
+3. Haz `git push` para que Vercel redepliegue con las nuevas variables
+
+### Flujo de mensajes (Meta)
+
+```
+Usuario (WhatsApp)
+        ↓
+  Webhook: GET /api/webhooks/whatsapp (hub verification)
+        ↓
+  Webhook: POST /api/webhooks/whatsapp (inbound message)
+        ↓
+  verifyMetaSignature() — validar X-Hub-Signature-256
+        ↓
+  normalizeMetaInbound() — parsear payload Meta
+        ↓
+  processWhatsAppInbound() — lógica de bot (igual que Telegram)
+        ↓
+  sendMessage() → Meta Graph API (/messages)
+        ↓
+  Usuario recibe respuesta
+```
+
+### Testeo Local
+
+Para testear webhooks en local sin exponer tu máquina:
+- Usa **[ngrok](https://ngrok.com)** para tunneling HTTP
+- O espera a que esté deployado en Vercel y usa el webhook URL directo
+
+Ejemplo con ngrok:
+```bash
+ngrok http 3000
+# Obtienes: https://xxx-xxx-ngrok.io
+# Usa en Meta: https://xxx-xxx-ngrok.io/api/webhooks/whatsapp
+```
+
+### Variables de entorno (referencia completa)
+
+```bash
+# Provider: meta (default) o twilio
+WHATSAPP_PROVIDER=meta
+
+# Meta WhatsApp Cloud API
+WHATSAPP_ACCESS_TOKEN=EAAxx...
+WHATSAPP_PHONE_NUMBER_ID=123456789
+WHATSAPP_VERIFY_TOKEN=secure-token-here
+WHATSAPP_APP_SECRET=abc123...
+WHATSAPP_GRAPH_VERSION=v21.0  # Opcional, default v21.0
+
+# Twilio (alternativa, si WHATSAPP_PROVIDER=twilio)
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=auth-token-here
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+### Troubleshooting
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| Webhook no verifica | Verify Token incorrecto | Asegúrate que sea el mismo en Meta y en `WHATSAPP_VERIFY_TOKEN` |
+| Mensajes no se reciben | Webhook URL incorrecta o evento no suscrito | Verifica `https://chat-ai-panel.vercel.app/api/webhooks/whatsapp` y suscriptores |
+| Errores 403 al enviar | Access Token vencido o sin permisos | Regenera en Meta → WhatsApp → API Setup |
+| Firma inválida | `WHATSAPP_APP_SECRET` incorrecto | Cópialo nuevamente de Settings → Basic |
 
 ---
 
