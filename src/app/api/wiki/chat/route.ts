@@ -2,8 +2,6 @@ import { getWikiContent } from '@/lib/wiki/loader'
 import { openai } from '@ai-sdk/openai'
 import { generateText } from 'ai'
 
-const MAX_TOKENS = 512
-
 export async function POST(request: Request) {
   try {
     const { question } = (await request.json()) as { question: string }
@@ -32,7 +30,6 @@ Pregunta: ${question}`
       model: openai('gpt-4-turbo'),
       system: systemPrompt,
       prompt: userMessage,
-      maxCompletionTokens: MAX_TOKENS,
     })
 
     return Response.json({ answer: text })
