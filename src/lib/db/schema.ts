@@ -108,6 +108,13 @@ export const leads = pgTable(
     tdmRegistrationRequestedAt: timestamp('tdm_registration_requested_at', { withTimezone: true }),
     /** Code delivered by TDM's webhook — persisted for idempotency/audit (never stored before this). */
     tdmRegistrationCode: varchar('tdm_registration_code', { length: 64 }),
+    /** 'synced' | 'failed' — Panel Smart / Kantar ai-lead-responses, same idiom as tdmSyncStatus. */
+    panelSmartSyncStatus: varchar('panel_smart_sync_status', { length: 20 }),
+    panelSmartLastSyncAt: timestamp('panel_smart_last_sync_at', { withTimezone: true }),
+    /** Snapshot of the last value sent per field ({ [fieldName]: value }), used to diff
+     *  what's actually changed since the last successful sync — the answer to "which
+     *  survey/ficha-hogar answers are still pending" is just this vs. the current profile. */
+    panelSmartSyncedAnswersJson: jsonb('panel_smart_synced_answers_json').$type<Record<string, unknown>>(),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )

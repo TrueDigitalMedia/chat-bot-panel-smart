@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/jobs/panel-smart-abandoned-sync",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

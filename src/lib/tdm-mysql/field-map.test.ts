@@ -39,6 +39,9 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     tdmLastSyncAt: null,
     tdmRegistrationRequestedAt: null,
     tdmRegistrationCode: null,
+    panelSmartSyncStatus: null,
+    panelSmartLastSyncAt: null,
+    panelSmartSyncedAnswersJson: null,
     ...overrides,
   }
 }
