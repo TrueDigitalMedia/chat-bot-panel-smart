@@ -244,9 +244,80 @@ function WikiMarkdown({ content, onCopyCode, copiedCode }: WikiMarkdownProps) {
 }
 
 function renderInlineMarkdown(text: string): React.ReactNode {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">$1</code>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank">$1</a>')
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+
+  // Combined regex to match all inline markdown patterns
+  const patterns = [
+    { regex: /\*\*(.+?)\*\*/g, type: 'bold' },
+    { regex: /\*(.+?)\*/g, type: 'italic' },
+    { regex: /`(.+?)`/g, type: 'code' },
+    { regex: /\[(.+?)\]\((.+?)\)/g, type: 'link' },
+  ]
+
+  // Find all matches with their positions
+  const matches: Array<{ start: number; end: number; type: string; groups: string[] }> = []
+
+  for (const { regex, type } of patterns) {
+    let match
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        type,
+        groups: Array.from(match).slice(1),
+      })
+    }
+  }
+
+  // Sort by start position and process
+  matches.sort((a, b) => a.start - b.start)
+
+  let currentIndex = 0
+  let keyCounter = 0
+
+  for (const match of matches) {
+    if (match.start > currentIndex) {
+      parts.push(text.slice(currentIndex, match.start))
+    }
+
+    const key = `inline-${keyCounter++}`
+
+    switch (match.type) {
+      case 'bold':
+        parts.push(<strong key={key}>{match.groups[0]}</strong>)
+        break
+      case 'italic':
+        parts.push(<em key={key}>{match.groups[0]}</em>)
+        break
+      case 'code':
+        parts.push(
+          <code key={key} className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm">
+            {match.groups[0]}
+          </code>
+        )
+        break
+      case 'link':
+        parts.push(
+          <a
+            key={key}
+            href={match.groups[1]}
+            className="text-blue-600 dark:text-blue-400 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {match.groups[0]}
+          </a>
+        )
+        break
+    }
+
+    currentIndex = match.end
+  }
+
+  if (currentIndex < text.length) {
+    parts.push(text.slice(currentIndex))
+  }
+
+  return parts.length === 0 ? text : parts
 }
