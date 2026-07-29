@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Search, Copy, Check } from 'lucide-react'
 
 interface WikiContentProps {
@@ -99,11 +99,9 @@ function WikiMarkdown({ content, onCopyCode, copiedCode }: WikiMarkdownProps) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '')
 
-      const Tag = `h${level}` as keyof JSX.IntrinsicElements
+      const Tag = `h${level}` as any
       elements.push(
-        <Tag key={`heading-${i}`} id={id} className="scroll-mt-20">
-          {text}
-        </Tag>
+        React.createElement(Tag, { key: `heading-${i}`, id, className: 'scroll-mt-20' }, text)
       )
       i++
       continue
