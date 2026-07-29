@@ -4,8 +4,8 @@ import type { PanelSmartSyncPayload } from './types'
 
 // Same Azure Function App as TDM's /api/ai-lead (tdm-registration/client.ts measured ~6.4s
 // there) — matching its generous timeout since this is also called from a background job,
-// never a user-facing response.
-const DEFAULT_TIMEOUT_MS = 15000
+// never a user-facing response. Increased to 30s due to occasional Panel Smart slowness.
+const DEFAULT_TIMEOUT_MS = 30000
 
 export function requirePanelSmartSyncConfigured(): void {
   if (!isPanelSmartSyncConfigured()) {

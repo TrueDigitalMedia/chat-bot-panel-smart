@@ -39,6 +39,9 @@ type LeadDetail = {
   inQuotaGeo: boolean | null
   email: string | null
   gender: string | null
+  panelSmartSyncStatus: string | null
+  panelSmartLastSyncAt: string | null
+  panelSmartSyncedAnswersJson: Record<string, unknown> | null
 }
 
 type EvalDetail = {
@@ -218,10 +221,44 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
             </strong>
           </li>
           <li>
+            <span>Panel Smart Sync</span>
+            <strong>
+              {lead.panelSmartSyncStatus ? (
+                <span style={{ color: lead.panelSmartSyncStatus === 'synced' ? '#10b981' : '#ef4444' }}>
+                  {lead.panelSmartSyncStatus}
+                </span>
+              ) : (
+                '—'
+              )}
+            </strong>
+          </li>
+          {lead.panelSmartLastSyncAt && (
+            <li>
+              <span>Última sincronización</span>
+              <strong>{formatWhen(lead.panelSmartLastSyncAt)}</strong>
+            </li>
+          )}
+          <li>
             <span>Última actividad</span>
             <strong>{formatWhen(lead.lastActivityAt)}</strong>
           </li>
         </ul>
+        {lead.panelSmartSyncStatus && (
+          <div className={styles.evalBox} style={{ marginTop: '1rem' }}>
+            <strong>Panel Smart Respuestas Sincronizadas</strong>
+            {lead.panelSmartSyncedAnswersJson && Object.keys(lead.panelSmartSyncedAnswersJson).length > 0 ? (
+              <ul style={{ fontSize: '0.875rem', lineHeight: '1.5', marginTop: '0.5rem' }}>
+                {Object.entries(lead.panelSmartSyncedAnswersJson).map(([field, value]) => (
+                  <li key={field} style={{ padding: '0.25rem 0' }}>
+                    <span style={{ color: '#6b7280' }}>{field}:</span> {String(value).substring(0, 50)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.muted}>Sin respuestas sincronizadas</p>
+            )}
+          </div>
+        )}
         <div className={styles.evalBox}>
           <strong>Eval calificación / cuota</strong>
           <button
