@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-21 (spec 012: chat web, implementado — ver §12)
+> Última actualización: 2026-07-29 (spec 012: chat web, integración Panel Smart & QStash recurring schedule — ver §12 y §13)
 
 ---
 
@@ -19,6 +19,7 @@
 10. [Plan: Dashboard de Leads](#10-plan-dashboard-de-leads)
 11. [Estado de implementación por feature](#11-estado-de-implementación-por-feature)
 12. [Chat web (canal nuevo)](#12-chat-web-canal-nuevo)
+13. [Integración Panel Smart & Kantar (2026-07-29)](#13-integración-panel-smart--kantar-2026-07-29)
 
 ---
 
@@ -655,6 +656,103 @@ Los jobs de re-enganche (QStash) para un lead del canal web simplemente registra
 ### Panel administrativo
 
 Sin cambios — `/admin/conversations` y `/admin/dashboard` ya renderizaban `channel` de forma genérica (incluido un filtro "Web" ya presente en el dashboard desde antes de esta feature); los leads y conversaciones del canal web aparecen ahí automáticamente.
+
+---
+
+## 13. Integración Panel Smart & Kantar (2026-07-29)
+
+> ✅ **Implementado** en commits 5341c4f, ca53435. Nueva integración para sincronizar leads con el sistema Panel Smart de Kantar.
+
+### Qué es Panel Smart
+
+Panel Smart es una plataforma partner de Kantar que centraliza y gestiona los datos de panelistas reclutados. El bot de PanelSmart Recruitment Bot ahora sincroniza automáticamente los leads que completan el flujo de calificación y registro con el sistema Panel Smart, permitiendo que Kantar vea las respuestas de investigación en tiempo real.
+
+### Arquitectura de sincronización
+
+```
+Lead completa Fase 4 (Ficha Hogar)
+        ↓
+  ficha_hogar_completada (DB)
+        ↓
+  QStash recurring job (cada 3h)
+        ↓
+  Panel Smart Abandoned-Sync handler
+        ↓
+  Panel Smart Client (API HTTP)
+        ↓
+  Panel Smart / Kantar infraestructura
+```
+
+**Flujo de datos:**
+
+1. **Capture**: Lead completa el flujo de 4 fases y llega a estado `ficha_hogar_completada`
+2. **Batching**: Cada 3 horas, un job QStash ejecuta `POST /api/jobs/panel-smart-abandoned-sync`
+3. **Question Mapping**: Las respuestas del lead (survey + ficha hogar) se mapean al formato de preguntas de Panel Smart
+4. **Push**: Se llama a la API de Panel Smart con las respuestas en formato esperado
+5. **Tracking**: Se registra en tabla `panel_smart_syncs` el timestamp y estado de cada sincronización
+
+### Tecnología & Implementación
+
+**Nuevo módulo**: `src/lib/panel-smart/`
+
+| Archivo | Propósito |
+|---------|-----------|
+| `client.ts` | Cliente HTTP que habla con API Panel Smart (autenticación, endpoints, headers) |
+| `sync.ts` | Lógica de sincronización: query de leads pendientes, mapeo de respuestas, reintentos |
+| `question-map.ts` | Mapeo bidireccional: preguntas del bot → campos de Panel Smart |
+| `types.ts` | TypeScript types para payloads de Panel Smart |
+
+**Job handler**: `app/api/jobs/panel-smart-abandoned-sync/route.ts`
+
+- Endpoint protegido (requiere `Authorization: Bearer QSTASH_CURRENT_SIGNING_KEY`)
+- Función de manejo: `handlePanelSmartAbandonedSync()`
+- Lógica:
+  1. Query `leads` con estado `ficha_hogar_completada` y última sincronización > 3h atrás
+  2. Para cada lead, construir payload de preguntas usando `question-map.ts`
+  3. Llamar a Panel Smart Client
+  4. Registrar resultado en `panel_smart_syncs` (timestamp, lead_id, status, error si aplica)
+  5. No modifica el estado del lead (permanece en `ficha_hogar_completada`)
+
+### QStash Recurring Schedule
+
+Sustituye a Vercel Cron (que se limita a 1 ejecución/día en Hobby tier). Ahora usa **QStash recurring schedules** para ejecutar cada 3 horas:
+
+**Configuración manual** (ver `QSTASH_SETUP.md`):
+
+```bash
+curl -X POST https://qstash.io/v2/schedules/ \
+  -H "Authorization: Bearer $QSTASH_API_KEY" \
+  -d '{
+    "destination": "https://chat-ai-panel.vercel.app/api/jobs/panel-smart-abandoned-sync",
+    "cron": "0 */3 * * *"
+  }'
+```
+
+Esto crea un schedule que:
+- Ejecuta a las 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00 UTC diariamente
+- Incluye header `Authorization: Bearer [key]` automáticamente
+- Reintentos automáticos si el endpoint falla
+
+### Variables de entorno nuevas
+
+```
+# Panel Smart API
+PANEL_SMART_API_URL=https://[panel-smart-endpoint]
+PANEL_SMART_API_KEY=[api-key-provided-by-kantar]
+
+# QStash
+QSTASH_CURRENT_SIGNING_KEY=[key-para-verificar-webhooks]
+QSTASH_API_KEY=[key-para-crear-schedules]
+```
+
+### Vinculación con Constitution
+
+Esta integración cumple con **Principle II: Observability First** (`.specify/memory/constitution.md`):
+
+- ✅ Todos los calls a Panel Smart se registran con timestamp, lead_id, status
+- ✅ Errores se capturan en tabla `panel_smart_syncs` para auditoría
+- ✅ Logs incluyen request/response para debugging
+- ✅ Health checks pueden consultar `panel_smart_syncs` para detectar roturas en la integración
 
 ---
 

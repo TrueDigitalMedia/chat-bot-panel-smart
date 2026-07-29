@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, BookOpen } from 'lucide-react'
 import { logout } from '@/lib/auth/actions'
 import {
   Sidebar,
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { label: 'Conversaciones', href: '/admin/conversations', icon: MessageSquare },
   { label: 'Cuotas de reclutamiento', href: '/admin/quotas', icon: ClipboardList },
   { label: 'Dashboard de leads', href: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Wiki del sistema', href: '/admin/wiki', icon: BookOpen },
 ] as const
 
 export function AdminSidebar() {
