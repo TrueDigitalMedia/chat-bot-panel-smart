@@ -9,18 +9,19 @@ import { generateCorrelationId } from '@/lib/correlation'
 const INACTIVITY_THRESHOLD_MS = 60 * 60 * 1000
 
 /**
- * Hourly Vercel Cron sweep (see vercel.json): flushes Panel Smart sync for conversations
- * that went quiet for 1h+ without finishing a phase — the normal sync hooks (transitionLead,
- * correction commits) only fire on those specific events, so a lead that stalls mid-phase
- * would otherwise sit with unsynced answers indefinitely.
+ * QStash recurring schedule (every 3 hours, configured via upstash CLI or API):
+ * flushes Panel Smart sync for conversations that went quiet for 1h+ without finishing
+ * a phase — the normal sync hooks (transitionLead, correction commits) only fire on those
+ * specific events, so a lead that stalls mid-phase would otherwise sit with unsynced
+ * answers indefinitely.
  *
  * Pre-filters to leads whose last activity happened after their last successful sync (so a
  * diff might actually be non-empty) — syncPendingPanelSmartAnswers itself is the source of
  * truth and no-ops safely if nothing's actually pending, but this keeps the sweep from
- * reloading every historical lead every hour.
+ * reloading every historical lead.
  *
- * Auth: Vercel signs cron-triggered requests with `Authorization: Bearer $CRON_SECRET`
- * (docs: https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs).
+ * Auth: QStash signs requests with `Authorization: Bearer $CRON_SECRET`, and the schedule
+ * is set up once via `upstash qstash schedule create`. See ./QSTASH_SETUP.md for instructions.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const authHeader = request.headers.get('authorization')
