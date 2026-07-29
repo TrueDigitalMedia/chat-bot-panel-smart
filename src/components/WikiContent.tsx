@@ -303,8 +303,6 @@ function renderInlineMarkdown(text: string): React.ReactNode {
             key={key}
             href={match.groups[1]}
             className="text-blue-600 dark:text-blue-400 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             {match.groups[0]}
           </a>
