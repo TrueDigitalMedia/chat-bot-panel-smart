@@ -32,7 +32,7 @@ Pregunta: ${question}`
       model: openai('gpt-4-turbo'),
       system: systemPrompt,
       prompt: userMessage,
-      maxTokens: MAX_TOKENS,
+      maxCompletionTokens: MAX_TOKENS,
     })
 
     return Response.json({ answer: text })
