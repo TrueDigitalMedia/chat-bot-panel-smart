@@ -75,6 +75,17 @@ const envSchema = z.object({
    *  telefono/correo_electronico with fixed test values so TDM can identify and discard
    *  test records (src/lib/tdm-registration/test-mode.ts). Turn off before real launch. */
   TDM_TEST_MODE_ENABLED: boolEnv(false),
+
+  // Panel Smart / Kantar ai-lead-responses — same Azure Function App + OAuth tenant as
+  // TDM_REGISTRATION_REQUEST_URL, different endpoint: pushes per-question survey/ficha-hogar
+  // answers instead of requesting a registration code. See src/lib/panel-smart/.
+  /** Kantar's /api/ai-lead-responses endpoint. */
+  PANEL_SMART_SYNC_URL: z.string().url().optional(),
+  /** Kill switch, same idiom as CLIENT_MYSQL_SYNC_ENABLED. */
+  PANEL_SMART_SYNC_ENABLED: boolEnv(false),
+  /** Auth secret for Vercel Cron's callback to the hourly abandoned-conversation sweep
+   *  (jobs/panel-smart-abandoned-sync) — Vercel sends this as `Authorization: Bearer <value>`. */
+  CRON_SECRET: z.string().min(1).optional(),
 })
 
 function validateEnv() {
@@ -124,6 +135,15 @@ export function isTdmRegistrationRequestConfigured(): boolean {
       env.TDM_OAUTH_CLIENT_SECRET &&
       env.TDM_OAUTH_SCOPE,
   )
+}
+
+/** Reuses the same OAuth-configured check as TDM registration — same Azure AD tenant/app. */
+export function isPanelSmartSyncConfigured(): boolean {
+  return Boolean(env.PANEL_SMART_SYNC_URL && isTdmRegistrationRequestConfigured())
+}
+
+export function isPanelSmartSyncEnabled(): boolean {
+  return env.PANEL_SMART_SYNC_ENABLED && isPanelSmartSyncConfigured()
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 import { captureSurveyFieldValue } from './survey-capture'
 import { sendSurveyQuestion } from './send-survey-question'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from './survey-questions'
+import { generateCorrelationId } from '@/lib/correlation'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
 export { CORRECT_MENU, CORRECT_CANCEL } from './correction-fields'
@@ -74,6 +75,13 @@ export async function showCorrectionMenu(lead: Lead): Promise<void> {
 
 /**
  * Clear the selected answer (+ geo dependents) and restart the survey from that question.
+ * The redone answer itself is persisted later by phase-1.ts's normal per-question capture
+ * path (same code as a first-time answer — flowStates.isCorrecting/correctingField are
+ * reset here, not consulted there), which will resync to Panel Smart at the next phase
+ * transition (transitionLead). A correction made after every phase is already complete,
+ * with no further transition ever firing, won't resync until another one does — a known
+ * gap, left as-is rather than adding correction-awareness to phase-1.ts's shared capture
+ * code (see panel-smart/sync.ts).
  */
 export async function restartSurveyFromField(lead: Lead, field: SurveyFieldName): Promise<void> {
   const [profile] = await db
@@ -182,6 +190,15 @@ export async function applyFieldAndContinue(
   await sendText(lead, msg)
   await sendText(lead, 'Continuamos desde aquí:')
   await sendSurveyQuestion(lead, nextIdx, lead.id)
+
+  // Fire-and-forget: resync the corrected answer to Panel Smart right away, since a
+  // one-shot NL correction ("cambia el email a x") doesn't necessarily trigger a status
+  // transition (the usual sync hook in transitionLead).
+  void import('@/lib/panel-smart/sync')
+    .then(({ syncPendingPanelSmartAnswers }) => syncPendingPanelSmartAnswers(lead.id, generateCorrelationId()))
+    .catch((err) => {
+      console.error('[panel-smart-sync] correction sync failed', { leadId: lead.id, field, err: String(err) })
+    })
 }
 
 /** @deprecated alias — geo confirm / legacy callers */

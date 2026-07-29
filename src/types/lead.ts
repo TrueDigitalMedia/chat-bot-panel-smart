@@ -42,6 +42,9 @@ export interface Lead {
   tdmLastSyncAt: Date | null
   tdmRegistrationRequestedAt: Date | null
   tdmRegistrationCode: string | null
+  panelSmartSyncStatus: string | null
+  panelSmartLastSyncAt: Date | null
+  panelSmartSyncedAnswersJson: Record<string, unknown> | null
 }
 
 export interface SurveyProfile {
