@@ -25,6 +25,8 @@ const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-
 const GREETING_TEXT = '¡Hola! Soy el asistente virtual de PanelSmart'
 const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
 const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
+const REENGAGEMENT_CONSENT_TEXT =
+  '📋 Para mejorarte la experiencia, nos gustaría hacer seguimiento de tu conversación y ponernos en contacto si abandonas el registro.\n¿Autorizas que te contactemos en caso de que dejes el proceso a mitad?'
 const D2_TEXT =
   'A continuación te haremos unas preguntas que nos ayudarán a clasificar tu hogar dentro del panel, y poder ganar premios más rápido.\n¿Quieres ganar premios por decirnos qué compras?'
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
@@ -83,13 +85,28 @@ export async function handlePhase1(
   if (!lead.d1Accepted) {
     if (callbackData === 'd1:accept') {
       await db.update(leads).set({ d1Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await sendD2(to)
+      await sendReEngagementConsent(to)
     } else if (callbackData === 'd1:decline') {
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
       await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
       await sendD1(to)
+    }
+    return
+  }
+
+  // Re-engagement consent: ask for permission to contact if abandons
+  if (lead.reEngagementConsentAccepted === null) {
+    if (callbackData === 'reengagement_consent:accept') {
+      await db.update(leads).set({ reEngagementConsentAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await sendD2(to)
+    } else if (callbackData === 'reengagement_consent:decline') {
+      await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await sendD2(to)
+    } else {
+      await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
+      await sendReEngagementConsent(to)
     }
     return
   }
@@ -407,6 +424,19 @@ async function sendD1(to: ChannelRecipient): Promise<void> {
       [
         { text: 'Confirmo y acepto', callback_data: 'd1:accept' },
         { text: 'No, gracias', callback_data: 'd1:decline' },
+      ],
+    ],
+  )
+}
+
+async function sendReEngagementConsent(to: ChannelRecipient): Promise<void> {
+  await sendInlineKeyboard(
+    to,
+    REENGAGEMENT_CONSENT_TEXT,
+    [
+      [
+        { text: 'Sí, autorizo', callback_data: 'reengagement_consent:accept' },
+        { text: 'No, gracias', callback_data: 'reengagement_consent:decline' },
       ],
     ],
   )

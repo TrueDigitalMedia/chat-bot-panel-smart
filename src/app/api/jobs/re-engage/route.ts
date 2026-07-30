@@ -20,7 +20,7 @@ import {
   REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER,
   linkSentReminderDelaySeconds,
 } from '@/lib/scheduler/constants'
-import { getReEngagementMessage } from '@/lib/scheduler/messages'
+import { getNextMessageVariant } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
 import { env, isTdmRegistrationRequestConfigured } from '@/lib/env'
 import type { JobPayload } from '@/lib/scheduler/re-engagement'
@@ -209,6 +209,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // --- Re-engagement notifications ---
   if (payload.action === 're-engage') {
+    // Check if lead has consented to re-engagement contact
+    if (lead.reEngagementConsentAccepted !== true) {
+      await db
+        .update(reEngagementSchedules)
+        .set({ deliveredAt: new Date(), outcome: 'skipped_no_consent' })
+        .where(eq(reEngagementSchedules.leadId, lead.id))
+      return NextResponse.json({ outcome: 'skipped_no_consent' })
+    }
+
     const lastActivity = new Date(lead.lastActivityAt).getTime()
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     if (lastActivity > fiveMinutesAgo) {
@@ -216,7 +225,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const attempt = payload.attemptNumber as 1 | 2 | 3
-    const message = getReEngagementMessage(attempt)
+    const message = await getNextMessageVariant(lead.id, attempt)
     await sendText(lead, message)
 
     await db

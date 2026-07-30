@@ -114,6 +114,21 @@ export async function syncPendingPanelSmartAnswers(leadId: string, correlationId
     if (pending.length === 0) return true
 
     const responses: PanelSmartResponseItem[] = pending.map(({ field, value }) => buildResponseItem(field, value))
+
+    // Add lead_status as a response
+    responses.push({
+      codigo_pregunta: 'lead_status',
+      pregunta: 'Estado del Lead',
+      respuesta: lead.leadStatus,
+    })
+
+    // Add ficha_hogar_completada status
+    responses.push({
+      codigo_pregunta: 'ficha_hogar_completada',
+      pregunta: '¿Ficha Hogar Completada?',
+      respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
+    })
+
     await syncToPanelSmart({ lead_id: leadId, responses })
 
     const snapshot = { ...(lead.panelSmartSyncedAnswersJson ?? {}) }
