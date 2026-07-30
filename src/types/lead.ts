@@ -30,6 +30,7 @@ export interface Lead {
   score: number | null
   optInAccepted: boolean
   d1Accepted: boolean
+  reEngagementConsentAccepted: boolean | null
   d2Accepted: boolean | null
   d3IsShopper: boolean | null
   conversationSummary: string | null

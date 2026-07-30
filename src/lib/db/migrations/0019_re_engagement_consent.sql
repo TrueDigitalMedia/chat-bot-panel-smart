@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "re_engagement_consent_accepted" boolean;
