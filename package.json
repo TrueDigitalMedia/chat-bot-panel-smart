@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx src/lib/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:seed:faqs": "tsx --env-file=.env src/lib/db/seed/faqs.ts",
     "db:seed:evals": "tsx --env-file=.env src/lib/db/seed/eval-fixtures.ts",
