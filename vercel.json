@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run db:migrate && npm run build",
+  "installCommand": "npm install",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}
