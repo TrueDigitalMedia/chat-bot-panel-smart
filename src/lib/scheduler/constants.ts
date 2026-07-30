@@ -9,7 +9,7 @@ export const REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER = 95
 export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
   1: 4500,   // 75 minutes
   2: 25200,  // 7 hours
-  3: 72000,  // 20 hours
+  3: 43200,  // 12 hours (keep total < 24h with variant rotation)
 }
 
 export const MAX_REENGAGEMENT_ATTEMPTS = 3

@@ -352,3 +352,36 @@ export const conversationEvals = pgTable(
     index('conversation_evals_passed_idx').on(t.passed),
   ],
 )
+
+export const messageVariants = pgTable(
+  'message_variants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    attemptNumber: smallint('attempt_number').notNull(),
+    variantOrder: smallint('variant_order').notNull(),
+    templateText: text('template_text').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('message_variants_attempt_order_idx').on(t.attemptNumber, t.variantOrder),
+    index('message_variants_attempt_idx').on(t.attemptNumber),
+  ],
+)
+
+export const leadMessageVariantUsage = pgTable(
+  'lead_message_variant_usage',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    attemptNumber: smallint('attempt_number').notNull(),
+    variantOrder: smallint('variant_order').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('lead_variant_usage_lead_attempt_idx').on(t.leadId, t.attemptNumber),
+    index('lead_variant_usage_lead_idx').on(t.leadId, t.attemptNumber),
+    index('lead_variant_usage_sent_at_idx').on(t.sentAt),
+  ],
+)
