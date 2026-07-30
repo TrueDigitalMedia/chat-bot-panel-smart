@@ -2,6 +2,18 @@ import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import { migrate } from 'drizzle-orm/neon-http/migrator'
 
+// Local dev keeps POSTGRES_URL in .env/.env.local, which nothing auto-loads for a
+// standalone tsx script (unlike `next dev`/`next build`). Vercel's build has no such
+// file — env vars are injected straight into process.env — so each load is wrapped to
+// no-op when the file is absent rather than crashing the whole migration.
+for (const file of ['.env', '.env.local']) {
+  try {
+    process.loadEnvFile(file)
+  } catch {
+    // File doesn't exist — fine, rely on already-set process.env (Vercel's case).
+  }
+}
+
 /**
  * Runs migrations over Neon's HTTP driver (plain HTTPS, no WebSocket) — unlike
  * `drizzle-kit migrate`, which auto-detects neon.tech hosts and switches to the
