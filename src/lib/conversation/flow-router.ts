@@ -17,7 +17,7 @@ import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
 const BUTTON_PREFIXES = [
-  'optin:', 'd1:', 'd2:', 'd3:', 'country:', 'gender:', 'educationPsh:', 'cars:',
+  'optin:', 'd1:', 'reengagement_consent:', 'd2:', 'd3:', 'country:', 'gender:', 'educationPsh:', 'cars:',
   'domesticHelp:', 'shoppingFrequency:', 'contactChannel:', 'contactSchedule:',
   'isPregnant:', 'hasBabyUnder3:',
   'correct:',
