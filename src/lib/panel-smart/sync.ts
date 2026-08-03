@@ -13,7 +13,7 @@ import { SURVEY_FIELDS, FICHA_HOGAR_FIELDS } from '@/types/lead'
 import type { Lead, SurveyProfile, FichaHogarProfile } from '@/types/lead'
 import { buildResponseItem, type SyncableFieldName } from './question-map'
 import { syncToPanelSmart } from './client'
-import type { PanelSmartResponseItem } from './types'
+import type { PanelSmartResponseItem, PanelSmartSyncPayload } from './types'
 
 export type PanelSmartSyncTrigger = 'state_transition' | 'correction' | 'abandoned_cron' | 'manual'
 
@@ -150,6 +150,52 @@ async function recordSyncAttempt(
     .where(eq(panelSmartSyncRuns.id, runId))
 }
 
+type PendingSyncResult =
+  | { status: 'disabled' | 'not_found' | 'nothing_pending' }
+  | {
+      status: 'ok'
+      lead: Lead
+      pending: Array<{ field: SyncableFieldName; value: unknown }>
+      payload: PanelSmartSyncPayload
+    }
+
+/**
+ * Diffs the lead's current survey + ficha-hogar answers against `leads.panelSmartSyncedAnswersJson`
+ * and, if there's anything pending, builds the exact `{lead_id, responses}` payload that would be
+ * POSTed to Kantar's /api/ai-lead-responses — without touching `syncToPanelSmart`/the OAuth token,
+ * so callers that only need the payload (e.g. an admin preview) never come near the secret.
+ */
+async function computePendingSync(leadId: string): Promise<PendingSyncResult> {
+  if (!isPanelSmartSyncEnabled()) return { status: 'disabled' }
+
+  const lead = await loadLead(leadId)
+  if (!lead) return { status: 'not_found' }
+
+  const profile = await loadSurveyProfile(leadId)
+  const fichaHogar = await loadFichaHogarProfile(leadId)
+
+  const pending = computePendingFields(profile, fichaHogar, lead.panelSmartSyncedAnswersJson)
+  if (pending.length === 0) return { status: 'nothing_pending' }
+
+  const responses: PanelSmartResponseItem[] = pending.map(({ field, value }) => buildResponseItem(field, value))
+
+  // Add lead_status as a response
+  responses.push({
+    codigo_pregunta: 'lead_status',
+    pregunta: 'Estado del Lead',
+    respuesta: lead.leadStatus,
+  })
+
+  // Add ficha_hogar_completada status
+  responses.push({
+    codigo_pregunta: 'ficha_hogar_completada',
+    pregunta: '¿Ficha Hogar Completada?',
+    respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
+  })
+
+  return { status: 'ok', lead, pending, payload: { lead_id: leadId, responses } }
+}
+
 /**
  * Sends only the lead's changed/new survey + ficha-hogar answers to Kantar's
  * /api/ai-lead-responses, diffed against `leads.panelSmartSyncedAnswersJson`. No-ops (returns
@@ -164,41 +210,18 @@ export async function syncPendingPanelSmartAnswers(
   correlationId: string,
   opts: PanelSmartSyncOptions,
 ): Promise<boolean> {
-  if (!isPanelSmartSyncEnabled()) return true
-
   const start = Date.now()
   let runId: string | undefined
   let fieldNames: string[] = []
   try {
-    const lead = await loadLead(leadId)
-    if (!lead) return false
+    const computed = await computePendingSync(leadId)
+    if (computed.status !== 'ok') return computed.status !== 'not_found'
 
-    const profile = await loadSurveyProfile(leadId)
-    const fichaHogar = await loadFichaHogarProfile(leadId)
-
-    const pending = computePendingFields(profile, fichaHogar, lead.panelSmartSyncedAnswersJson)
-    if (pending.length === 0) return true
-
+    const { lead, pending, payload } = computed
     fieldNames = pending.map(({ field }) => field)
     runId = opts.runId ?? (await createPanelSmartSyncRun(opts.trigger, 1))
 
-    const responses: PanelSmartResponseItem[] = pending.map(({ field, value }) => buildResponseItem(field, value))
-
-    // Add lead_status as a response
-    responses.push({
-      codigo_pregunta: 'lead_status',
-      pregunta: 'Estado del Lead',
-      respuesta: lead.leadStatus,
-    })
-
-    // Add ficha_hogar_completada status
-    responses.push({
-      codigo_pregunta: 'ficha_hogar_completada',
-      pregunta: '¿Ficha Hogar Completada?',
-      respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
-    })
-
-    await syncToPanelSmart({ lead_id: leadId, responses })
+    await syncToPanelSmart(payload)
 
     const snapshot = { ...(lead.panelSmartSyncedAnswersJson ?? {}) }
     for (const { field, value } of pending) snapshot[field] = value
@@ -221,4 +244,22 @@ export async function syncPendingPanelSmartAnswers(
     }).catch(() => {})
     return false
   }
+}
+
+export interface PanelSmartSyncPreview {
+  status: 'disabled' | 'not_found' | 'nothing_pending' | 'ok'
+  payload: PanelSmartSyncPayload | null
+  fieldNames: string[]
+}
+
+/**
+ * Read-only counterpart to `syncPendingPanelSmartAnswers` — builds the same payload without
+ * ever sending it, so an admin can preview exactly what would be POSTed to Kantar. Deliberately
+ * never imports `./client` or `tdm-registration/oauth`, so there's no code path here that could
+ * leak the bearer token/client secret into the response.
+ */
+export async function previewPanelSmartSync(leadId: string): Promise<PanelSmartSyncPreview> {
+  const result = await computePendingSync(leadId)
+  if (result.status !== 'ok') return { status: result.status, payload: null, fieldNames: [] }
+  return { status: 'ok', payload: result.payload, fieldNames: result.pending.map(({ field }) => field) }
 }

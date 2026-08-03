@@ -44,6 +44,12 @@ type LeadDetail = {
   panelSmartSyncedAnswersJson: Record<string, unknown> | null
 }
 
+type PanelSmartPreview = {
+  status: 'disabled' | 'not_found' | 'nothing_pending' | 'ok'
+  payload: { lead_id: string; responses: { codigo_pregunta: string; pregunta: string; respuesta: string }[] } | null
+  fieldNames: string[]
+}
+
 type EvalDetail = {
   id: string
   overallScore: number
@@ -72,8 +78,9 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [evalBusy, setEvalBusy] = useState(false)
   const [evalMsg, setEvalMsg] = useState<string | null>(null)
-  const [syncBusy, setSyncBusy] = useState(false)
-  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [previewBusy, setPreviewBusy] = useState(false)
+  const [preview, setPreview] = useState<PanelSmartPreview | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
   const [replyInput, setReplyInput] = useState('')
   const [replySending, setReplySending] = useState(false)
   const [replyError, setReplyError] = useState<string | null>(null)
@@ -237,33 +244,75 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
               type="button"
               className={styles.evalBtn}
               style={{ marginTop: '0.35rem' }}
-              disabled={syncBusy}
+              disabled={previewBusy}
               onClick={async () => {
-                setSyncBusy(true)
-                setSyncMsg(null)
+                setPreviewBusy(true)
+                setPreview(null)
                 try {
-                  const res = await fetch('/api/admin/panel-smart-sync/run', {
+                  const res = await fetch('/api/admin/panel-smart-sync/preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ leadId }),
                   })
-                  const data = (await res.json()) as { ok: boolean; status: string | null }
                   if (!res.ok) {
-                    setSyncMsg('Error al sincronizar')
+                    setPreview({ status: 'not_found', payload: null, fieldNames: [] })
                   } else {
-                    setSyncMsg(data.status === 'synced' ? 'Sincronizado' : data.status === 'failed' ? 'Falló' : 'Sin cambios pendientes')
-                    await load()
+                    setPreview((await res.json()) as PanelSmartPreview)
                   }
                 } catch {
-                  setSyncMsg('No se pudo conectar')
+                  setPreview({ status: 'not_found', payload: null, fieldNames: [] })
                 } finally {
-                  setSyncBusy(false)
+                  setPreviewBusy(false)
                 }
               }}
             >
-              {syncBusy ? 'Sincronizando…' : 'Sincronizar ahora'}
+              {previewBusy ? 'Consultando…' : 'Sincronizar a TDM'}
             </button>
-            {syncMsg ? <div className={styles.muted}>{syncMsg}</div> : null}
+            {preview && preview.status === 'disabled' ? (
+              <div className={styles.muted}>Sincronización a Panel Smart deshabilitada.</div>
+            ) : null}
+            {preview && preview.status === 'not_found' ? (
+              <div className={styles.muted}>No se pudo obtener la vista previa.</div>
+            ) : null}
+            {preview && preview.status === 'nothing_pending' ? (
+              <div className={styles.muted}>No hay cambios pendientes por sincronizar.</div>
+            ) : null}
+            {preview && preview.status === 'ok' && preview.payload ? (
+              <div className={styles.evalBox} style={{ marginTop: '0.5rem' }}>
+                <p className={styles.muted}>
+                  {preview.fieldNames.length} campo(s) nuevos/modificados: {preview.fieldNames.join(', ')}
+                </p>
+                <pre className={styles.evalMismatches}>{JSON.stringify(preview.payload, null, 2)}</pre>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className={styles.evalBtn}
+                    disabled={confirmBusy}
+                    onClick={async () => {
+                      setConfirmBusy(true)
+                      try {
+                        const res = await fetch('/api/admin/panel-smart-sync/run', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ leadId }),
+                        })
+                        if (res.ok) {
+                          setPreview(null)
+                          await load()
+                        }
+                      } finally {
+                        setConfirmBusy(false)
+                      }
+                    }}
+                  >
+                    {confirmBusy ? 'Enviando…' : 'Confirmar y enviar'}
+                  </button>
+                  <button type="button" className={styles.evalBtn} disabled={confirmBusy} onClick={() => setPreview(null)}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </li>
           {lead.panelSmartLastSyncAt && (
             <li>
