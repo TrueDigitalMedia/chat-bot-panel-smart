@@ -354,6 +354,47 @@ export const conversationEvals = pgTable(
   ],
 )
 
+/** One row per Panel Smart sync execution — a single-lead transition/correction, or one
+ *  pass of the abandoned-conversation cron sweeping many leads at once. */
+export const panelSmartSyncRuns = pgTable(
+  'panel_smart_sync_runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    /** 'state_transition' | 'correction' | 'abandoned_cron' */
+    trigger: varchar('trigger', { length: 30 }).notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    totalCount: integer('total_count').notNull().default(0),
+    syncedCount: integer('synced_count').notNull().default(0),
+    failedCount: integer('failed_count').notNull().default(0),
+  },
+  (t) => [index('panel_smart_sync_runs_started_idx').on(t.startedAt)],
+)
+
+/** One row per lead synced within a run — only recorded when there were actually pending
+ *  fields to send (no-op diffs aren't logged here). */
+export const panelSmartSyncAttempts = pgTable(
+  'panel_smart_sync_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => panelSmartSyncRuns.id, { onDelete: 'cascade' }),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    /** 'synced' | 'failed' */
+    status: varchar('status', { length: 10 }).notNull(),
+    fieldsSyncedJson: jsonb('fields_synced_json').$type<string[]>(),
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('panel_smart_sync_attempts_run_idx').on(t.runId),
+    index('panel_smart_sync_attempts_lead_idx').on(t.leadId),
+  ],
+)
+
 export const messageVariants = pgTable(
   'message_variants',
   {

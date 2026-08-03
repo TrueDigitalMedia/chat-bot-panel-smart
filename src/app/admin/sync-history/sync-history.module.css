@@ -1,0 +1,195 @@
+.page {
+  --ink: #14201b;
+  --muted: #5c6b64;
+  --line: #d5ddd8;
+  --paper: #f3f6f4;
+  --card: #ffffff;
+  --accent: #0f6b4c;
+  --accent-soft: #e4f3ec;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, #dceee5 0%, transparent 55%),
+    linear-gradient(180deg, #eef3f0 0%, var(--paper) 40%, #e8eeea 100%);
+  color: var(--ink);
+  font-family: var(--font-body), 'Segoe UI', sans-serif;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
+}
+
+.header {
+  margin-bottom: 1.25rem;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.title {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.sub {
+  margin-top: 0.4rem;
+  color: var(--muted);
+  max-width: 40rem;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+.backLink {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.filterLink {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.filterLinkActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.tableWrap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: #fafbfa;
+}
+
+.table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  font-size: 0.92rem;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: #f7faf8;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.stDone {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.stEnd {
+  background: #fee2e2;
+  color: #9b2c2c;
+}
+
+.trigger {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.open {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.open:hover {
+  text-decoration: underline;
+}
+
+.errorCell {
+  color: #9b2c2c;
+  font-size: 0.82rem;
+  max-width: 22rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 2.5rem 1rem !important;
+}
+
+.fieldsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.fieldChip {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}

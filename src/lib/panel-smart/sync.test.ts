@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { dbMock, isPanelSmartSyncEnabled, syncToPanelSmart } = vi.hoisted(() => ({
-  dbMock: { select: vi.fn(), update: vi.fn() },
+  dbMock: { select: vi.fn(), update: vi.fn(), insert: vi.fn() },
   isPanelSmartSyncEnabled: vi.fn(),
   syncToPanelSmart: vi.fn(),
 }))
@@ -34,6 +34,14 @@ function updateChain(captured: Record<string, unknown>[]) {
   }
 }
 
+/** Chainable fake matching `db.insert(X).values(Y)` (awaited directly) and
+ *  `db.insert(X).values(Y).returning(Z)` (used by createPanelSmartSyncRun for its id). */
+function insertChain(returningRows: Array<Record<string, unknown>> = [{ id: 'run-1' }]) {
+  return {
+    values: () => Object.assign(Promise.resolve(undefined), { returning: () => Promise.resolve(returningRows) }),
+  }
+}
+
 const LEAD_ROW = {
   id: 'lead-1',
   panelSmartSyncStatus: null,
@@ -58,12 +66,13 @@ describe('syncPendingPanelSmartAnswers', () => {
     vi.mocked(logCall).mockResolvedValue(undefined)
     updateSets = []
     dbMock.update.mockImplementation(() => updateChain(updateSets))
+    dbMock.insert.mockImplementation(() => insertChain())
   })
 
   it('no-ops and returns true immediately when disabled, without touching the db', async () => {
     isPanelSmartSyncEnabled.mockReturnValue(false)
 
-    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1')
+    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(true)
     expect(dbMock.select).not.toHaveBeenCalled()
@@ -77,7 +86,7 @@ describe('syncPendingPanelSmartAnswers', () => {
       .mockReturnValueOnce(selectChain([PROFILE_ROW]))
       .mockReturnValueOnce(selectChain([]))
 
-    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1')
+    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(true)
     expect(syncToPanelSmart).not.toHaveBeenCalled()
@@ -91,7 +100,7 @@ describe('syncPendingPanelSmartAnswers', () => {
       .mockReturnValueOnce(selectChain([]))
     syncToPanelSmart.mockResolvedValue(undefined)
 
-    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1')
+    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(true)
     expect(syncToPanelSmart).toHaveBeenCalledWith({
@@ -115,7 +124,7 @@ describe('syncPendingPanelSmartAnswers', () => {
       .mockReturnValueOnce(selectChain([]))
     syncToPanelSmart.mockRejectedValue(new Error('Panel Smart sync failed: 500 boom'))
 
-    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1')
+    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(false)
     expect(updateSets[0]).toMatchObject({ panelSmartSyncStatus: 'failed' })
@@ -129,7 +138,7 @@ describe('syncPendingPanelSmartAnswers', () => {
     isPanelSmartSyncEnabled.mockReturnValue(true)
     dbMock.select.mockReturnValueOnce(selectChain([]))
 
-    const result = await syncPendingPanelSmartAnswers('missing-lead', 'corr-1')
+    const result = await syncPendingPanelSmartAnswers('missing-lead', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(false)
     expect(syncToPanelSmart).not.toHaveBeenCalled()
