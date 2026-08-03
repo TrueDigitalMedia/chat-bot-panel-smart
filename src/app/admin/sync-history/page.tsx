@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { listSyncRuns } from '@/lib/panel-smart/history'
 import type { PanelSmartSyncTrigger } from '@/lib/panel-smart/sync'
+import { RunSyncButton } from './run-sync-button'
 import styles from './sync-history.module.css'
 
 // Server component with no dynamic API usage otherwise — force per-request rendering so
@@ -11,6 +12,7 @@ const TRIGGER_LABELS: Record<PanelSmartSyncTrigger, string> = {
   state_transition: 'Transición',
   correction: 'Corrección',
   abandoned_cron: 'Cron abandono',
+  manual: 'Manual',
 }
 
 interface SearchParams {
@@ -25,7 +27,7 @@ function formatWhen(d: Date | string | null | undefined): string {
 }
 
 function isValidTrigger(v: string | undefined): v is PanelSmartSyncTrigger {
-  return v === 'state_transition' || v === 'correction' || v === 'abandoned_cron'
+  return v === 'state_transition' || v === 'correction' || v === 'abandoned_cron' || v === 'manual'
 }
 
 export default async function SyncHistoryPage({
@@ -51,12 +53,15 @@ export default async function SyncHistoryPage({
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <p className={styles.eyebrow}>PanelSmart</p>
-        <h1 className={styles.title}>Historial de sincronización</h1>
-        <p className={styles.sub}>
-          Cada ejecución del envío de respuestas a Kantar/Panel Smart — ya sea disparada por una transición de
-          estado, una corrección puntual, o el barrido periódico de conversaciones abandonadas.
-        </p>
+        <div>
+          <p className={styles.eyebrow}>PanelSmart</p>
+          <h1 className={styles.title}>Historial de sincronización</h1>
+          <p className={styles.sub}>
+            Cada ejecución del envío de respuestas a Kantar/Panel Smart — ya sea disparada por una transición de
+            estado, una corrección puntual, el barrido periódico de conversaciones abandonadas, o manualmente.
+          </p>
+        </div>
+        <RunSyncButton />
       </header>
 
       <nav className={styles.filters}>
