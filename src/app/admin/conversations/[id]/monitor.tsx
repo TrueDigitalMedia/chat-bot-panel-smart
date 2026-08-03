@@ -72,6 +72,8 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [evalBusy, setEvalBusy] = useState(false)
   const [evalMsg, setEvalMsg] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
   const [replyInput, setReplyInput] = useState('')
   const [replySending, setReplySending] = useState(false)
   const [replyError, setReplyError] = useState<string | null>(null)
@@ -231,6 +233,37 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
                 '—'
               )}
             </strong>
+            <button
+              type="button"
+              className={styles.evalBtn}
+              style={{ marginTop: '0.35rem' }}
+              disabled={syncBusy}
+              onClick={async () => {
+                setSyncBusy(true)
+                setSyncMsg(null)
+                try {
+                  const res = await fetch('/api/admin/panel-smart-sync/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ leadId }),
+                  })
+                  const data = (await res.json()) as { ok: boolean; status: string | null }
+                  if (!res.ok) {
+                    setSyncMsg('Error al sincronizar')
+                  } else {
+                    setSyncMsg(data.status === 'synced' ? 'Sincronizado' : data.status === 'failed' ? 'Falló' : 'Sin cambios pendientes')
+                    await load()
+                  }
+                } catch {
+                  setSyncMsg('No se pudo conectar')
+                } finally {
+                  setSyncBusy(false)
+                }
+              }}
+            >
+              {syncBusy ? 'Sincronizando…' : 'Sincronizar ahora'}
+            </button>
+            {syncMsg ? <div className={styles.muted}>{syncMsg}</div> : null}
           </li>
           {lead.panelSmartLastSyncAt && (
             <li>

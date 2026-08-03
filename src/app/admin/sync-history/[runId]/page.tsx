@@ -10,6 +10,7 @@ const TRIGGER_LABELS: Record<PanelSmartSyncTrigger, string> = {
   state_transition: 'Transición de estado',
   correction: 'Corrección',
   abandoned_cron: 'Cron de conversaciones abandonadas',
+  manual: 'Sincronización manual',
 }
 
 function formatWhen(d: Date | string | null | undefined): string {

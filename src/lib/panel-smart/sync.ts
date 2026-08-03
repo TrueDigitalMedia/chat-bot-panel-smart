@@ -15,7 +15,7 @@ import { buildResponseItem, type SyncableFieldName } from './question-map'
 import { syncToPanelSmart } from './client'
 import type { PanelSmartResponseItem } from './types'
 
-export type PanelSmartSyncTrigger = 'state_transition' | 'correction' | 'abandoned_cron'
+export type PanelSmartSyncTrigger = 'state_transition' | 'correction' | 'abandoned_cron' | 'manual'
 
 export interface PanelSmartSyncOptions {
   trigger: PanelSmartSyncTrigger
