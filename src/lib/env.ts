@@ -42,17 +42,6 @@ const envSchema = z.object({
   LINK_SENT_REMINDER_DELAY_SECONDS_OVERRIDE: z.coerce.number().optional(),
   FORCE_EXTRACTION_ERROR: z.string().optional(),
 
-  // Client MySQL (TDM/Kantar) — write-only lead sync, see specs/010-tdm-lead-sync
-  CLIENT_MYSQL_SYNC_ENABLED: boolEnv(false),
-  CLIENT_MYSQL_HOST: z.string().min(1).optional(),
-  CLIENT_MYSQL_PORT: z.coerce.number().default(3306),
-  CLIENT_MYSQL_USER: z.string().min(1).optional(),
-  CLIENT_MYSQL_PASSWORD: z.string().min(1).optional(),
-  CLIENT_MYSQL_DATABASE: z.string().min(1).optional(),
-  CLIENT_MYSQL_TENANT_ID: z.string().min(1).optional(),
-  CLIENT_MYSQL_LEAD_VERSION: z.string().min(1).optional(),
-  CLIENT_MYSQL_SSL_CA: z.string().min(1).optional(),
-
   /** REGISTRATION_CODE_MOCK_ENABLED=true bypasses the TDM request entirely and delivers
    *  a mock code — the only way to test this flow locally without a real TDM endpoint. */
   REGISTRATION_CODE_MOCK_ENABLED: boolEnv(false),
@@ -81,7 +70,7 @@ const envSchema = z.object({
   // answers instead of requesting a registration code. See src/lib/panel-smart/.
   /** Kantar's /api/ai-lead-responses endpoint. */
   PANEL_SMART_SYNC_URL: z.string().url().optional(),
-  /** Kill switch, same idiom as CLIENT_MYSQL_SYNC_ENABLED. */
+  /** Kill switch for the Panel Smart sync. */
   PANEL_SMART_SYNC_ENABLED: boolEnv(false),
   /** Auth secret for Vercel Cron's callback to the hourly abandoned-conversation sweep
    *  (jobs/panel-smart-abandoned-sync) — Vercel sends this as `Authorization: Bearer <value>`. */
@@ -111,19 +100,6 @@ export function isMetaWhatsAppConfigured(): boolean {
 
 export function isTwilioConfigured(): boolean {
   return Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM)
-}
-
-export function isClientMysqlConfigured(): boolean {
-  return Boolean(
-    env.CLIENT_MYSQL_HOST &&
-      env.CLIENT_MYSQL_USER &&
-      env.CLIENT_MYSQL_PASSWORD &&
-      env.CLIENT_MYSQL_DATABASE,
-  )
-}
-
-export function isClientMysqlSyncEnabled(): boolean {
-  return env.CLIENT_MYSQL_SYNC_ENABLED && isClientMysqlConfigured()
 }
 
 /** False until every piece (endpoint + OAuth creds) is set — callers fall back to abandono. */

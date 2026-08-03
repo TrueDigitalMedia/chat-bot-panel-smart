@@ -54,21 +54,11 @@ export async function transitionLead(
       })
   }
 
-  // Fire-and-forget TDM MySQL sync — every status transition is the end of some phase
-  // and must sync regardless of outcome, qualified or not (spec 010 amendment: "todo
-  // registro cuenta como lead así no califique como panelista"). Centralized here
-  // (rather than at each of the ~20 call sites across phase-1/2/3/4, registration-choice,
-  // gps-capture, re-engage) so no current or future transition can be missed.
-  void import('@/lib/tdm-mysql/sync')
-    .then(({ syncLead }) => syncLead(leadId, correlationId))
-    .catch((err) => {
-      console.error('[tdm-sync] transition sync failed', { leadId, newStatus, err: String(err) })
-    })
-
-  // Fire-and-forget Panel Smart / Kantar ai-lead-responses — same centralization rationale as
-  // the TDM MySQL sync above, so every phase-ending transition pushes any new/changed
-  // survey/ficha-hogar answers. The sync itself diffs against the last-sent snapshot, so
-  // this is a no-op when nothing's actually pending.
+  // Fire-and-forget Panel Smart / Kantar ai-lead-responses — centralized here (rather
+  // than at each of the ~20 call sites across phase-1/2/3/4, registration-choice,
+  // gps-capture, re-engage) so no current or future transition can be missed. The sync
+  // itself diffs against the last-sent snapshot, so this is a no-op when nothing's
+  // actually pending.
   void import('@/lib/panel-smart/sync')
     .then(({ syncPendingPanelSmartAnswers }) =>
       syncPendingPanelSmartAnswers(leadId, correlationId, { trigger: 'state_transition' }),

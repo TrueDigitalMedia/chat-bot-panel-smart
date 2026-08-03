@@ -394,7 +394,7 @@ export async function handlePhase1(
     })
     .where(eq(leads.id, lead.id))
 
-  // Advance to Phase 2 — transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment)
+  // Advance to Phase 2
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
   // Phase 2 handler will be called by the router on next tick
   const { handlePhase2 } = await import('./phase-2')

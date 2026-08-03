@@ -95,11 +95,6 @@ export const leads = pgTable(
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    /** MySQL AUTO_INCREMENT id assigned by TDM's tb_leads_agente_ia on first successful sync (spec 010). */
-    tdmLeadId: integer('tdm_lead_id'),
-    /** 'synced' | 'failed', code-managed like flowStates.gpsGateStatus. */
-    tdmSyncStatus: varchar('tdm_sync_status', { length: 20 }),
-    tdmLastSyncAt: timestamp('tdm_last_sync_at', { withTimezone: true }),
     /**
      * Stamped when the registration-code JSON request is POSTed to TDM — lets the
      * registration_code_timeout job (jobs/re-engage) tell "never asked" apart from
@@ -109,7 +104,7 @@ export const leads = pgTable(
     tdmRegistrationRequestedAt: timestamp('tdm_registration_requested_at', { withTimezone: true }),
     /** Code delivered by TDM's webhook — persisted for idempotency/audit (never stored before this). */
     tdmRegistrationCode: varchar('tdm_registration_code', { length: 64 }),
-    /** 'synced' | 'failed' — Panel Smart / Kantar ai-lead-responses, same idiom as tdmSyncStatus. */
+    /** 'synced' | 'failed' — Panel Smart / Kantar ai-lead-responses. */
     panelSmartSyncStatus: varchar('panel_smart_sync_status', { length: 20 }),
     panelSmartLastSyncAt: timestamp('panel_smart_last_sync_at', { withTimezone: true }),
     /** Snapshot of the last value sent per field ({ [fieldName]: value }), used to diff

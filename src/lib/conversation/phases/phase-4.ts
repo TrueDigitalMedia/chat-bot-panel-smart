@@ -157,8 +157,8 @@ export async function handleFichaHogar(
       .update(fichaHogarProfiles)
       .set({ conflictOfInterest: true, completedAt: new Date(), updatedAt: new Date() })
       .where(eq(fichaHogarProfiles.leadId, lead.id))
-    // transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment) — runs
-    // after this update, so it correctly picks up conflictOfInterest=true in json_raw.
+    // transitionLead syncs to Panel Smart as a side effect — runs after this update, so
+    // it correctly picks up conflictOfInterest=true.
     await transitionLead(
       lead.id,
       'ficha_hogar_descartado',

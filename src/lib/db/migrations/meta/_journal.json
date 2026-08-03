@@ -22,6 +22,13 @@
       "when": 1785774345194,
       "tag": "0020_panel_smart_sync_history",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785789138053,
+      "tag": "0021_drop_tdm_mysql_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -38,9 +38,6 @@ export interface Lead {
   lastActivityAt: Date
   createdAt: Date
   updatedAt: Date
-  tdmLeadId: number | null
-  tdmSyncStatus: string | null
-  tdmLastSyncAt: Date | null
   tdmRegistrationRequestedAt: Date | null
   tdmRegistrationCode: string | null
   panelSmartSyncStatus: string | null

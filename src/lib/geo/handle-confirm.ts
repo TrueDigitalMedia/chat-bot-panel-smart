@@ -122,7 +122,6 @@ export async function persistSurveyFieldAndAdvance(
     })
     .where(eq(leads.id, lead.id))
 
-  // transitionLead syncs to TDM MySQL as a side effect (spec 010 amendment)
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
   const { handlePhase2 } = await import('@/lib/conversation/phases/phase-2')
   await handlePhase2(lead, correlationId)
