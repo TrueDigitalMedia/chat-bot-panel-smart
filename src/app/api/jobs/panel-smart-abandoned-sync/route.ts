@@ -3,7 +3,7 @@ import { and, isNull, lt, or } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { env } from '@/lib/env'
-import { syncPendingPanelSmartAnswers } from '@/lib/panel-smart/sync'
+import { syncPendingPanelSmartAnswers, createPanelSmartSyncRun, finishPanelSmartSyncRun } from '@/lib/panel-smart/sync'
 import { generateCorrelationId } from '@/lib/correlation'
 
 const INACTIVITY_THRESHOLD_MS = 60 * 60 * 1000
@@ -41,14 +41,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ),
     )
 
+  const runId = staleLeads.length > 0 ? await createPanelSmartSyncRun('abandoned_cron', staleLeads.length) : null
+
   let synced = 0
   let failed = 0
   for (const lead of staleLeads) {
     const correlationId = generateCorrelationId()
-    const ok = await syncPendingPanelSmartAnswers(lead.id, correlationId)
+    const ok = await syncPendingPanelSmartAnswers(lead.id, correlationId, {
+      trigger: 'abandoned_cron',
+      runId: runId!,
+    })
     if (ok) synced += 1
     else failed += 1
   }
+
+  if (runId) await finishPanelSmartSyncRun(runId)
 
   return NextResponse.json({ scanned: staleLeads.length, synced, failed })
 }

@@ -70,7 +70,9 @@ export async function transitionLead(
   // survey/ficha-hogar answers. The sync itself diffs against the last-sent snapshot, so
   // this is a no-op when nothing's actually pending.
   void import('@/lib/panel-smart/sync')
-    .then(({ syncPendingPanelSmartAnswers }) => syncPendingPanelSmartAnswers(leadId, correlationId))
+    .then(({ syncPendingPanelSmartAnswers }) =>
+      syncPendingPanelSmartAnswers(leadId, correlationId, { trigger: 'state_transition' }),
+    )
     .catch((err) => {
       console.error('[panel-smart-sync] transition sync failed', { leadId, newStatus, err: String(err) })
     })

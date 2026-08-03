@@ -15,6 +15,13 @@
       "when": 1785440179474,
       "tag": "0019_re_engagement_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785774345194,
+      "tag": "0020_panel_smart_sync_history",
+      "breakpoints": true
     }
   ]
 }

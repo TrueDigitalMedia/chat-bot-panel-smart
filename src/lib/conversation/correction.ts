@@ -195,7 +195,9 @@ export async function applyFieldAndContinue(
   // one-shot NL correction ("cambia el email a x") doesn't necessarily trigger a status
   // transition (the usual sync hook in transitionLead).
   void import('@/lib/panel-smart/sync')
-    .then(({ syncPendingPanelSmartAnswers }) => syncPendingPanelSmartAnswers(lead.id, generateCorrelationId()))
+    .then(({ syncPendingPanelSmartAnswers }) =>
+      syncPendingPanelSmartAnswers(lead.id, generateCorrelationId(), { trigger: 'correction' }),
+    )
     .catch((err) => {
       console.error('[panel-smart-sync] correction sync failed', { leadId: lead.id, field, err: String(err) })
     })
