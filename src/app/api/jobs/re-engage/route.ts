@@ -4,21 +4,16 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
+import { isTerminal } from '@/lib/state-machine/transitions'
 import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registration-code'
-import { IOS_APP_LINK, ANDROID_APP_LINK } from '@/lib/conversation/exit-messages'
 import { sendText } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
-import {
-  REENGAGEMENT_DELAY_SECONDS,
-  MAX_REENGAGEMENT_ATTEMPTS,
-  MAX_LINK_SENT_REMINDER_ATTEMPTS,
-  LINK_SENT_REMINDER_ATTEMPT_BASE,
-  linkSentReminderDelaySeconds,
-} from '@/lib/scheduler/constants'
-import { getNextMessageVariant } from '@/lib/scheduler/messages'
+import { MAX_REENGAGEMENT_ATTEMPTS, reengagementDelaySeconds } from '@/lib/scheduler/constants'
+import { getNextMessageVariant, resolveMessagePool } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
 import { env } from '@/lib/env'
 import type { JobPayload } from '@/lib/scheduler/re-engagement'
+import type { LeadStatus } from '@/types/lead'
 
 const receiver = new Receiver({
   currentSigningKey: env.QSTASH_CURRENT_SIGNING_KEY,
@@ -108,32 +103,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'code_request_timeout' })
   }
 
-  // --- Link-sent reminder (2h, up to MAX_LINK_SENT_REMINDER_ATTEMPTS) — re-asks if the
-  // lead never moved past link_sent, then reschedules itself until the max is hit ---
-  if (payload.action === 'link_sent_reminder') {
-    if (lead.leadStatus === 'link_sent') {
-      const attempt = payload.attemptNumber - LINK_SENT_REMINDER_ATTEMPT_BASE
-      await sendText(
-        lead,
-        `¿Ya descargaste la app? Cuando la tengas, te enviaremos tu código de registro.\n\n` +
-          `📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}`,
-      )
-      if (attempt >= MAX_LINK_SENT_REMINDER_ATTEMPTS) {
-        await transitionLead(lead.id, 'abandono', 'link_sent_reminder_exhausted', correlationId)
-        return NextResponse.json({ outcome: 'reminder_sent_marked_abandono' })
-      }
-      await scheduleJob(
-        lead.id,
-        payload.phase,
-        LINK_SENT_REMINDER_ATTEMPT_BASE + attempt + 1,
-        linkSentReminderDelaySeconds(),
-        'link_sent_reminder',
-      )
-      return NextResponse.json({ outcome: 'reminder_sent' })
-    }
-    return NextResponse.json({ outcome: 'skipped_not_link_sent' })
-  }
-
   // --- Registration inactivity freeze (20h) ---
   if (payload.action === 'freeze_registration') {
     if (lead.leadStatus === 'waiting_for_code') {
@@ -142,8 +111,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'freeze_applied' })
   }
 
-  // --- Re-engagement notifications ---
+  // --- Re-engagement notifications (unified recontact — covers phase 1, phase 2's
+  // "download the app" nudge, and phase 4's Ficha Hogar nudge, all through the same
+  // consent+idle-gated cadence; message content is picked by resolveMessagePool from
+  // the lead's *current* status, not the phase the job happened to be filed under) ---
   if (payload.action === 're-engage') {
+    // The lead may have completed/abandoned/moved to a terminal status since this job
+    // was scheduled (e.g. it self-resolved through a different channel) — every other
+    // action in this file already self-guards on status; this one previously didn't.
+    if (isTerminal(lead.leadStatus as LeadStatus)) {
+      await db
+        .update(reEngagementSchedules)
+        .set({ deliveredAt: new Date(), outcome: 'skipped_terminal' })
+        .where(eq(reEngagementSchedules.leadId, lead.id))
+      return NextResponse.json({ outcome: 'skipped_terminal' })
+    }
+
     // Check if lead has consented to re-engagement contact
     if (lead.reEngagementConsentAccepted !== true) {
       await db
@@ -160,7 +143,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const attempt = payload.attemptNumber as 1 | 2 | 3
-    const message = await getNextMessageVariant(lead.id, attempt)
+    const pool = resolveMessagePool(lead.leadStatus as LeadStatus)
+    const message = await getNextMessageVariant(lead.id, attempt, pool)
     await sendText(lead, message)
 
     await db
@@ -179,10 +163,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const nextAttempt = (attempt + 1) as 2 | 3
-    const cadenceOverride = process.env.RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
-    const delays = cadenceOverride ? cadenceOverride.split(',').map(Number) : null
-    const delay = delays ? delays[nextAttempt - 1] : REENGAGEMENT_DELAY_SECONDS[nextAttempt]
-    await scheduleJob(lead.id, payload.phase, nextAttempt, delay, 're-engage')
+    // lead.currentPhase (freshly fetched above), not payload.phase — the lead may have
+    // advanced phases between when this job was scheduled and when it fires.
+    await scheduleJob(lead.id, lead.currentPhase, nextAttempt, reengagementDelaySeconds(nextAttempt), 're-engage')
 
     return NextResponse.json({ outcome: 'sent' })
   }

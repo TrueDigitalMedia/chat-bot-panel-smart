@@ -39,7 +39,6 @@ const envSchema = z.object({
   // Test overrides
   RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS: z.coerce.number().optional(),
   RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS: z.string().optional(),
-  LINK_SENT_REMINDER_DELAY_SECONDS_OVERRIDE: z.coerce.number().optional(),
   FORCE_EXTRACTION_ERROR: z.string().optional(),
 
   /** REGISTRATION_CODE_MOCK_ENABLED=true bypasses the TDM request entirely and delivers

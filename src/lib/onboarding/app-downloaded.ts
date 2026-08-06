@@ -19,8 +19,10 @@ export async function handleAppDownloaded(lead: Lead, correlationId: string): Pr
     return
   }
 
-  // Supersede the scheduled request_registration_code/link_sent_reminder jobs for phase
-  // 2 — requestRegistrationCodeForLead below does that same work right now instead.
+  // Supersede the scheduled request_registration_code job (and any pending recontact
+  // nudge) for phase 2 — requestRegistrationCodeForLead below does that same work right
+  // now instead. Phase-scoped cancellation is enough here because scheduleRecontact
+  // always files its job under the lead's actual current phase.
   await cancelPendingJobs(lead.id, 2).catch(() => {})
 
   await sendText(lead, '¡Perfecto! Estamos generando tu código de registro…')

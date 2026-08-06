@@ -1,5 +1,4 @@
-import { cancelPendingJobs, scheduleJob } from '@/lib/scheduler/re-engagement'
-import { REENGAGEMENT_DELAY_SECONDS } from '@/lib/scheduler/constants'
+import { cancelPendingJobs, cancelPendingRecontact, scheduleRecontact } from '@/lib/scheduler/re-engagement'
 import { handlePhase1 } from './phases/phase-1'
 import { handleOutOfFlow } from './faq-handler'
 import { isTerminal } from '@/lib/state-machine/transitions'
@@ -56,20 +55,22 @@ export async function routeMessage(
   const messageText = inbound.text
   const callbackData = inbound.callbackData
 
-  // Only cancel pending jobs for the phase-1 flow, where 're-engage' reminders are the
-  // only thing ever scheduled (line ~176 below). cancelPendingJobs cancels by phase, not
-  // by action — running it unconditionally here used to also cancel the phase-2
-  // `trigger_code` job (the one that actually delivers the registration code) the moment
-  // the user sent any message while `link_sent`/`waiting_for_code`, permanently stranding
-  // them since nothing ever reschedules it.
+  // Cancel any pending recontact job for the phase-1 flow at the top of each turn —
+  // action-scoped (not phase-scoped) so it also catches a recontact job left archived
+  // under a stale phase from a prior turn, not just ones filed under the current one.
   if (status === 'incomplete') {
-    await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+    await cancelPendingRecontact(lead.id).catch(() => {})
   }
 
   // Allow restart from any state (including terminal) — avoids support-message loop
   if (messageText && isRestartRequest(messageText)) {
     const fresh = await resetLeadConversation(lead.id)
+    // cancelPendingJobs (phase-scoped) also cancels functional jobs (e.g.
+    // request_registration_code) the lead may have had pending mid-registration;
+    // cancelPendingRecontact (action-scoped, cross-phase) is defense-in-depth so no
+    // stray recontact job survives a restart regardless of which phase it was filed under.
     await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+    await cancelPendingRecontact(lead.id).catch(() => {})
     await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
     await handlePhase1(fresh, '', undefined, correlationId)
     return
@@ -115,13 +116,18 @@ export async function routeMessage(
       detectsFichaHogarCorrectionIntent,
       showFichaHogarCorrectionMenu,
     } = await import('./ficha-hogar-correction')
-    if (await handleFichaHogarCorrectionFlow(lead, callbackData)) return
+    if (await handleFichaHogarCorrectionFlow(lead, callbackData)) {
+      await scheduleRecontact(lead.id, correlationId).catch(() => {})
+      return
+    }
     if (messageText && detectsFichaHogarCorrectionIntent(messageText)) {
       await showFichaHogarCorrectionMenu(lead)
+      await scheduleRecontact(lead.id, correlationId).catch(() => {})
       return
     }
     const { handleFichaHogar } = await import('./phases/phase-4')
     await handleFichaHogar(lead, messageText, callbackData, correlationId)
+    await scheduleRecontact(lead.id, correlationId).catch(() => {})
     return
   }
 
@@ -134,6 +140,7 @@ export async function routeMessage(
       lead,
       `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo.`,
     )
+    await scheduleRecontact(lead.id, correlationId).catch(() => {})
     return
   }
 
@@ -193,13 +200,12 @@ export async function routeMessage(
       await handleOutOfFlow(lead, messageText || callbackData || '', correlationId)
     }
 
-    if (!isTerminal(status)) {
-      const cadenceOverride = process.env.RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
-      const delay = cadenceOverride
-        ? Number(cadenceOverride.split(',')[0])
-        : REENGAGEMENT_DELAY_SECONDS[1]
-      await scheduleJob(lead.id, lead.currentPhase, 1, delay, 're-engage').catch(() => {})
-    }
+    // scheduleRecontact re-reads the lead's fresh status/phase from the DB rather than
+    // trusting `status`/`lead.currentPhase` above — handlePhase1 can transition the lead
+    // out of phase 1 synchronously within this same call (e.g. completing the survey and
+    // advancing into phase 2), and a stale pre-turn snapshot here previously caused a
+    // phase-1-flavored recontact job to be scheduled even after the lead had moved on.
+    await scheduleRecontact(lead.id, correlationId).catch(() => {})
     return
   }
 

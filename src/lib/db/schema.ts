@@ -203,12 +203,25 @@ export const reEngagementSchedules = pgTable(
       .references(() => leads.id),
     phase: smallint('phase').notNull(),
     attemptNumber: smallint('attempt_number').notNull(),
+    /**
+     * Explicit job type — 're-engage', 'request_registration_code',
+     * 'registration_code_timeout', 'freeze_registration'. Previously inferred purely
+     * from attemptNumber numeric ranges (0/1-3/95/99); this column lets recontact
+     * ('re-engage') jobs be found/cancelled by leadId alone, independent of which
+     * phase they happened to be filed under — needed to guarantee only one live
+     * recontact schedule per lead when a phase transition mid-turn leaves a stale
+     * job archived under the wrong phase.
+     */
+    action: varchar('action', { length: 30 }).notNull(),
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     outcome: varchar('outcome', { length: 20 }),
     qstashMessageId: varchar('qstash_message_id', { length: 100 }),
   },
-  (t) => [uniqueIndex('re_engagement_unique_idx').on(t.leadId, t.phase, t.attemptNumber)],
+  (t) => [
+    uniqueIndex('re_engagement_unique_idx').on(t.leadId, t.phase, t.attemptNumber),
+    index('re_engagement_lead_action_idx').on(t.leadId, t.action),
+  ],
 )
 
 // Note: faq_entries uses a vector column added in the initial migration SQL
@@ -394,14 +407,21 @@ export const messageVariants = pgTable(
   'message_variants',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    /**
+     * Which recontact context this variant belongs to — 'phase1_reengage',
+     * 'phase2_link_reminder', 'phase4_ficha_hogar'. Keeps each phase's message pool
+     * rotating independently under the same attemptNumber values instead of sharing
+     * (and colliding on) a single global attempt-number keyed pool.
+     */
+    pool: varchar('pool', { length: 30 }).notNull(),
     attemptNumber: smallint('attempt_number').notNull(),
     variantOrder: smallint('variant_order').notNull(),
     templateText: text('template_text').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('message_variants_attempt_order_idx').on(t.attemptNumber, t.variantOrder),
-    index('message_variants_attempt_idx').on(t.attemptNumber),
+    uniqueIndex('message_variants_pool_attempt_order_idx').on(t.pool, t.attemptNumber, t.variantOrder),
+    index('message_variants_pool_attempt_idx').on(t.pool, t.attemptNumber),
   ],
 )
 
@@ -412,12 +432,13 @@ export const leadMessageVariantUsage = pgTable(
     leadId: uuid('lead_id')
       .notNull()
       .references(() => leads.id, { onDelete: 'cascade' }),
+    pool: varchar('pool', { length: 30 }).notNull(),
     attemptNumber: smallint('attempt_number').notNull(),
     variantOrder: smallint('variant_order').notNull(),
     sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('lead_variant_usage_lead_attempt_idx').on(t.leadId, t.attemptNumber),
+    uniqueIndex('lead_variant_usage_lead_pool_attempt_idx').on(t.leadId, t.pool, t.attemptNumber),
     index('lead_variant_usage_lead_idx').on(t.leadId, t.attemptNumber),
     index('lead_variant_usage_sent_at_idx').on(t.sentAt),
   ],

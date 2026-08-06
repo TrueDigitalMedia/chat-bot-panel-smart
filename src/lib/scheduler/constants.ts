@@ -14,6 +14,21 @@ export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
 
 export const MAX_REENGAGEMENT_ATTEMPTS = 3
 
+/**
+ * REENGAGEMENT_DELAY_SECONDS[attempt], overridable via RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
+ * (comma-separated, 1-indexed — e.g. "30,60,90" for local testing). Centralizes the
+ * override-parsing that used to be duplicated at each scheduling call site.
+ */
+export function reengagementDelaySeconds(attempt: 1 | 2 | 3): number {
+  const cadenceOverride = process.env.RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
+  if (cadenceOverride) {
+    const delays = cadenceOverride.split(',').map(Number)
+    const override = delays[attempt - 1]
+    if (override) return override
+  }
+  return REENGAGEMENT_DELAY_SECONDS[attempt]
+}
+
 // Scheduled right after the registration code is delivered (mock or real) — if the
 // lead is still `waiting_for_code` when this fires, it's marked `code_delivered_no_response`.
 export const REGISTRATION_FREEZE_DELAY_SECONDS = 72000 // 20 hours
@@ -21,29 +36,3 @@ export const REGISTRATION_FREEZE_DELAY_SECONDS = 72000 // 20 hours
 // own 0-5 poll attempts sharing the same phase, so their re_engagement_schedules rows
 // (unique on leadId+phase+attemptNumber) never collide.
 export const FREEZE_REGISTRATION_ATTEMPT_NUMBER = 99
-
-// Scheduled right after the download links are sent (link_sent) — if the lead still
-// hasn't downloaded/moved past link_sent when this fires, it re-asks, waiting
-// linkSentReminderDelaySeconds() between each attempt, up to MAX_LINK_SENT_REMINDER_ATTEMPTS
-// times total (re-engage/route.ts reschedules itself after each one until the max is hit).
-export const LINK_SENT_REMINDER_DELAY_SECONDS = 7200 // 2 hours
-export const MAX_LINK_SENT_REMINDER_ATTEMPTS = 2
-// Reminder attempt N uses attemptNumber LINK_SENT_REMINDER_ATTEMPT_BASE+N (97, 98) —
-// distinct from trigger_code's 0-5 poll attempts and freeze_registration's 99 sentinel,
-// all sharing phase 2's re_engagement_schedules rows (unique on leadId+phase+attemptNumber).
-export const LINK_SENT_REMINDER_ATTEMPT_BASE = 96
-
-/**
- * LINK_SENT_REMINDER_DELAY_SECONDS, overridable on its own via
- * LINK_SENT_REMINDER_DELAY_SECONDS_OVERRIDE (e.g. 30 for local testing) without also
- * collapsing the trigger_code/freeze_registration timers that share
- * RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS — falls back to that shared knob, then the
- * real 2h default.
- */
-export function linkSentReminderDelaySeconds(): number {
-  return (
-    Number(process.env.LINK_SENT_REMINDER_DELAY_SECONDS_OVERRIDE) ||
-    Number(process.env.RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS) ||
-    LINK_SENT_REMINDER_DELAY_SECONDS
-  )
-}

@@ -3,11 +3,7 @@ import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
-import {
-  PHASE2_CODE_DELAY_SECONDS,
-  LINK_SENT_REMINDER_ATTEMPT_BASE,
-  linkSentReminderDelaySeconds,
-} from '@/lib/scheduler/constants'
+import { PHASE2_CODE_DELAY_SECONDS } from '@/lib/scheduler/constants'
 import { APP_DOWNLOADED_CALLBACK } from '@/lib/onboarding/app-downloaded'
 import { IOS_APP_LINK, ANDROID_APP_LINK } from '../exit-messages'
 import type { Lead } from '@/types/lead'
@@ -37,16 +33,8 @@ export async function handlePhase2(lead: Lead, _correlationId: string): Promise<
     console.error('[phase-2] scheduleJob(request_registration_code) failed', { leadId: lead.id, err: String(err) })
   })
 
-  // If the lead goes quiet after this and never moves past link_sent, ask again every
-  // linkSentReminderDelaySeconds() (2h by default), up to MAX_LINK_SENT_REMINDER_ATTEMPTS
-  // times — re-engage/route.ts reschedules this itself after each attempt.
-  await scheduleJob(
-    lead.id,
-    2,
-    LINK_SENT_REMINDER_ATTEMPT_BASE + 1,
-    linkSentReminderDelaySeconds(),
-    'link_sent_reminder',
-  ).catch((err) => {
-    console.error('[phase-2] scheduleJob(link_sent_reminder) failed', { leadId: lead.id, err: String(err) })
-  })
+  // The "haven't downloaded the app yet" nudge is no longer scheduled here as its own
+  // one-off job — it's now covered by the unified recontact mechanism (scheduleRecontact
+  // in src/lib/scheduler/re-engagement.ts), armed by flow-router.ts right after this
+  // function returns (handlePhase2 is only ever called synchronously from phase-1.ts).
 }

@@ -29,6 +29,13 @@
       "when": 1785789138053,
       "tag": "0021_drop_tdm_mysql_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786054465247,
+      "tag": "0022_recontact_unification",
+      "breakpoints": true
     }
   ]
 }

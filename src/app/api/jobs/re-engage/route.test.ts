@@ -1,0 +1,177 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NextRequest } from 'next/server'
+
+const {
+  dbMock,
+  verify,
+  transitionLead,
+  requestRegistrationCodeForLead,
+  sendText,
+  scheduleJob,
+  getNextMessageVariant,
+} = vi.hoisted(() => ({
+  dbMock: { select: vi.fn(), update: vi.fn() },
+  verify: vi.fn(),
+  transitionLead: vi.fn(),
+  requestRegistrationCodeForLead: vi.fn(),
+  sendText: vi.fn(),
+  scheduleJob: vi.fn(),
+  getNextMessageVariant: vi.fn(),
+}))
+
+vi.mock('@/lib/db/client', () => ({ db: dbMock }))
+vi.mock('@/lib/env', () => ({
+  env: { QSTASH_CURRENT_SIGNING_KEY: 'k1', QSTASH_NEXT_SIGNING_KEY: 'k2' },
+}))
+vi.mock('@upstash/qstash', () => ({
+  Receiver: vi.fn().mockImplementation(() => ({ verify: (...args: unknown[]) => verify(...args) })),
+}))
+vi.mock('@/lib/state-machine', () => ({ transitionLead: (...args: unknown[]) => transitionLead(...args) }))
+vi.mock('@/lib/onboarding/request-registration-code', () => ({
+  requestRegistrationCodeForLead: (...args: unknown[]) => requestRegistrationCodeForLead(...args),
+}))
+vi.mock('@/lib/messaging/send', () => ({ sendText: (...args: unknown[]) => sendText(...args) }))
+vi.mock('@/lib/scheduler/re-engagement', () => ({ scheduleJob: (...args: unknown[]) => scheduleJob(...args) }))
+vi.mock('@/lib/scheduler/messages', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/scheduler/messages')>('@/lib/scheduler/messages')
+  return { ...actual, getNextMessageVariant: (...args: unknown[]) => getNextMessageVariant(...args) }
+})
+vi.mock('@/lib/correlation', () => ({ generateCorrelationId: () => 'corr-1' }))
+
+import { POST } from './route'
+import type { JobPayload } from '@/lib/scheduler/re-engagement'
+
+function fakeRequest(payload: JobPayload): NextRequest {
+  return {
+    text: async () => JSON.stringify(payload),
+    headers: { get: () => 'sig' },
+  } as unknown as NextRequest
+}
+
+/** Chainable fake matching `db.select().from(X).where(Y)`. */
+function selectChain(rows: unknown[]) {
+  return { from: () => ({ where: () => Promise.resolve(rows) }) }
+}
+
+function updateChain(captured: Record<string, unknown>[]) {
+  return { set: (v: Record<string, unknown>) => { captured.push(v); return { where: () => Promise.resolve(undefined) } } }
+}
+
+const BASE_LEAD = {
+  id: 'lead-1',
+  leadStatus: 'incomplete',
+  currentPhase: 1,
+  reEngagementConsentAccepted: true,
+  lastActivityAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+  reEngagementCount: 0,
+}
+
+beforeEach(() => {
+  vi.resetAllMocks()
+  verify.mockResolvedValue(true)
+  const updateCaptured: Record<string, unknown>[] = []
+  dbMock.update.mockReturnValue(updateChain(updateCaptured))
+})
+
+describe('POST /api/jobs/re-engage', () => {
+  it('rejects an invalid QStash signature before touching the db', async () => {
+    verify.mockResolvedValue(false)
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+
+    expect(res.status).toBe(403)
+    expect(dbMock.select).not.toHaveBeenCalled()
+  })
+
+  it('re-engage: skips with skipped_terminal and does not send when the lead already reached a terminal status', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'not_qualified' }]))
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_terminal')
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('re-engage: skips without consent', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, reEngagementConsentAccepted: false }]))
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_no_consent')
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('re-engage: skips when the lead has been active in the last 5 minutes', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, lastActivityAt: new Date().toISOString() }]))
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_already_active')
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('re-engage: resolves the message pool from the lead\'s current status (link_sent → phase2 pool) and escalates under the fresh currentPhase', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'link_sent', currentPhase: 2 }]))
+    getNextMessageVariant.mockResolvedValue('¿Ya descargaste la app?')
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(getNextMessageVariant).toHaveBeenCalledWith('lead-1', 1, 'phase2_link_reminder')
+    expect(sendText).toHaveBeenCalledWith(expect.anything(), '¿Ya descargaste la app?')
+    // Escalates using the freshly-read currentPhase (2), not payload.phase (1).
+    expect(scheduleJob).toHaveBeenCalledWith('lead-1', 2, 2, expect.any(Number), 're-engage')
+    expect(body.outcome).toBe('sent')
+  })
+
+  it('re-engage: marks the lead abandono after the final attempt instead of escalating further', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1 }]))
+    getNextMessageVariant.mockResolvedValue('mensaje')
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 3, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 're_engagement_exhausted', 'corr-1')
+    expect(scheduleJob).not.toHaveBeenCalled()
+    expect(body.outcome).toBe('marked_abandono')
+  })
+
+  it('treats link_sent_reminder as an unrecognized action now that it has been retired', async () => {
+    dbMock.select.mockReturnValue(selectChain([BASE_LEAD]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 97, action: 'link_sent_reminder' as JobPayload['action'] }),
+    )
+    const body = await res.json()
+
+    expect(body.outcome).toBe('unknown_action')
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('request_registration_code: skips when the lead is no longer link_sent', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code' }]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 0, action: 'request_registration_code' }),
+    )
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_not_link_sent')
+    expect(requestRegistrationCodeForLead).not.toHaveBeenCalled()
+  })
+
+  it('freeze_registration: transitions waiting_for_code leads to code_delivered_no_response', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code' }]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 99, action: 'freeze_registration' }),
+    )
+    const body = await res.json()
+
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'code_delivered_no_response', 'inactivity_freeze', 'corr-1')
+    expect(body.outcome).toBe('freeze_applied')
+  })
+})
