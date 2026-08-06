@@ -53,8 +53,22 @@ function selectChain(rows: unknown[]) {
   return { from: () => ({ where: () => Promise.resolve(rows) }) }
 }
 
+/** Controls what `claimSchedule`'s `.returning()` resolves to — non-empty means "claimed". */
+let claimResult: Array<{ id: string }> = [{ id: 'sched-1' }]
+
 function updateChain(captured: Record<string, unknown>[]) {
-  return { set: (v: Record<string, unknown>) => { captured.push(v); return { where: () => Promise.resolve(undefined) } } }
+  return {
+    set: (v: Record<string, unknown>) => {
+      captured.push(v)
+      return {
+        where: () => {
+          const result = Promise.resolve(undefined) as Promise<undefined> & { returning?: () => Promise<Array<{ id: string }>> }
+          result.returning = () => Promise.resolve(claimResult)
+          return result
+        },
+      }
+    },
+  }
 }
 
 const BASE_LEAD = {
@@ -69,6 +83,7 @@ const BASE_LEAD = {
 beforeEach(() => {
   vi.resetAllMocks()
   verify.mockResolvedValue(true)
+  claimResult = [{ id: 'sched-1' }]
   const updateCaptured: Record<string, unknown>[] = []
   dbMock.update.mockReturnValue(updateChain(updateCaptured))
 })
@@ -81,6 +96,19 @@ describe('POST /api/jobs/re-engage', () => {
 
     expect(res.status).toBe(403)
     expect(dbMock.select).not.toHaveBeenCalled()
+  })
+
+  it('skips a duplicate QStash delivery of the same job instead of re-sending', async () => {
+    dbMock.select.mockReturnValue(selectChain([BASE_LEAD]))
+    claimResult = [] // another delivery of this same job already claimed it
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_duplicate_delivery')
+    expect(sendText).not.toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(scheduleJob).not.toHaveBeenCalled()
   })
 
   it('re-engage: skips with skipped_terminal and does not send when the lead already reached a terminal status', async () => {

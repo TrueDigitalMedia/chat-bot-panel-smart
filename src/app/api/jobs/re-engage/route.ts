@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Receiver } from '@upstash/qstash'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
@@ -21,27 +21,34 @@ const receiver = new Receiver({
 })
 
 /**
- * Stamps the matching re_engagement_schedules row so it's visible from the DB (admin/
- * SQL) whether a given job actually reached this handler — without this, a QStash
- * callback that never lands (e.g. APP_BASE_URL pointing at a dead tunnel) is
- * indistinguishable in our own data from "still scheduled, hasn't fired yet".
+ * Atomically claims this (leadId, phase, attemptNumber) delivery by flipping outcome
+ * from NULL to 'received' in a single conditional UPDATE. QStash only guarantees
+ * at-least-once delivery — the same callback can land twice (slow handler response,
+ * a 5xx from a mid-handler throw, a network blip after we already responded 200) —
+ * so without this guard a retried delivery re-runs the whole handler, including
+ * sendText, and produces a duplicate WhatsApp message. Returns false when the row
+ * was already claimed by an earlier delivery (or doesn't exist), meaning this
+ * delivery must not act.
  */
-async function markScheduleDelivered(
+async function claimSchedule(
   leadId: string,
   phase: number,
   attemptNumber: number,
-  outcome: string,
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const claimed = await db
     .update(reEngagementSchedules)
-    .set({ deliveredAt: new Date(), outcome })
+    .set({ deliveredAt: new Date(), outcome: 'received' })
     .where(
       and(
         eq(reEngagementSchedules.leadId, leadId),
         eq(reEngagementSchedules.phase, phase),
         eq(reEngagementSchedules.attemptNumber, attemptNumber),
+        isNull(reEngagementSchedules.outcome),
       ),
     )
+    .returning({ id: reEngagementSchedules.id })
+
+  return claimed.length > 0
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -68,12 +75,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const [lead] = await db.select().from(leads).where(eq(leads.id, payload.leadId))
   if (!lead) return NextResponse.json({ outcome: 'lead_not_found' })
 
-  // Stamp deliveredAt as soon as we know QStash's callback actually reached this
-  // handler for this specific (leadId, phase, attemptNumber) — before any branch-
-  // specific outcome is decided. Without this, a job that's scheduled but whose
-  // callback never lands (e.g. APP_BASE_URL pointing at a dead tunnel) looks
-  // identical in re_engagement_schedules to one that just hasn't fired yet.
-  await markScheduleDelivered(payload.leadId, payload.phase, payload.attemptNumber, 'received')
+  // Claim this specific delivery before doing anything else. Also doubles as the
+  // "did QStash's callback reach us" stamp (deliveredAt) that admin/SQL relies on to
+  // distinguish "scheduled but never fired" from "fired" — a job that's scheduled but
+  // whose callback never lands (e.g. APP_BASE_URL pointing at a dead tunnel) previously
+  // looked identical in re_engagement_schedules to one that just hasn't fired yet.
+  const claimed = await claimSchedule(payload.leadId, payload.phase, payload.attemptNumber)
+  if (!claimed) {
+    console.info('[jobs/re-engage] duplicate delivery skipped', {
+      action: payload.action,
+      leadId: payload.leadId,
+      phase: payload.phase,
+      attemptNumber: payload.attemptNumber,
+      correlationId,
+    })
+    return NextResponse.json({ outcome: 'skipped_duplicate_delivery' })
+  }
 
   // --- Registration code request (client-mysql-integration.md §2b) ---
   // We POST a JSON asking TDM for the code; TDM calls back
