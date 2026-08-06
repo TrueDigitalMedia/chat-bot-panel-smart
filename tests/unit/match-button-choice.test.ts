@@ -64,4 +64,22 @@ describe('matchButtonChoice', () => {
     expect(matchButtonChoice(buttons, 'educacion basica')).toBe('educationPsh:basica')
     expect(matchButtonChoice(buttons, 'EDUCACION MEDIA')).toBe('educationPsh:media')
   })
+
+  it('matches a label\'s core word when extra text is appended (the reported bug: "noche 19h")', () => {
+    const schedule = [
+      [
+        { text: 'Mañana (9-12hs)', callback_data: 'contactSchedule:Mañana (9-12hs)' },
+        { text: 'Tarde (13-17hs)', callback_data: 'contactSchedule:Tarde (13-17hs)' },
+        { text: 'Noche (18-21hs)', callback_data: 'contactSchedule:Noche (18-21hs)' },
+      ],
+    ]
+    expect(matchButtonChoice(schedule, 'noche 19h')).toBe('contactSchedule:Noche (18-21hs)')
+    expect(matchButtonChoice(schedule, 'noche 18h')).toBe('contactSchedule:Noche (18-21hs)')
+    expect(matchButtonChoice(schedule, 'prefiero la mañana')).toBe('contactSchedule:Mañana (9-12hs)')
+  })
+
+  it('does not match a short label (e.g. "No") as an accidental substring of unrelated text', () => {
+    expect(matchButtonChoice(YES_NO, 'no se todavia')).toBeNull()
+    expect(matchButtonChoice(YES_NO, 'nose')).toBeNull()
+  })
 })
