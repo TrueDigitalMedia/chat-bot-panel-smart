@@ -160,8 +160,20 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 12,
     fieldName: 'householdSize',
-    text: '¿Cuántas personas residen habitualmente en este hogar?',
-    inputType: 'free_text',
+    text: '¿Cuántas personas residen habitualmente en este hogar? (Si son más de 6, escribe el número)',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: '1', callback_data: 'householdSize:1' },
+        { text: '2', callback_data: 'householdSize:2' },
+        { text: '3', callback_data: 'householdSize:3' },
+      ],
+      [
+        { text: '4', callback_data: 'householdSize:4' },
+        { text: '5', callback_data: 'householdSize:5' },
+        { text: '6', callback_data: 'householdSize:6' },
+      ],
+    ],
   },
   {
     index: 13,
@@ -190,8 +202,20 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 15,
     fieldName: 'bedrooms',
-    text: '¿Cuántas habitaciones destinadas exclusivamente para dormir tiene este hogar?',
-    inputType: 'free_text',
+    text: '¿Cuántas habitaciones destinadas exclusivamente para dormir tiene este hogar? (Si son más de 6, escribe el número)',
+    inputType: 'button',
+    buttons: [
+      [
+        { text: '1', callback_data: 'bedrooms:1' },
+        { text: '2', callback_data: 'bedrooms:2' },
+        { text: '3', callback_data: 'bedrooms:3' },
+      ],
+      [
+        { text: '4', callback_data: 'bedrooms:4' },
+        { text: '5', callback_data: 'bedrooms:5' },
+        { text: '6', callback_data: 'bedrooms:6' },
+      ],
+    ],
   },
   {
     index: 16,

@@ -32,6 +32,13 @@ const D2_TEXT =
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
 
 /**
+ * These two show quick-pick number buttons (1-6) but the underlying columns are
+ * plain integers with no real upper bound (household size, bedroom count), so a
+ * typed number outside the button range still has to work.
+ */
+const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
+
+/**
  * Decision-point gates (opt-in/D1/D2/D3) only ever expect a button tap — free text
  * that doesn't match one might be a question ("¿de qué sirve esto?") rather than
  * junk. Checks FAQ before the caller re-shows the same gate; no-ops on empty text
@@ -183,12 +190,35 @@ export async function handlePhase1(
       if (matched) resolvedCallback = matched
     }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
-      await maybeAnswerFaq(lead, messageText, correlationId, question.text)
-      await sendSurveyQuestion(to, idx, lead.id)
-      return
+      // householdSize/bedrooms only offer quick-pick buttons up to 6 — a typed number
+      // outside that range still needs to go through, via the same extraction path
+      // free-text fields use.
+      if (NUMERIC_BUTTON_FIELDS.has(question.fieldName) && /^\d+$/.test(messageText.trim())) {
+        const result = await extractField(
+          question.fieldName as 'householdSize' | 'bedrooms',
+          messageText,
+          { leadId: lead.id },
+        )
+        if (!result.ok) {
+          await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+          await sendSurveyQuestion(to, idx, lead.id)
+          return
+        }
+        fieldValue = result.value
+      } else {
+        await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+        await sendSurveyQuestion(to, idx, lead.id)
+        return
+      }
+    } else {
+      const raw = resolvedCallback.split(':').slice(1).join(':')
+      fieldValue =
+        question.fieldName === 'domesticHelp'
+          ? raw === 'true'
+          : NUMERIC_BUTTON_FIELDS.has(question.fieldName)
+            ? Number(raw)
+            : raw
     }
-    const raw = resolvedCallback.split(':').slice(1).join(':')
-    fieldValue = question.fieldName === 'domesticHelp' ? raw === 'true' : raw
   } else {
     // Free-text: ignore empty / stray button callbacks — just re-ask
     if (!messageText.trim()) {
