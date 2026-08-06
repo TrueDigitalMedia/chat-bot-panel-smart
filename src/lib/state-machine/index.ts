@@ -27,7 +27,7 @@ export async function transitionLead(
 
   await db
     .update(leads)
-    .set({ leadStatus: newStatus, updatedAt: new Date() })
+    .set({ leadStatus: newStatus, statusReason: reason, updatedAt: new Date() })
     .where(eq(leads.id, leadId))
 
   // Structured log with all 5 required fields

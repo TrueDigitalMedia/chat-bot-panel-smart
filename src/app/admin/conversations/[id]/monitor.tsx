@@ -20,6 +20,7 @@ type LeadDetail = {
   channelUsername: string | null
   phoneNumber: string | null
   leadStatus: string
+  statusReason: string | null
   currentPhase: number
   surveyQuestionIndex: number
   score: number | null
@@ -172,6 +173,12 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
             <span>Estado</span>
             <strong>{lead.leadStatus}</strong>
           </li>
+          {lead.statusReason ? (
+            <li>
+              <span>Razón</span>
+              <strong>{lead.statusReason}</strong>
+            </li>
+          ) : null}
           <li>
             <span>Canal</span>
             <strong>

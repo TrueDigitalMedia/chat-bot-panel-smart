@@ -74,6 +74,7 @@ export type ConversationListItem = {
   channelUsername: string | null
   phoneNumber: string | null
   leadStatus: string
+  statusReason: string | null
   currentPhase: number
   surveyQuestionIndex: number
   lastActivityAt: Date
@@ -97,6 +98,7 @@ export async function listConversations(limit = 50): Promise<ConversationListIte
       channelUsername: leads.channelUsername,
       phoneNumber: leads.phoneNumber,
       leadStatus: leads.leadStatus,
+      statusReason: leads.statusReason,
       currentPhase: leads.currentPhase,
       surveyQuestionIndex: leads.surveyQuestionIndex,
       lastActivityAt: leads.lastActivityAt,
@@ -167,6 +169,7 @@ export async function getConversationDetail(leadId: string) {
       channelUsername: leads.channelUsername,
       phoneNumber: leads.phoneNumber,
       leadStatus: leads.leadStatus,
+      statusReason: leads.statusReason,
       currentPhase: leads.currentPhase,
       surveyQuestionIndex: leads.surveyQuestionIndex,
       score: leads.score,

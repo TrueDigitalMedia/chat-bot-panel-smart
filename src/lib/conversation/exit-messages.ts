@@ -14,3 +14,12 @@ export const ANDROID_APP_LINK = 'https://play.google.com/store/apps/details?id=c
 export function supportRedirect(): string {
   return `Gracias por tu interés. Nuestro equipo se pondrá en contacto contigo para ayudarte a resolver tus dudas.\n\nMientras tanto, aquí estaré si quieres retomar tu inscripción.`
 }
+
+/** Sent right before an abandono caused by our own inability to request/deliver the
+ *  registration code (TDM not configured, missing survey profile) — without this the
+ *  user gets no signal at all that anything happened before the generic support
+ *  redirect starts repeating on every subsequent message. Framed as a delay, not a
+ *  failure — the user did nothing wrong and this isn't visibly an error on our end. */
+export function registrationCodeDelayedRedirect(): string {
+  return `Tu código de registro está tardando más de lo esperado en llegar. No te preocupes, nuestro equipo se pondrá en contacto contigo para ayudarte a completar tu registro.`
+}

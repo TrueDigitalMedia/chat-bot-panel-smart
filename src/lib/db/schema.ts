@@ -78,6 +78,12 @@ export const leads = pgTable(
     channelUsername: varchar('channel_username', { length: 100 }),
     phoneNumber: varchar('phone_number', { length: 32 }),
     leadStatus: leadStatusEnum('lead_status').notNull().default('incomplete'),
+    /** The `reason` passed to the most recent transitionLead call — e.g.
+     *  'code_request_not_configured', 're_engagement_exhausted'. Several distinct
+     *  failure paths all land on the same generic leadStatus (esp. 'abandono'), so
+     *  without this the admin UI can't tell "user declined" apart from "our own
+     *  registration-code request failed" — both look identical as just "abandono". */
+    statusReason: text('status_reason'),
     currentPhase: smallint('current_phase').notNull().default(1),
     surveyQuestionIndex: smallint('survey_question_index').notNull().default(0),
     quotaSegment: varchar('quota_segment', { length: 50 }),

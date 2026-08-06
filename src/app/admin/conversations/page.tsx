@@ -86,6 +86,7 @@ export default async function ConversationsPage() {
                     <span className={`${styles.badge} ${statusClass(c.leadStatus)}`}>
                       {c.leadStatus}
                     </span>
+                    {c.statusReason ? <div className={styles.muted}>{c.statusReason}</div> : null}
                     <div className={styles.muted}>
                       F{c.currentPhase} · Q{c.surveyQuestionIndex}
                       {c.messageCount ? ` · ${c.messageCount} msgs` : ''}

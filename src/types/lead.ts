@@ -22,6 +22,7 @@ export interface Lead {
   channelUsername: string | null
   phoneNumber: string | null
   leadStatus: LeadStatus
+  statusReason: string | null
   currentPhase: number
   surveyQuestionIndex: number
   quotaSegment: string | null

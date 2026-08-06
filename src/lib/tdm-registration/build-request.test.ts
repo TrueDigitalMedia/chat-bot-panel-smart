@@ -10,6 +10,7 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     channelUsername: null,
     phoneNumber: '+50212345678',
     leadStatus: 'link_sent',
+    statusReason: null,
     currentPhase: 2,
     surveyQuestionIndex: 19,
     quotaSegment: 'Nivel 2',
