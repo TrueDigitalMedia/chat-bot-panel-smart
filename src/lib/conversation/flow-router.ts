@@ -9,6 +9,7 @@ import {
   REGISTER_CALLBACK_NO,
   REGISTER_CALLBACK_YES,
 } from '@/lib/onboarding/registration-choice'
+import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/app-downloaded'
 import { handleCorrectionFlow, handleCorrectionIntent } from './correction'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
@@ -125,6 +126,10 @@ export async function routeMessage(
   }
 
   if (status === 'link_sent') {
+    if (isAppDownloadedCallback(callbackData)) {
+      await handleAppDownloaded(lead, correlationId)
+      return
+    }
     await sendText(
       lead,
       `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo.`,

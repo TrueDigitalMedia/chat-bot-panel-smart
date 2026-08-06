@@ -1,13 +1,14 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
-import { sendText } from '@/lib/messaging/send'
+import { sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import {
   PHASE2_CODE_DELAY_SECONDS,
   LINK_SENT_REMINDER_ATTEMPT_BASE,
   linkSentReminderDelaySeconds,
 } from '@/lib/scheduler/constants'
+import { APP_DOWNLOADED_CALLBACK } from '@/lib/onboarding/app-downloaded'
 import { IOS_APP_LINK, ANDROID_APP_LINK } from '../exit-messages'
 import type { Lead } from '@/types/lead'
 
@@ -16,11 +17,12 @@ export async function handlePhase2(lead: Lead, _correlationId: string): Promise<
 
   await db.update(leads).set({ currentPhase: 2, updatedAt: new Date() }).where(eq(leads.id, lead.id))
 
-  await sendText(
+  await sendInlineKeyboard(
     chatId,
     `🎉 ¡Felicidades! Tienes un cupo disponible.\n\n` +
       `Descarga la app:\n📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}\n\n` +
-      `Una vez “descargada”, recibirás un código de registro simulado.`,
+      `Una vez descargada, recibirás tu código de registro.`,
+    [[{ text: '📲 Ya la descargué', callback_data: APP_DOWNLOADED_CALLBACK }]],
   )
 
   // Schedule the job that requests the registration code from TDM (or delivers a mock

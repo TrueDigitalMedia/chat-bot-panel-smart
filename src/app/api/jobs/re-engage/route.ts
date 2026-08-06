@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Receiver } from '@upstash/qstash'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { leads, surveyProfiles, reEngagementSchedules } from '@/lib/db/schema'
+import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { buildRegistrationCodeRequest } from '@/lib/tdm-registration/build-request'
-import { requestRegistrationCode } from '@/lib/tdm-registration/client'
-import { applyTdmTestModeOverrides } from '@/lib/tdm-registration/test-mode'
-import { deliverRegistrationCode } from '@/lib/onboarding/deliver-registration-code'
-import { logCall } from '@/lib/db/call-log'
+import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registration-code'
 import { IOS_APP_LINK, ANDROID_APP_LINK } from '@/lib/conversation/exit-messages'
 import { sendText } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
@@ -17,24 +13,17 @@ import {
   MAX_REENGAGEMENT_ATTEMPTS,
   MAX_LINK_SENT_REMINDER_ATTEMPTS,
   LINK_SENT_REMINDER_ATTEMPT_BASE,
-  REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER,
   linkSentReminderDelaySeconds,
 } from '@/lib/scheduler/constants'
 import { getNextMessageVariant } from '@/lib/scheduler/messages'
 import { generateCorrelationId } from '@/lib/correlation'
-import { env, isTdmRegistrationRequestConfigured } from '@/lib/env'
+import { env } from '@/lib/env'
 import type { JobPayload } from '@/lib/scheduler/re-engagement'
-import type { SurveyProfile } from '@/types/lead'
 
 const receiver = new Receiver({
   currentSigningKey: env.QSTASH_CURRENT_SIGNING_KEY,
   nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY,
 })
-
-/** Deterministic per-lead placeholder — only used while REGISTRATION_CODE_MOCK_ENABLED=true. */
-function mockRegistrationCode(leadId: string): string {
-  return `MOCK-${leadId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
-}
 
 /**
  * Stamps the matching re_engagement_schedules row so it's visible from the DB (admin/
@@ -102,62 +91,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'skipped_not_link_sent' })
     }
 
-    if (env.REGISTRATION_CODE_MOCK_ENABLED) {
-      const code = mockRegistrationCode(lead.id)
-      await deliverRegistrationCode(lead, code, { reason: 'code_triggered_mock', phase: payload.phase, mock: true }, correlationId)
-      return NextResponse.json({ outcome: 'code_sent', code, mock: true })
-    }
-
-    if (!isTdmRegistrationRequestConfigured()) {
-      // TDM hasn't handed over their endpoint yet — nothing to request, no point
-      // waiting out a timeout that can only fail (mirrors the old MySQL-sync-disabled check).
-      await transitionLead(lead.id, 'abandono', 'code_request_not_configured', correlationId)
-      return NextResponse.json({ outcome: 'not_configured' })
-    }
-
-    const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id)).limit(1)
-    if (!profile) {
-      await transitionLead(lead.id, 'abandono', 'code_request_missing_profile', correlationId)
-      return NextResponse.json({ outcome: 'missing_profile' })
-    }
-
-    let requestPayload = buildRegistrationCodeRequest(lead, profile as SurveyProfile)
-    if (env.TDM_TEST_MODE_ENABLED) {
-      requestPayload = applyTdmTestModeOverrides(requestPayload)
-    }
-    const start = Date.now()
-    try {
-      await requestRegistrationCode(requestPayload)
-      await db
-        .update(leads)
-        .set({ tdmRegistrationRequestedAt: new Date(), updatedAt: new Date() })
-        .where(eq(leads.id, lead.id))
-      await logCall({
-        leadId: lead.id,
-        callType: 'tdm_registration_request',
-        latencyMs: Date.now() - start,
-        correlationId,
-      })
-    } catch (err) {
-      await logCall({
-        leadId: lead.id,
-        callType: 'tdm_registration_request',
-        latencyMs: Date.now() - start,
-        correlationId,
-        error: String(err),
-      }).catch(() => {})
-      // Fall through — still arm the timeout below rather than giving up immediately;
-      // QStash retries this job on failure per its own policy before it stops trying.
-    }
-
-    await scheduleJob(
-      lead.id,
-      payload.phase,
-      REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER,
-      env.TDM_REGISTRATION_CODE_TIMEOUT_SECONDS,
-      'registration_code_timeout',
-    )
-    return NextResponse.json({ outcome: 'request_sent' })
+    const outcome = await requestRegistrationCodeForLead(lead, payload.phase, correlationId)
+    return NextResponse.json({ outcome })
   }
 
   // --- Registration code timeout — TDM's webhook never called back within the window ---
