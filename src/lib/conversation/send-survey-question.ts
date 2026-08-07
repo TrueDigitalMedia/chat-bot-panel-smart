@@ -28,6 +28,10 @@ export async function sendSurveyQuestion(
       .limit(1)
     if (profile?.country === 'Guatemala') {
       text = guatemalaQuestionText(q.fieldName as GeoField)
+    } else if (profile?.country === 'Costa Rica' && q.fieldName === 'municipality') {
+      // 'Cantón' is Costa Rica's actual term for this division — every other
+      // country just gets the generic 'municipio' wording from survey-questions.ts.
+      text = '¿En qué municipio o cantón vives?'
     }
   }
 

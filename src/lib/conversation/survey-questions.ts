@@ -64,7 +64,9 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 4,
     fieldName: 'municipality',
-    text: '¿En qué municipio o cantón vives?',
+    // 'Cantón' is Costa Rica-specific terminology, overridden for that country in
+    // send-survey-question.ts — every other country just gets 'municipio'.
+    text: '¿En qué municipio vives?',
     inputType: 'free_text',
   },
   {
