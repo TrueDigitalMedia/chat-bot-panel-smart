@@ -15,6 +15,16 @@ import type { ChannelRecipient } from '@/types/channel'
 // Simple affirmatives/negatives and short responses that should never be FAQ-checked
 const SKIP_PATTERNS = /^(sí|si|no|ok|okay|vale|entendido|listo|claro|gracias|perfecto|bien)$/i
 
+/** True when `query` is substantial enough to be worth an FAQ/clarification LLM call.
+ *  Shared by handleOutOfFlow and tryAnswerFaqOnExtractionFailure so neither burns a
+ *  call (and risks an erratic clarification) on a stray typo, emoji, or gibberish
+ *  that doesn't match a button's expected answer but isn't really asking anything —
+ *  e.g. a nonsense reply to a plain Sí/No question like "¿Estás embarazada?". */
+function isSubstantiveQuery(query: string): boolean {
+  const trimmed = query.trim()
+  return trimmed.length > 15 && !SKIP_PATTERNS.test(trimmed)
+}
+
 export async function handleOutOfFlow(
   lead: Lead,
   query: string,
@@ -35,8 +45,7 @@ export async function handleOutOfFlow(
 
   // Pre-filter: only attempt FAQ for substantive messages
   const shouldCheckFaq =
-    query.length > 15 &&
-    !SKIP_PATTERNS.test(query.trim()) &&
+    isSubstantiveQuery(query) &&
     !query.startsWith('d1:') &&
     !query.startsWith('d2:') &&
     !query.startsWith('d3:') &&
@@ -76,6 +85,8 @@ export async function tryAnswerFaqOnExtractionFailure(
   correlationId: string,
   pendingQuestionText: string,
 ): Promise<boolean> {
+  if (!isSubstantiveQuery(query)) return false
+
   const faqEntry = await findFaq(query, { leadId: lead.id, correlationId, pendingQuestionText })
   if (faqEntry) {
     const answer = faqEntry.answer
