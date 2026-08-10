@@ -19,7 +19,7 @@ import type { ChannelInbound } from '@/types/channel'
 const BUTTON_PREFIXES = [
   'optin:', 'd1:', 'reengagement_consent:', 'd2:', 'd3:', 'country:', 'gender:', 'educationPsh:', 'cars:',
   'domesticHelp:', 'shoppingFrequency:', 'contactChannel:', 'contactSchedule:',
-  'isPregnant:', 'hasBabyUnder3:',
+  'isPregnant:', 'hasBabyUnder3:', 'householdSize:', 'bedrooms:',
   'correct:',
 ]
 
