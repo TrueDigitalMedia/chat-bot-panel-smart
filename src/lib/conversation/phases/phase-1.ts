@@ -15,10 +15,12 @@ import {
 import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
+import { detectAcceptDeclineIntent } from '../detect-accept-decline'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import type { Lead } from '@/types/lead'
 
 import type { ChannelRecipient } from '@/types/channel'
+import type { InlineKeyboardButton } from '@/types/telegram'
 
 const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
 
@@ -30,6 +32,39 @@ const REENGAGEMENT_CONSENT_TEXT =
 const D2_TEXT =
   'A continuación te haremos unas preguntas que nos ayudarán a clasificar tu hogar dentro del panel, y poder ganar premios más rápido.\n¿Quieres ganar premios por decirnos qué compras?'
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
+
+// Decision-gate button layouts — shared between the send* helpers below and
+// resolveGateDecision, which needs the actual button labels to fuzzy-match free text.
+const OPT_IN_BUTTONS: InlineKeyboardButton[][] = [
+  [
+    { text: 'Inscribirme', callback_data: 'optin:accept' },
+    { text: 'No', callback_data: 'optin:decline' },
+  ],
+]
+const D1_BUTTONS: InlineKeyboardButton[][] = [
+  [
+    { text: 'Confirmo y acepto', callback_data: 'd1:accept' },
+    { text: 'No, gracias', callback_data: 'd1:decline' },
+  ],
+]
+const REENGAGEMENT_CONSENT_BUTTONS: InlineKeyboardButton[][] = [
+  [
+    { text: 'Sí, autorizo', callback_data: 'reengagement_consent:accept' },
+    { text: 'No, gracias', callback_data: 'reengagement_consent:decline' },
+  ],
+]
+const D2_BUTTONS: InlineKeyboardButton[][] = [
+  [
+    { text: 'Sí quiero', callback_data: 'd2:accept' },
+    { text: 'No, gracias', callback_data: 'd2:decline' },
+  ],
+]
+const D3_BUTTONS: InlineKeyboardButton[][] = [
+  [
+    { text: 'Sí', callback_data: 'd3:yes' },
+    { text: 'No', callback_data: 'd3:no' },
+  ],
+]
 
 /**
  * These two show quick-pick number buttons (1-6) but the underlying columns are
@@ -55,6 +90,36 @@ async function maybeAnswerFaq(
   await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
 }
 
+/**
+ * Resolves a decision-gate turn to 'accept'/'decline' when the tap itself didn't
+ * already say so — matchButtonChoice first (cheap, handles "1"/"2" or an exact/short
+ * label like "sí"/"no"), then an LLM classifier for everything else (e.g. "acepto",
+ * "no quiero", "dale"), since these buttons' labels are multi-word phrases
+ * ("Confirmo y acepto") that free text rarely repeats verbatim. Returns null — no
+ * accept/decline signal found — for empty text, real questions, or noise, so the
+ * caller falls through to its existing FAQ-then-reask behavior.
+ */
+async function resolveGateDecision(
+  buttons: InlineKeyboardButton[][],
+  messageText: string,
+  callbackData: string | undefined,
+  acceptCallback: string,
+  declineCallback: string,
+  pendingQuestionText: string,
+  correlationId: string,
+  leadId: string,
+): Promise<'accept' | 'decline' | null> {
+  if (callbackData === acceptCallback) return 'accept'
+  if (callbackData === declineCallback) return 'decline'
+  if (!messageText.trim()) return null
+
+  const matched = matchButtonChoice(buttons, messageText)
+  if (matched === acceptCallback) return 'accept'
+  if (matched === declineCallback) return 'decline'
+
+  return detectAcceptDeclineIntent(messageText, pendingQuestionText, { leadId, correlationId })
+}
+
 // Handle Phase 1: opt-in gate, decision points D1→D2→D3, then the survey (SURVEY_QUESTION_COUNT questions)
 export async function handlePhase1(
   lead: Lead,
@@ -68,10 +133,20 @@ export async function handlePhase1(
 
   // Opt-in: initial enrollment gate, before D1 (spec 007)
   if (!lead.optInAccepted) {
-    if (callbackData === 'optin:accept') {
+    const decision = await resolveGateDecision(
+      OPT_IN_BUTTONS,
+      messageText,
+      callbackData,
+      'optin:accept',
+      'optin:decline',
+      OPT_IN_TEXT,
+      correlationId,
+      lead.id,
+    )
+    if (decision === 'accept') {
       await db.update(leads).set({ optInAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendD1(to)
-    } else if (callbackData === 'optin:decline') {
+    } else if (decision === 'decline') {
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
@@ -90,10 +165,20 @@ export async function handlePhase1(
 
   // D1: T&C
   if (!lead.d1Accepted) {
-    if (callbackData === 'd1:accept') {
+    const decision = await resolveGateDecision(
+      D1_BUTTONS,
+      messageText,
+      callbackData,
+      'd1:accept',
+      'd1:decline',
+      D1_TEXT,
+      correlationId,
+      lead.id,
+    )
+    if (decision === 'accept') {
       await db.update(leads).set({ d1Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendReEngagementConsent(to)
-    } else if (callbackData === 'd1:decline') {
+    } else if (decision === 'decline') {
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
@@ -105,10 +190,20 @@ export async function handlePhase1(
 
   // Re-engagement consent: ask for permission to contact if abandons
   if (lead.reEngagementConsentAccepted === null) {
-    if (callbackData === 'reengagement_consent:accept') {
+    const decision = await resolveGateDecision(
+      REENGAGEMENT_CONSENT_BUTTONS,
+      messageText,
+      callbackData,
+      'reengagement_consent:accept',
+      'reengagement_consent:decline',
+      REENGAGEMENT_CONSENT_TEXT,
+      correlationId,
+      lead.id,
+    )
+    if (decision === 'accept') {
       await db.update(leads).set({ reEngagementConsentAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendD2(to)
-    } else if (callbackData === 'reengagement_consent:decline') {
+    } else if (decision === 'decline') {
       await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendD2(to)
     } else {
@@ -120,10 +215,20 @@ export async function handlePhase1(
 
   // D2: Prizes
   if (lead.d2Accepted === null) {
-    if (callbackData === 'd2:accept') {
+    const decision = await resolveGateDecision(
+      D2_BUTTONS,
+      messageText,
+      callbackData,
+      'd2:accept',
+      'd2:decline',
+      D2_TEXT,
+      correlationId,
+      lead.id,
+    )
+    if (decision === 'accept') {
       await db.update(leads).set({ d2Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendD3(to)
-    } else if (callbackData === 'd2:decline') {
+    } else if (decision === 'decline') {
       await db.update(leads).set({ d2Accepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await transitionLead(lead.id, 'not_qualified', 'd2_decline', correlationId)
       await sendText(to, EXIT_A)
@@ -136,14 +241,24 @@ export async function handlePhase1(
 
   // D3: Is shopper
   if (lead.d3IsShopper === null) {
-    if (callbackData === 'd3:yes') {
+    const decision = await resolveGateDecision(
+      D3_BUTTONS,
+      messageText,
+      callbackData,
+      'd3:yes',
+      'd3:no',
+      D3_TEXT,
+      correlationId,
+      lead.id,
+    )
+    if (decision === 'accept') {
       await db
         .update(leads)
         .set({ d3IsShopper: true, surveyQuestionIndex: 0, updatedAt: new Date() })
         .where(eq(leads.id, lead.id))
       const updated = { ...lead, d3IsShopper: true, surveyQuestionIndex: 0 }
       await proceedAfterShopperYes(updated)
-    } else if (callbackData === 'd3:no') {
+    } else if (decision === 'decline') {
       await db.update(leads).set({ d3IsShopper: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await transitionLead(lead.id, 'quota_exhausted', 'd3_no', correlationId)
       await sendText(to, EXIT_B)
@@ -434,68 +549,23 @@ export async function handlePhase1(
 // --- Helpers ---
 
 async function sendOptIn(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(
-    to,
-    OPT_IN_TEXT,
-    [
-      [
-        { text: 'Inscribirme', callback_data: 'optin:accept' },
-        { text: 'No', callback_data: 'optin:decline' },
-      ],
-    ],
-  )
+  await sendInlineKeyboard(to, OPT_IN_TEXT, OPT_IN_BUTTONS)
 }
 
 async function sendD1(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(
-    to,
-    D1_TEXT,
-    [
-      [
-        { text: 'Confirmo y acepto', callback_data: 'd1:accept' },
-        { text: 'No, gracias', callback_data: 'd1:decline' },
-      ],
-    ],
-  )
+  await sendInlineKeyboard(to, D1_TEXT, D1_BUTTONS)
 }
 
 async function sendReEngagementConsent(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(
-    to,
-    REENGAGEMENT_CONSENT_TEXT,
-    [
-      [
-        { text: 'Sí, autorizo', callback_data: 'reengagement_consent:accept' },
-        { text: 'No, gracias', callback_data: 'reengagement_consent:decline' },
-      ],
-    ],
-  )
+  await sendInlineKeyboard(to, REENGAGEMENT_CONSENT_TEXT, REENGAGEMENT_CONSENT_BUTTONS)
 }
 
 async function sendD2(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(
-    to,
-    D2_TEXT,
-    [
-      [
-        { text: 'Sí quiero', callback_data: 'd2:accept' },
-        { text: 'No, gracias', callback_data: 'd2:decline' },
-      ],
-    ],
-  )
+  await sendInlineKeyboard(to, D2_TEXT, D2_BUTTONS)
 }
 
 async function sendD3(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(
-    to,
-    D3_TEXT,
-    [
-      [
-        { text: 'Sí', callback_data: 'd3:yes' },
-        { text: 'No', callback_data: 'd3:no' },
-      ],
-    ],
-  )
+  await sendInlineKeyboard(to, D3_TEXT, D3_BUTTONS)
 }
 
 // Re-export for callers that still import from phase-1
