@@ -8,7 +8,7 @@ import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
-import { EXIT_A, EXIT_B, EXIT_B_THANKS } from '../exit-messages'
+import { EXIT_A, EXIT_B, EXIT_B_THANKS, PHASE2_AGENT_INTRO } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
@@ -24,7 +24,8 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 
 const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
 
-const GREETING_TEXT = '¡Hola! Soy el asistente virtual de PanelSmart'
+const GREETING_TEXT =
+  '¡Hola! Soy el asistente virtual de PanelSmart 🙂. Te voy a hacer algunas preguntas para ver si calificás como panelista. Empecemos: ¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
 const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
 const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
 const REENGAGEMENT_CONSENT_TEXT =
@@ -149,12 +150,11 @@ export async function handlePhase1(
     } else if (decision === 'decline') {
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
-    } else {
+    } else if (!(await hasSentOutboundMessage(lead.id))) {
       // Conversation opener goes out once, before anything else the bot ever sends —
-      // must run before the FAQ check below, since that can itself be the first reply.
-      if (!(await hasSentOutboundMessage(lead.id))) {
-        await sendText(to, GREETING_TEXT)
-      }
+      // combines the greeting and the opt-in question into a single message with buttons.
+      await sendInlineKeyboard(to, GREETING_TEXT, OPT_IN_BUTTONS)
+    } else {
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
       await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
@@ -541,6 +541,7 @@ export async function handlePhase1(
 
   // Advance to Phase 2
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
+  await sendText(to, PHASE2_AGENT_INTRO)
   // Phase 2 handler will be called by the router on next tick
   const { handlePhase2 } = await import('./phase-2')
   await handlePhase2(lead, correlationId)

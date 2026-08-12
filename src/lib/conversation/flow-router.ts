@@ -12,7 +12,7 @@ import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/a
 import { handleCorrectionFlow, handleCorrectionIntent } from './correction'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
-import { supportRedirect } from './exit-messages'
+import { supportRedirect, agentHandoffReply } from './exit-messages'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -33,6 +33,13 @@ function isRestartRequest(text: string): boolean {
   if (/^(empezar|comenzar)(\s+de\s+nuevo)?(\s+(el\s+)?flujo)?\b/.test(t)) return true
   if (/^(de\s+nuevo|otra\s+vez)\b/.test(t)) return true
   return false
+}
+
+/** User asks to be handed off to a human agent ("agente"), from any state. */
+function isAgentHandoffRequest(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (!t) return false
+  return /^agente\b/.test(t)
 }
 
 function isExpectedAnswer(
@@ -73,6 +80,12 @@ export async function routeMessage(
     await cancelPendingRecontact(lead.id).catch(() => {})
     await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
     await handlePhase1(fresh, '', undefined, correlationId)
+    return
+  }
+
+  // Allow agent handoff from any state — purely informational, doesn't change lead status/phase.
+  if (messageText && isAgentHandoffRequest(messageText)) {
+    await sendText(lead, agentHandoffReply())
     return
   }
 

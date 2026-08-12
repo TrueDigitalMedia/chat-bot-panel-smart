@@ -15,6 +15,15 @@ export function supportRedirect(): string {
   return `Gracias por tu interés. Nuestro equipo se pondrá en contacto contigo para ayudarte a resolver tus dudas.\n\nMientras tanto, aquí estaré si quieres retomar tu inscripción.`
 }
 
+export const AGENT_HANDOFF_EMAIL = 'jaqueline.olicon@wp.numerator.com'
+
+export const PHASE2_AGENT_INTRO =
+  `Antes de seguir: si en cualquier momento necesitás ayuda con la app o tenés alguna duda, escribime "agente" y te derivo con nuestro equipo.\n📲 ${AGENT_HANDOFF_EMAIL}`
+
+export function agentHandoffReply(): string {
+  return `Te comunico con nuestro equipo 📲. Podés escribirles directamente a ${AGENT_HANDOFF_EMAIL} y con gusto te van a ayudar.`
+}
+
 /** Sent right before an abandono caused by our own inability to request/deliver the
  *  registration code (TDM not configured, missing survey profile) — without this the
  *  user gets no signal at all that anything happened before the generic support
