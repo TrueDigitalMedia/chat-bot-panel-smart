@@ -96,6 +96,33 @@ describe('routeMessage — recontact scheduling', () => {
     expect(scheduleRecontact).toHaveBeenCalledWith('lead-1', 'corr-1')
   })
 
+  it('phase-1 turn: also schedules recontact when the correction menu callback is handled', async () => {
+    handleCorrectionFlow.mockResolvedValue(true)
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    // No callbackData here — a truthy one would also exercise the (unmocked in this
+    // file) handle-confirm geo-callback branch ahead of handleCorrectionFlow, which
+    // isn't what this test is about.
+    await routeMessage(lead, makeInbound({ text: '' }), 'corr-1')
+
+    expect(handleCorrectionFlow).toHaveBeenCalledWith(lead, '', undefined)
+    expect(handlePhase1).not.toHaveBeenCalled()
+    expect(scheduleRecontact).toHaveBeenCalledWith('lead-1', 'corr-1')
+  })
+
+  it('phase-1 turn: also schedules recontact when a correction request is detected', async () => {
+    tryHandleCorrectionRequest.mockResolvedValue(true)
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'quiero corregir mi email' }), 'corr-1')
+
+    expect(tryHandleCorrectionRequest).toHaveBeenCalledWith(lead, 'quiero corregir mi email', 'corr-1', '', {
+      useAIFallback: false,
+    })
+    expect(handlePhase1).not.toHaveBeenCalled()
+    expect(scheduleRecontact).toHaveBeenCalledWith('lead-1', 'corr-1')
+  })
+
   it('link_sent branch (no app-downloaded tap): schedules recontact after the fallback message', async () => {
     const lead = makeLead({ leadStatus: 'link_sent', currentPhase: 2 })
 

@@ -216,6 +216,7 @@ export async function routeMessage(
     }
 
     if (await handleCorrectionFlow(lead, messageText, callbackData)) {
+      await scheduleRecontact(lead.id, correlationId).catch(() => {})
       return
     }
 
@@ -229,6 +230,7 @@ export async function routeMessage(
           useAIFallback: false,
         })
       ) {
+        await scheduleRecontact(lead.id, correlationId).catch(() => {})
         return
       }
     }
