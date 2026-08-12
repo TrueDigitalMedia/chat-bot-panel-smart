@@ -1,6 +1,6 @@
 # Wiki: PanelSmart Recruitment Bot
 
-> Última actualización: 2026-07-29 (spec 012: chat web, integración Panel Smart & QStash recurring schedule — ver §12 y §13; configuración WhatsApp — ver §14)
+> Última actualización: 2026-08-12 (mejoras de conversación e IA: apertura combinada + handoff a agente, interpretación por IA de respuestas de botón, sistema de corrección generalizado, extracción de números en palabras, elegibilidad por edad mínima — ver §15; spec 012: chat web, integración Panel Smart & QStash recurring schedule — ver §12 y §13; configuración WhatsApp — ver §14)
 
 ---
 
@@ -21,6 +21,7 @@
 12. [Chat web (canal nuevo)](#12-chat-web-canal-nuevo)
 13. [Integración Panel Smart & Kantar (2026-07-29)](#13-integración-panel-smart--kantar-2026-07-29)
 14. [Configuración de WhatsApp (Canal)](#14-configuración-de-whatsapp-canal)
+15. [Mejoras de conversación e IA (2026-08-12)](#15-mejoras-de-conversación-e-ia-2026-08-12)
 
 ---
 
@@ -117,7 +118,9 @@ incomplete
 | D2 | ¿Quieres ganar premios? | → `not_qualified` |
 | D3 | ¿Eres quien organiza las compras? | → `quota_exhausted` |
 
-Tras pasar D3: captura de teléfono (Telegram/web) → GPS gate → 23 preguntas de encuesta.
+El opt-in inicial ("¿Te gustaría inscribirte...?") se envía junto con el saludo en un solo mensaje combinado (no dos mensajes separados) — ver [§15](#15-mejoras-de-conversación-e-ia-2026-08-12).
+
+Tras pasar D3: captura de teléfono (Telegram/web) → GPS gate → 23 preguntas de encuesta. Dentro de la encuesta, la pregunta de edad (`age`, índice 8 — ver nota de índice en `specs/007-fase1-new-survey-questions/data-model.md`) descalifica automáticamente (`not_qualified`, reason `age_minor`) a cualquier persona menor de 18 años, tanto al responderla por primera vez como al corregirla después — ver [§15](#15-mejoras-de-conversación-e-ia-2026-08-12).
 
 Al finalizar la encuesta: cálculo de score SCL → verificación de cuota → si hay cupo avanza a Fase 2.
 
@@ -601,7 +604,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - Encuesta de 19 preguntas (16 originales + edad/embarazo/bebé<3, spec `007-fase1-new-survey-questions`)
 - GPS gate + reverse geocoding + catálogo NSE-GEO CAM
 - Validación geográfica de Guatemala (departamento → municipio → zona)
-- Corrección de respuestas previas durante la encuesta
+- Corrección de respuestas previas — detección por IA desde cualquier punto de la conversación (no solo mid-encuesta), con reanudación exacta en la pregunta actual — ver [§15](#15-mejoras-de-conversación-e-ia-2026-08-12)
 - FAQ RAG (preguntas frecuentes via embeddings pgvector)
 - Re-engagement automático via QStash (fases 1 y 2)
 - Dual provider WhatsApp (Meta Cloud API + Twilio)
@@ -617,6 +620,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 - **Login + sidebar de admin**: `/` es ahora el formulario de login (reemplaza el Basic Auth); sesión vía cookie firmada (HMAC, sin tabla en DB); todas las páginas internas (`/admin/quotas`, `/admin/dashboard`, `/admin/conversations`) viven detrás del mismo gate y comparten un sidebar colapsable (shadcn/ui) para navegar entre secciones; `/api/conversations/*` y `/api/evals/*` también quedaron protegidos (antes eran públicos); URLs viejas (`/conversations`) redirigen a su nueva ubicación (spec `009-admin-login-sidebar`)
 - **Cuotas flexibles por dimensión**: matching OR entre NSE/edad/integrantes (calificar por cualquier dimensión con cupo, no las tres a la vez), todas las regiones abiertas, tope agregado manual por región (`quota_region_caps`), excepción sin límite para embarazo/bebé — ver [§8.1](#81-cuotas-flexibles-por-dimensión-2026-07-20) (spec `011-flexible-quota-matching`)
 - **Chat web**: nuevo canal `web` — página pública `/chat` para conversar con el bot sin Telegram/WhatsApp, misma máquina de estados y reglas de negocio que los otros canales, sesión anónima persistente por navegador — ver [§12](#12-chat-web-canal-nuevo) (spec `012-web-chat-channel`)
+- **Mejoras de conversación e IA (2026-08-12)**: mensaje de apertura combinado + handoff a agente humano por palabra clave, interpretación por IA de cualquier respuesta de botón + mensaje de reintento estandarizado, sistema de corrección generalizado (detección por IA, funciona desde los gates de teléfono/GPS, reanuda exactamente en la pregunta actual), extracción de números escritos en palabras, elegibilidad por edad mínima (18 años) — ver [§15](#15-mejoras-de-conversación-e-ia-2026-08-12)
 
 ### ⚠️ Implementado pero incompleto / con bugs
 
@@ -892,6 +896,34 @@ TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 | Mensajes no se reciben | Webhook URL incorrecta o evento no suscrito | Verifica `https://chat-ai-panel.vercel.app/api/webhooks/whatsapp` y suscriptores |
 | Errores 403 al enviar | Access Token vencido o sin permisos | Regenera en Meta → WhatsApp → API Setup |
 | Firma inválida | `WHATSAPP_APP_SECRET` incorrecto | Cópialo nuevamente de Settings → Basic |
+
+---
+
+## 15. Mejoras de conversación e IA (2026-08-12)
+
+> ✅ **Implementado**, documentado retroactivamente en `specs/013-conversation-ai-improvements` (spec + research). Cinco cambios independientes en `src/lib/conversation/`, todos con verificación por `tsc`/`vitest`/`build` en cada commit; ninguno requirió migración de schema (las columnas usadas ya existían, sin uso).
+
+### Apertura combinada + handoff a agente humano
+
+El saludo y la pregunta de opt-in ahora se envían como **un solo mensaje** (`GREETING_TEXT` en `phase-1.ts`, con los mismos botones `OPT_IN_BUTTONS`), no dos mensajes separados como antes. En cualquier punto de la conversación, escribir **"agente"** (con detección tolerante a errores de tipeo vía IA, `detect-agent-handoff.ts`) deriva al usuario a soporte con el correo `jaqueline.olicon@wp.numerator.com` (`exit-messages.ts`). El mismo aviso ("escribime 'agente'...") aparece integrado en el mensaje de Fase 2 antes de pedir la descarga de la app, sin mostrar el correo hasta que el usuario efectivamente lo pide.
+
+### Interpretación por IA de respuestas de botón + mensaje de reintento estandarizado
+
+Antes, solo los gates binarios (opt-in/D1/D2/D3) tenían un fallback de IA para texto libre que no calzaba con ningún botón; el resto de las preguntas de botón (país, género, autos, etc.) solo tenían matching de texto difuso. Ahora **todas** las preguntas de botón (Fase 1 y Ficha Hogar) usan la misma función genérica `interpretButtonAnswer` (`interpret-button-answer.ts`), que arma su schema dinámicamente a partir de las opciones de la pregunta actual. Cuando ni el match de texto ni la IA logran interpretar la respuesta — y tampoco es una pregunta respondible por FAQ — el bot envía el mismo mensaje en todos los casos (de botón o de texto libre): **"No entendí lo que respondiste 🤔. Te vuelvo a preguntar:"** (`NOT_UNDERSTOOD_MESSAGE`, `exit-messages.ts`), reemplazando el reenvío silencioso o el texto genérico "Tuve un problema, ¿puedes repetirlo?" que existían antes.
+
+### Sistema de corrección generalizado
+
+El detector de intención de corrección (`detect-correction-intent.ts`, regex) ahora tiene un fallback de IA (`detect-correction-intent-ai.ts`) para pedidos con redacción libre que la regex no reconoce, o que nombran un campo sin alias conocido. La detección de corrección ahora también corre dentro de los gates de captura de teléfono (`phone-capture.ts`) y GPS (`gps-capture.ts`), que antes no tenían ningún fallback y simplemente repetían su mensaje ante cualquier texto no reconocido. Si el usuario pide corregir algo que el sistema no soporta (como el número de teléfono, que no es un campo de la encuesta), recibe un mensaje explícito en vez de una respuesta de FAQ no relacionada o silencio.
+
+Al corregir un campo anterior, el flujo ahora **reanuda exactamente en la pregunta donde estaba el usuario** en vez de obligarlo a re-responder todo lo que sigue — usando las columnas `flow_states.is_correcting` / `correcting_field` / `correction_resume_index`, que existían en el schema desde antes pero nunca se leían (solo se escribían como `null`). `resumeAfterCorrection` (Fase 1) y `resumeFichaHogarAfterCorrection` (Ficha Hogar) saltan automáticamente las preguntas ya contestadas que no fueron limpiadas por el cascade de la corrección.
+
+### Extracción de números escritos en palabras
+
+Las preguntas de botón numéricas (`householdSize`, `bedrooms`) aceptan un número tipeado fuera del rango de botones (1-6) desde antes, pero solo si eran dígitos puros (`/^\d+$/`). Ahora cualquier texto no resuelto en esas preguntas —dígitos o en palabras ("siete", "somos ocho")— pasa por extracción por IA (`extractField`), con un hint explícito en `FIELD_HINTS` para convertir números en palabras a su forma numérica. El valor se guarda como entero en `survey_profiles.household_size`/`survey_profiles.bedrooms` (columnas `smallint`), igual que si se hubiera tipeado el dígito.
+
+### Elegibilidad por edad mínima
+
+Nueva regla de negocio: los menores de 18 años no califican como panelistas. `isMinorAge()` (`age-eligibility.ts`) se chequea en dos puntos independientes — al responder la pregunta de edad por primera vez (`phase-1.ts`) y al corregirla después (`correction.ts`, que persiste por una ruta separada) — porque no comparten el mismo código de guardado. Un menor de edad se descalifica igual que un rechazo de D1/D2: `transitionLead(..., 'not_qualified', 'age_minor', ...)` + mensaje `EXIT_A`. **Nota:** la pregunta de edad vive hoy en el índice 8 de `SURVEY_QUESTIONS` (justo después de género) — `specs/007-fase1-new-survey-questions/research.md` (R1) documentaba la decisión de agregarla al final (índices 17-19) para no romper conversaciones en curso durante ese despliegue; el orden actual ya no coincide con esa nota, que quedó desactualizada en algún punto posterior no documentado.
 
 ---
 

@@ -31,7 +31,7 @@ async function seedFaqs(): Promise<void> {
   console.log(`Seeding ${faqs.length} FAQ entries...`)
 
   let inserted = 0
-  let skipped = 0
+  let updated = 0
 
   for (const faq of faqs) {
     const hash = createHash('sha256').update(faq.question).digest('hex')
@@ -39,20 +39,25 @@ async function seedFaqs(): Promise<void> {
     const vectorStr = `[${embedding.join(',')}]`
 
     try {
+      // ON CONFLICT DO UPDATE (not DO NOTHING) — the question text (and therefore its
+      // hash) rarely changes, but its answer does when we fix/update FAQ copy; without
+      // this, re-running the seed after editing an existing entry's answer in
+      // data/faqs.json would silently leave the stale answer in the DB.
       const rows = await sql`
         INSERT INTO faq_entries (question, answer, embedding, category, question_hash)
         VALUES (${faq.question}, ${faq.answer}, ${vectorStr}::vector, ${faq.category ?? null}, ${hash})
-        ON CONFLICT (question_hash) DO NOTHING
-        RETURNING id
+        ON CONFLICT (question_hash) DO UPDATE
+          SET answer = excluded.answer, category = excluded.category, embedding = excluded.embedding
+        RETURNING id, (xmax = 0) AS inserted
       `
-      if (rows.length > 0) inserted++
-      else skipped++
-    } catch {
-      skipped++
+      if (rows[0]?.inserted) inserted++
+      else updated++
+    } catch (err) {
+      console.error(`Failed to seed "${faq.question}":`, err)
     }
   }
 
-  console.log(`Done: ${inserted} inserted, ${skipped} skipped`)
+  console.log(`Done: ${inserted} inserted, ${updated} updated`)
 }
 
 seedFaqs().catch(console.error)

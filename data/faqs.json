@@ -93,14 +93,22 @@
   },
   {
     "question": "¿Quién puede participar?",
-    "answer": "Personas mayores de edad responsables de las compras del hogar que superen el proceso de selección. Si no eres seleccionado/a, tu información se trata con total privacidad."
+    "answer": "Personas mayores de 18 años responsables de las compras del hogar que superen el proceso de selección. Si eres menor de edad, no puedes participar como panelista. Si no eres seleccionado/a, tu información se trata con total privacidad."
   },
   {
     "question": "¿Cómo contacto a soporte?",
-    "answer": "Desde la sección de ayuda dentro de la app"
+    "answer": "Si estás en medio del proceso de inscripción, escribime \"agente\" en este chat y te derivo con nuestro equipo. Si ya usas la app, puedes contactar soporte desde la sección de ayuda dentro de la app."
   },
   {
     "question": "¿Puedo cerrar o eliminar mi cuenta?",
     "answer": "Sí. Para cualquier gestión relacionada con tu cuenta, contacta con soporte."
+  },
+  {
+    "question": "¿Cómo corrijo una respuesta que ya di durante la inscripción?",
+    "answer": "En cualquier momento de la inscripción puedes escribir algo como \"quiero corregir mi correo\" o simplemente \"corregir respuesta\" para ver un menú con las preguntas que ya contestaste. Elige la que quieras cambiar y seguimos justo donde lo dejaste."
+  },
+  {
+    "question": "¿Puedo hablar con una persona o un agente?",
+    "answer": "Sí, escribime \"agente\" en cualquier momento de la conversación y te derivo con nuestro equipo de soporte."
   }
 ]

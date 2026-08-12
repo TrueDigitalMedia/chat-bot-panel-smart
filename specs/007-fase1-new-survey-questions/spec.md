@@ -108,6 +108,6 @@ Como encuestador, quiero preguntar si el panelista vive con un bebé menor de 3 
 
 ## Assumptions
 
-- La validación de edad acepta valores plausibles para un panelista (aproximadamente entre 13 y 100 años); una entrada no numérica o fuera de rango se vuelve a solicitar usando el mismo patrón que otras preguntas numéricas existentes (p. ej. número de personas en el hogar).
+- La validación de edad acepta valores plausibles para un panelista (aproximadamente entre 13 y 100 años); una entrada no numérica o fuera de rango se vuelve a solicitar usando el mismo patrón que otras preguntas numéricas existentes (p. ej. número de personas en el hogar). **Nota (2026-08-12)**: este rango 13-100 sigue siendo solo un sanity check de extracción, no un criterio de elegibilidad — la regla de negocio de edad mínima (18 años, con descalificación real) se agregó después y está documentada en `specs/013-conversation-ai-improvements`, no acá.
 - Las cuatro respuestas nuevas se almacenan como campos adicionales filtrables/de cuota en la tabla `survey_profiles` existente; no se requiere integración con ningún sistema externo nuevo.
 - El orden de las preguntas sigue la secuencia del Excel oficial: opt-in primero (antes de D1), edad después de género (P12 sigue a P11 en la fuente), y embarazo/bebé menor de 3 años después de la pregunta de personas en el hogar (P17/P18 en la fuente).

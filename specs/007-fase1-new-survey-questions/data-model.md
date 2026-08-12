@@ -10,7 +10,7 @@
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `age` | `smallint`, nullable | Pregunta #17 (índice del array, no del Excel — ver research.md R1). Texto libre, extraído vía IA, validado 13-100. |
+| `age` | `smallint`, nullable | Texto libre, extraído vía IA (rango de validación de extracción 13-100 — solo sanity check, no elegibilidad). **Nota (2026-08-12)**: hoy vive en el índice 8 del array (justo después de género), no en el índice 17 que documentaba esta fila originalmente — el orden se movió en algún punto posterior no documentado; ver `specs/013-conversation-ai-improvements`. Desde 2026-08-12, además, cualquier valor menor a 18 descalifica al lead (`not_qualified`, reason `age_minor`) — ver `specs/013-conversation-ai-improvements/spec.md` User Story 5. |
 | `is_pregnant` | `boolean`, nullable | Pregunta #18. Botón Sí/No. |
 | `has_baby_under_3` | `boolean`, nullable | Pregunta #19. Botón Sí/No. |
 
