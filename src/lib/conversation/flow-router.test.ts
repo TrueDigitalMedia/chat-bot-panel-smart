@@ -9,13 +9,12 @@ const {
   handleAppDownloaded,
   isAppDownloadedCallback,
   handleCorrectionFlow,
-  handleCorrectionIntent,
+  tryHandleCorrectionRequest,
   resetLeadConversation,
   sendText,
   sendInlineKeyboard,
   handleFichaHogarCorrectionFlow,
-  detectsFichaHogarCorrectionIntent,
-  showFichaHogarCorrectionMenu,
+  tryHandleFichaHogarCorrectionRequest,
   handleFichaHogar,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
@@ -26,13 +25,12 @@ const {
   handleAppDownloaded: vi.fn(),
   isAppDownloadedCallback: vi.fn(),
   handleCorrectionFlow: vi.fn(),
-  handleCorrectionIntent: vi.fn(),
+  tryHandleCorrectionRequest: vi.fn(),
   resetLeadConversation: vi.fn(),
   sendText: vi.fn(),
   sendInlineKeyboard: vi.fn(),
   handleFichaHogarCorrectionFlow: vi.fn(),
-  detectsFichaHogarCorrectionIntent: vi.fn(),
-  showFichaHogarCorrectionMenu: vi.fn(),
+  tryHandleFichaHogarCorrectionRequest: vi.fn(),
   handleFichaHogar: vi.fn(),
 }))
 
@@ -46,14 +44,13 @@ vi.mock('@/lib/onboarding/registration-choice', () => ({
   REGISTER_CALLBACK_YES: 'register:yes',
 }))
 vi.mock('@/lib/onboarding/app-downloaded', () => ({ handleAppDownloaded, isAppDownloadedCallback }))
-vi.mock('./correction', () => ({ handleCorrectionFlow, handleCorrectionIntent }))
+vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
 vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn() }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
 vi.mock('./ficha-hogar-correction', () => ({
   handleFichaHogarCorrectionFlow,
-  detectsFichaHogarCorrectionIntent,
-  showFichaHogarCorrectionMenu,
+  tryHandleFichaHogarCorrectionRequest,
 }))
 vi.mock('./phases/phase-4', () => ({ handleFichaHogar }))
 vi.mock('./detect-decline-reversal', () => ({ detectDeclineReversalIntent: vi.fn().mockResolvedValue(false) }))
@@ -82,7 +79,8 @@ beforeEach(() => {
   cancelPendingRecontact.mockResolvedValue(undefined)
   scheduleRecontact.mockResolvedValue(undefined)
   handleCorrectionFlow.mockResolvedValue(false)
-  handleCorrectionIntent.mockResolvedValue(false)
+  tryHandleCorrectionRequest.mockResolvedValue(false)
+  tryHandleFichaHogarCorrectionRequest.mockResolvedValue(false)
   isAppDownloadedCallback.mockReturnValue(false)
 })
 
@@ -122,7 +120,7 @@ describe('routeMessage — recontact scheduling', () => {
 
   it('code_delivered_registered branch (normal Ficha Hogar turn): schedules recontact after handleFichaHogar', async () => {
     handleFichaHogarCorrectionFlow.mockResolvedValue(false)
-    detectsFichaHogarCorrectionIntent.mockReturnValue(false)
+    tryHandleFichaHogarCorrectionRequest.mockResolvedValue(false)
     const lead = makeLead({ leadStatus: 'code_delivered_registered', currentPhase: 4 })
 
     await routeMessage(lead, makeInbound({ text: 'sí' }), 'corr-1')
@@ -133,12 +131,14 @@ describe('routeMessage — recontact scheduling', () => {
 
   it('code_delivered_registered branch: also schedules recontact when a correction menu is shown instead', async () => {
     handleFichaHogarCorrectionFlow.mockResolvedValue(false)
-    detectsFichaHogarCorrectionIntent.mockReturnValue(true)
+    tryHandleFichaHogarCorrectionRequest.mockResolvedValue(true)
     const lead = makeLead({ leadStatus: 'code_delivered_registered', currentPhase: 4 })
 
     await routeMessage(lead, makeInbound({ text: 'quiero corregir' }), 'corr-1')
 
-    expect(showFichaHogarCorrectionMenu).toHaveBeenCalledWith(lead)
+    expect(tryHandleFichaHogarCorrectionRequest).toHaveBeenCalledWith(lead, 'quiero corregir', 'corr-1', '', {
+      useAIFallback: false,
+    })
     expect(handleFichaHogar).not.toHaveBeenCalled()
     expect(scheduleRecontact).toHaveBeenCalledWith('lead-1', 'corr-1')
   })

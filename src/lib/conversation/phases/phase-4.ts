@@ -121,6 +121,10 @@ export async function handleFichaHogar(
       if (interpreted) resolvedCallback = interpreted
     }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
+      const { tryHandleFichaHogarCorrectionRequest } = await import('../ficha-hogar-correction')
+      if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, question.text)) {
+        return
+      }
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
       if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendFichaHogarQuestion(to, idx)
@@ -143,6 +147,10 @@ export async function handleFichaHogar(
       { leadId: lead.id },
     )
     if (!result.ok) {
+      const { tryHandleFichaHogarCorrectionRequest } = await import('../ficha-hogar-correction')
+      if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, question.text)) {
+        return
+      }
       const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
       const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
       if (!answered) {
@@ -189,8 +197,11 @@ export async function handleFichaHogar(
     .set({ questionIndex: nextIdx, updatedAt: new Date() })
     .where(eq(fichaHogarProfiles.leadId, lead.id))
 
-  if (nextIdx <= FICHA_HOGAR_QUESTION_COUNT) {
-    await sendFichaHogarQuestion(to, nextIdx)
+  const { resumeFichaHogarAfterCorrection } = await import('../ficha-hogar-correction')
+  const finalIdx = await resumeFichaHogarAfterCorrection(lead.id, nextIdx)
+
+  if (finalIdx <= FICHA_HOGAR_QUESTION_COUNT) {
+    await sendFichaHogarQuestion(to, finalIdx)
     return
   }
 

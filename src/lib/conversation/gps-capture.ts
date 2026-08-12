@@ -185,6 +185,22 @@ export async function handleGpsCapture(
     // User tapped/typed the GPS button label but Telegram did not attach coordinates
     // (common on Desktop/Web). Re-show the native location keyboard; do NOT skip to manual.
     if (SHARE_LOCATION_TEXT.test(text) || text.length > 0) {
+      if (!SHARE_LOCATION_TEXT.test(text) && text.length > 0) {
+        // Could be a request to correct an earlier answer rather than location text —
+        // this gate has no other FAQ/fallback awareness, so without this check any
+        // correction request typed here just repeats the location prompt forever.
+        const { tryHandleCorrectionRequest } = await import('./correction')
+        if (
+          await tryHandleCorrectionRequest(
+            lead,
+            text,
+            opts.correlationId,
+            'Comparte tu ubicación o escribe tu departamento y municipio.',
+          )
+        ) {
+          return true
+        }
+      }
       await sendText(
         lead,
         SHARE_LOCATION_TEXT.test(text)
@@ -200,6 +216,20 @@ export async function handleGpsCapture(
   }
 
   if (gpsGateStatus === 'awaiting_confirm') {
+    const text = opts.text?.trim() ?? ''
+    if (text) {
+      const { tryHandleCorrectionRequest } = await import('./correction')
+      if (
+        await tryHandleCorrectionRequest(
+          lead,
+          text,
+          opts.correlationId,
+          '¿Confirmas que esta es tu ubicación?',
+        )
+      ) {
+        return true
+      }
+    }
     // Re-prompt confirm if user sends unrelated text
     if (gpsProposal) {
       await askGpsConfirmation(lead, gpsProposal)

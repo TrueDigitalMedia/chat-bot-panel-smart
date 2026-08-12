@@ -107,6 +107,10 @@ export async function restartSurveyFromField(lead: Lead, field: SurveyFieldName)
 
   const idx = questionIndexForField(field)
   const now = new Date()
+  // Only worth resuming past the corrected question if the user had actually gotten
+  // further ahead than it — correcting the question right in front of you needs no
+  // special resume behavior, same as today.
+  const resumeIdx = lead.surveyQuestionIndex > idx ? lead.surveyQuestionIndex : null
 
   await db.update(surveyProfiles).set(patch).where(eq(surveyProfiles.leadId, lead.id))
   await db
@@ -117,9 +121,9 @@ export async function restartSurveyFromField(lead: Lead, field: SurveyFieldName)
     .update(flowStates)
     .set({
       surveyQuestionIndex: idx,
-      isCorrecting: false,
-      correctingField: null,
-      correctionResumeIndex: null,
+      isCorrecting: resumeIdx !== null,
+      correctingField: resumeIdx !== null ? field : null,
+      correctionResumeIndex: resumeIdx,
       updatedAt: now,
     })
     .where(eq(flowStates.leadId, lead.id))
@@ -166,6 +170,7 @@ export async function applyFieldAndContinue(
   const nextIdx =
     cascade.length > 0 ? questionIndexForField(cascade[0]!) : Math.min(fieldIdx + 1, SURVEY_QUESTION_COUNT)
   const now = new Date()
+  const resumeIdx = lead.surveyQuestionIndex > nextIdx ? lead.surveyQuestionIndex : null
 
   await db.update(surveyProfiles).set(patch).where(eq(surveyProfiles.leadId, lead.id))
   await db
@@ -176,9 +181,9 @@ export async function applyFieldAndContinue(
     .update(flowStates)
     .set({
       surveyQuestionIndex: nextIdx,
-      isCorrecting: false,
-      correctingField: null,
-      correctionResumeIndex: null,
+      isCorrecting: resumeIdx !== null,
+      correctingField: resumeIdx !== null ? field : null,
+      correctionResumeIndex: resumeIdx,
       updatedAt: now,
     })
     .where(eq(flowStates.leadId, lead.id))
@@ -245,17 +250,104 @@ export async function handleCorrectionFlow(
 }
 
 /**
- * NL: user asks to correct → menu of answered questions, or one-shot field update.
+ * Called right after phase-1.ts persists an answer and advances surveyQuestionIndex.
+ * If the lead is mid-correction (flow_states.is_correcting), skips forward past any
+ * question that's already answered (not cleared by the correction's cascade) instead of
+ * re-asking it, until either hitting a genuinely empty field (correction stays in
+ * progress, caller proceeds with the returned index as normal) or catching up to
+ * correction_resume_index — the question the user was on when they asked to correct —
+ * at which point the correction flags are cleared and the survey resumes there exactly,
+ * instead of forcing the user to redo everything after the corrected field.
  */
-export async function handleCorrectionIntent(
+export async function resumeAfterCorrection(leadId: string, nextIdx: number): Promise<number> {
+  const [state] = await db
+    .select({ isCorrecting: flowStates.isCorrecting, correctionResumeIndex: flowStates.correctionResumeIndex })
+    .from(flowStates)
+    .where(eq(flowStates.leadId, leadId))
+    .limit(1)
+
+  if (!state?.isCorrecting || !state.correctionResumeIndex) return nextIdx
+  const resumeIdx = state.correctionResumeIndex
+
+  const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, leadId)).limit(1)
+  const rec = (profile ?? {}) as Record<string, unknown>
+
+  let idx = nextIdx
+  while (idx < resumeIdx && idx <= SURVEY_QUESTION_COUNT) {
+    const q = SURVEY_QUESTIONS[idx - 1]
+    const v = q ? rec[q.fieldName] : undefined
+    const filled = v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')
+    if (!filled) return idx // gap to fill — correction stays in progress as-is
+    idx += 1
+  }
+
+  // Caught up to (or reached) the resume point — correction complete.
+  idx = Math.min(idx, resumeIdx)
+  const now = new Date()
+  await db.update(leads).set({ surveyQuestionIndex: idx, updatedAt: now }).where(eq(leads.id, leadId))
+  await db
+    .update(flowStates)
+    .set({
+      surveyQuestionIndex: idx,
+      isCorrecting: false,
+      correctingField: null,
+      correctionResumeIndex: null,
+      updatedAt: now,
+    })
+    .where(eq(flowStates.leadId, leadId))
+  return idx
+}
+
+async function getFilledFieldsSummary(
+  leadId: string,
+): Promise<{ field: SurveyFieldName; label: string; value: string }[]> {
+  const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, leadId)).limit(1)
+  if (!profile) return []
+  const rec = profile as unknown as Record<string, unknown>
+  return filledFields(rec).map((f) => ({ field: f, label: FIELD_LABELS[f], value: formatValue(rec[f]) }))
+}
+
+/**
+ * NL: user asks to correct → menu of answered questions, one-shot field update, or (via
+ * the AI fallback below) a loosely-phrased request the regex can't parse — "seleccione
+ * mal el pais, puedo corregirlo" — or a field this system can't correct at all, like the
+ * phone number ("unsupported_field"), which gets an explicit message instead of being
+ * silently ignored or mistaken for something else.
+ *
+ * Only requires d3IsShopper (not surveyQuestionIndex >= 1 like the old gate) so this can
+ * also be called from the phone-capture/GPS-capture gates that run before the survey
+ * proper starts — there it'll usually only have something to act on once at least one
+ * survey field (e.g. fullName) is already filled.
+ *
+ * `useAIFallback` defaults to true, but callers that run this check on EVERY turn before
+ * even trying to resolve the message as a normal answer (flow-router's pre-check ahead
+ * of handlePhase1) must pass `false` — otherwise the AI classifier would fire on nearly
+ * every ordinary free-text survey answer, not just as a last resort. Callers that only
+ * reach this after normal answer-resolution (button match, AI button interpretation,
+ * field extraction) has already failed should leave it at the default.
+ */
+export async function tryHandleCorrectionRequest(
   lead: Lead,
   messageText: string,
+  correlationId: string,
+  pendingQuestionText: string,
+  opts: { useAIFallback?: boolean } = {},
 ): Promise<boolean> {
-  if (!lead.d3IsShopper || lead.surveyQuestionIndex < 1) return false
+  if (!lead.d3IsShopper) return false
   if (!messageText.trim()) return false
 
   const { detectCorrectionIntent } = await import('./detect-correction-intent')
-  const intent = detectCorrectionIntent(messageText)
+  const { detectCorrectionIntentAI } = await import('./detect-correction-intent-ai')
+  let intent: Awaited<ReturnType<typeof detectCorrectionIntentAI>> = detectCorrectionIntent(messageText)
+
+  if (intent.kind === 'none' && opts.useAIFallback !== false) {
+    const filled = await getFilledFieldsSummary(lead.id)
+    intent = await detectCorrectionIntentAI(messageText, filled, pendingQuestionText, {
+      leadId: lead.id,
+      correlationId,
+    })
+  }
+
   if (intent.kind === 'none') return false
 
   if (intent.kind === 'open_menu') {
@@ -263,34 +355,46 @@ export async function handleCorrectionIntent(
     return true
   }
 
-  // correct_field
+  if (intent.kind === 'unsupported_field') {
+    await sendText(
+      lead,
+      `Por ahora no puedo corregir ${intent.label} por acá. Escribe "agente" si necesitás ayuda con eso.`,
+    )
+    return true
+  }
+
+  // correct_field — field is a validated SurveyFieldName by construction: the regex
+  // path (detectCorrectionIntent) only ever resolves via resolveFieldAlias, and the AI
+  // path (detectCorrectionIntentAI) only returns a field it was offered from
+  // getFilledFieldsSummary above, i.e. already a SurveyFieldName.
+  const field = intent.field as SurveyFieldName
   if (intent.value) {
-    const q = SURVEY_QUESTIONS.find((x) => x.fieldName === intent.field)
+    const q = SURVEY_QUESTIONS.find((x) => x.fieldName === field)
     if (q?.inputType === 'button') {
-      await restartSurveyFromField(lead, intent.field)
+      await restartSurveyFromField(lead, field)
       return true
     }
-    const captured = await captureSurveyFieldValue(lead.id, intent.field, intent.value, undefined)
+    const captured = await captureSurveyFieldValue(lead.id, field, intent.value, undefined)
     if (!captured.ok) {
       await sendText(lead, captured.message)
-      await restartSurveyFromField(lead, intent.field)
+      await restartSurveyFromField(lead, field)
       return true
     }
     if (captured.needsConfirmation && typeof captured.value === 'string') {
       // Restart on that geo question so confirmation + normal flow apply
-      await restartSurveyFromField(lead, intent.field)
+      await restartSurveyFromField(lead, field)
       const { askGeoConfirmation } = await import('@/lib/geo/confirm')
       await askGeoConfirmation(
         lead,
-        intent.field as 'stateProvince' | 'municipality' | 'neighborhood',
+        field as 'stateProvince' | 'municipality' | 'neighborhood',
         captured.value,
       )
       return true
     }
-    await applyFieldAndContinue(lead, intent.field, captured.value)
+    await applyFieldAndContinue(lead, field, captured.value)
     return true
   }
 
-  await restartSurveyFromField(lead, intent.field)
+  await restartSurveyFromField(lead, field)
   return true
 }

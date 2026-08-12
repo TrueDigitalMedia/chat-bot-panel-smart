@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { fichaHogarProfiles } from '@/lib/db/schema'
+import { fichaHogarProfiles, flowStates } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { FICHA_HOGAR_FIELDS, type FichaHogarFieldName, type Lead } from '@/types/lead'
-import { FICHA_HOGAR_QUESTIONS } from './ficha-hogar-questions'
+import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from './ficha-hogar-questions'
 import { sendFichaHogarQuestion } from './phases/phase-4'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
@@ -87,13 +87,132 @@ export async function restartFichaHogarFromField(lead: Lead, field: FichaHogarFi
   const idx = FICHA_HOGAR_QUESTIONS.findIndex((q) => q.fieldName === field) + 1
   if (idx < 1) return
 
+  const profile = await getProfile(lead.id)
+  const currentIdx = profile?.questionIndex ?? idx
+  const now = new Date()
+  // Only worth resuming past the corrected question if the user had actually gotten
+  // further ahead than it — reuses the same flow_states columns Phase 1's survey
+  // correction uses (safe: a lead is only ever in one phase at a time).
+  const resumeIdx = currentIdx > idx ? currentIdx : null
+
   await db
     .update(fichaHogarProfiles)
-    .set({ [field]: null, questionIndex: idx, updatedAt: new Date() } as Record<string, unknown>)
+    .set({ [field]: null, questionIndex: idx, updatedAt: now } as Record<string, unknown>)
     .where(eq(fichaHogarProfiles.leadId, lead.id))
+  await db
+    .update(flowStates)
+    .set({
+      isCorrecting: resumeIdx !== null,
+      correctingField: resumeIdx !== null ? field : null,
+      correctionResumeIndex: resumeIdx,
+      updatedAt: now,
+    })
+    .where(eq(flowStates.leadId, lead.id))
 
   await sendText(lead, `Ok, volvamos a "${FIELD_LABELS[field]}".`)
   await sendFichaHogarQuestion(lead, idx)
+}
+
+/**
+ * Called right after phase-4.ts persists an answer and advances questionIndex. Same
+ * purpose as correction.ts's resumeAfterCorrection for the main survey — skips forward
+ * past any Ficha Hogar question already answered before the correction, until either
+ * hitting a genuinely empty field or catching up to correction_resume_index.
+ */
+export async function resumeFichaHogarAfterCorrection(leadId: string, nextIdx: number): Promise<number> {
+  const [state] = await db
+    .select({ isCorrecting: flowStates.isCorrecting, correctionResumeIndex: flowStates.correctionResumeIndex })
+    .from(flowStates)
+    .where(eq(flowStates.leadId, leadId))
+    .limit(1)
+
+  if (!state?.isCorrecting || !state.correctionResumeIndex) return nextIdx
+  const resumeIdx = state.correctionResumeIndex
+
+  const profile = await getProfile(leadId)
+  const rec = (profile ?? {}) as unknown as Record<string, unknown>
+
+  let idx = nextIdx
+  while (idx < resumeIdx && idx <= FICHA_HOGAR_QUESTION_COUNT) {
+    const q = FICHA_HOGAR_QUESTIONS[idx - 1]
+    const v = q ? rec[q.fieldName] : undefined
+    const filled = v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')
+    if (!filled) return idx
+    idx += 1
+  }
+
+  idx = Math.min(idx, resumeIdx)
+  const now = new Date()
+  await db
+    .update(fichaHogarProfiles)
+    .set({ questionIndex: idx, updatedAt: now })
+    .where(eq(fichaHogarProfiles.leadId, leadId))
+  await db
+    .update(flowStates)
+    .set({ isCorrecting: false, correctingField: null, correctionResumeIndex: null, updatedAt: now })
+    .where(eq(flowStates.leadId, leadId))
+  return idx
+}
+
+async function getFichaHogarFilledFieldsSummary(
+  leadId: string,
+): Promise<{ field: FichaHogarFieldName; label: string; value: string }[]> {
+  const profile = await getProfile(leadId)
+  if (!profile) return []
+  const rec = profile as unknown as Record<string, unknown>
+  return FICHA_HOGAR_FIELDS.filter((f) => rec[f] !== null && rec[f] !== undefined).map((f) => ({
+    field: f,
+    label: FIELD_LABELS[f],
+    value: formatValue(rec[f]),
+  }))
+}
+
+/**
+ * NL correction entry point for Ficha Hogar — same shape as correction.ts's
+ * tryHandleCorrectionRequest: cheap regex "open menu" check first, then (unless the
+ * caller opts out via useAIFallback:false, for pre-checks that run on every turn) an AI
+ * fallback that can name a specific field or flag one this system can't correct.
+ */
+export async function tryHandleFichaHogarCorrectionRequest(
+  lead: Lead,
+  messageText: string,
+  correlationId: string,
+  pendingQuestionText: string,
+  opts: { useAIFallback?: boolean } = {},
+): Promise<boolean> {
+  if (!messageText.trim()) return false
+
+  if (detectsFichaHogarCorrectionIntent(messageText)) {
+    await showFichaHogarCorrectionMenu(lead)
+    return true
+  }
+
+  if (opts.useAIFallback === false) return false
+
+  const { detectCorrectionIntentAI } = await import('./detect-correction-intent-ai')
+  const filled = await getFichaHogarFilledFieldsSummary(lead.id)
+  const intent = await detectCorrectionIntentAI(messageText, filled, pendingQuestionText, {
+    leadId: lead.id,
+    correlationId,
+  })
+
+  if (intent.kind === 'none') return false
+  if (intent.kind === 'open_menu') {
+    await showFichaHogarCorrectionMenu(lead)
+    return true
+  }
+  if (intent.kind === 'unsupported_field') {
+    await sendText(
+      lead,
+      `Por ahora no puedo corregir ${intent.label} por acá. Escribe "agente" si necesitás ayuda con eso.`,
+    )
+    return true
+  }
+
+  const field = intent.field as FichaHogarFieldName
+  if (!(FICHA_HOGAR_FIELDS as readonly string[]).includes(field)) return false
+  await restartFichaHogarFromField(lead, field)
+  return true
 }
 
 export async function cancelFichaHogarCorrection(lead: Lead): Promise<void> {

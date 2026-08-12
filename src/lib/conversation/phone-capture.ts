@@ -81,6 +81,20 @@ export async function handlePhoneCapture(
 
   const phone = normalizePhone(raw)
   if (!phone) {
+    // Could be a request to correct an earlier answer (e.g. their name) rather than a
+    // malformed phone number — check before falling into the generic phone-retry path.
+    const { tryHandleCorrectionRequest } = await import('./correction')
+    if (
+      await tryHandleCorrectionRequest(
+        lead,
+        raw,
+        opts.correlationId ?? '',
+        'Para continuar necesitamos tu número de teléfono.',
+      )
+    ) {
+      return true
+    }
+
     // A number-shaped typo and a question ("para que quieres mi numero") look the same
     // to normalizePhone — check FAQ/clarify first so a real question gets answered
     // instead of just the generic "no pude validar" retry every time.

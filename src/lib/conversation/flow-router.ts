@@ -9,7 +9,8 @@ import {
   REGISTER_CALLBACK_YES,
 } from '@/lib/onboarding/registration-choice'
 import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/app-downloaded'
-import { handleCorrectionFlow, handleCorrectionIntent } from './correction'
+import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
+import { SURVEY_QUESTIONS } from './survey-questions'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
@@ -137,17 +138,19 @@ export async function routeMessage(
   // Fase 4 — Ficha Hogar interactive questionnaire (spec 008). No FAQ digression
   // check here (research.md R7) — same simplicity as the waiting_for_code branch above.
   if (status === 'code_delivered_registered') {
-    const {
-      handleFichaHogarCorrectionFlow,
-      detectsFichaHogarCorrectionIntent,
-      showFichaHogarCorrectionMenu,
-    } = await import('./ficha-hogar-correction')
+    const { handleFichaHogarCorrectionFlow, tryHandleFichaHogarCorrectionRequest } = await import(
+      './ficha-hogar-correction'
+    )
     if (await handleFichaHogarCorrectionFlow(lead, callbackData)) {
       await scheduleRecontact(lead.id, correlationId).catch(() => {})
       return
     }
-    if (messageText && detectsFichaHogarCorrectionIntent(messageText)) {
-      await showFichaHogarCorrectionMenu(lead)
+    // Cheap regex-only pass here (no AI) — same reasoning as the survey's pre-check
+    // above; the AI fallback runs later from phase-4.ts's own failure branches.
+    if (
+      messageText &&
+      (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, '', { useAIFallback: false }))
+    ) {
       await scheduleRecontact(lead.id, correlationId).catch(() => {})
       return
     }
@@ -216,8 +219,18 @@ export async function routeMessage(
       return
     }
 
-    if (messageText && (await handleCorrectionIntent(lead, messageText))) {
-      return
+    if (messageText) {
+      const pendingQuestionText = SURVEY_QUESTIONS[lead.surveyQuestionIndex - 1]?.text ?? ''
+      // Cheap regex-only pass here (no AI) — this runs ahead of every answer attempt, so
+      // the AI fallback only kicks in later, from phase-1.ts's own "couldn't resolve this
+      // answer" branches, once normal answer-resolution has already failed.
+      if (
+        await tryHandleCorrectionRequest(lead, messageText, correlationId, pendingQuestionText, {
+          useAIFallback: false,
+        })
+      ) {
+        return
+      }
     }
 
     if (isExpectedAnswer(lead, messageText, callbackData)) {

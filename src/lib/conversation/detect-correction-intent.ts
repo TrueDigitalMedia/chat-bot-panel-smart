@@ -12,6 +12,11 @@ export type CorrectionIntent =
  *  - "quiero corregir" / "corregir una respuesta" → menu
  *  - "quiero corregir email"
  *  - "actualiza el email a ana@mail.com"
+ *
+ * Kept dependency-free (no DB/AI imports) — see ./detect-correction-intent-ai.ts for the
+ * AI fallback, split into its own file so importing this pure function doesn't pull in
+ * database client code at module-load time (flow-router.ts and unit tests import this
+ * one statically).
  */
 export function detectCorrectionIntent(text: string): CorrectionIntent {
   const t = text.trim()

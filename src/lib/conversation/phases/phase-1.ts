@@ -345,6 +345,10 @@ export async function handlePhase1(
         }
         fieldValue = result.value
       } else {
+        const { tryHandleCorrectionRequest } = await import('../correction')
+        if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
+          return
+        }
         const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
         if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
         await sendSurveyQuestion(to, idx, lead.id)
@@ -400,6 +404,14 @@ export async function handlePhase1(
     const hasGeoValidation = (isGeoField && isGuatemala) || hasGenericGeoValidation
 
     if (!result.ok) {
+      // Check for a correction request BEFORE the geo raw-text fallback below — otherwise
+      // something like "seleccione mal el pais, puedo corregirlo" typed at a geo question
+      // would get forced through fuzzy department/municipality matching instead of ever
+      // being recognized as wanting to fix an earlier answer.
+      const { tryHandleCorrectionRequest } = await import('../correction')
+      if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
+        return
+      }
       if (hasGeoValidation && messageText.trim().length >= 2) {
         console.warn('[phase-1] extraction failed — using raw text for geo', {
           leadId: lead.id,
@@ -507,15 +519,21 @@ export async function handlePhase1(
     .set({ surveyQuestionIndex: nextIdx, updatedAt: new Date() })
     .where(eq(flowStates.leadId, lead.id))
 
+  // If this answer was part of correcting an earlier field, skip re-asking any question
+  // already answered before, resuming exactly where the user was instead of redoing the
+  // rest of the survey.
+  const { resumeAfterCorrection } = await import('../correction')
+  const finalIdx = await resumeAfterCorrection(lead.id, nextIdx)
+
   // Enter GPS gate before manual country questions
-  if (nextIdx === 2) {
+  if (finalIdx === 2) {
     const { requestGps } = await import('../gps-capture')
-    await requestGps({ ...lead, surveyQuestionIndex: nextIdx })
+    await requestGps({ ...lead, surveyQuestionIndex: finalIdx })
     return
   }
 
-  if (nextIdx <= SURVEY_QUESTION_COUNT) {
-    await sendSurveyQuestion(to, nextIdx, lead.id)
+  if (finalIdx <= SURVEY_QUESTION_COUNT) {
+    await sendSurveyQuestion(to, finalIdx, lead.id)
     return
   }
 
