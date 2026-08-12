@@ -15,6 +15,8 @@ export function supportRedirect(): string {
   return `Gracias por tu interés. Nuestro equipo se pondrá en contacto contigo para ayudarte a resolver tus dudas.\n\nMientras tanto, aquí estaré si quieres retomar tu inscripción.`
 }
 
+export const NOT_UNDERSTOOD_MESSAGE = 'No entendí lo que respondiste 🤔. Te vuelvo a preguntar:'
+
 export const AGENT_HANDOFF_EMAIL = 'jaqueline.olicon@wp.numerator.com'
 
 export const PHASE2_AGENT_INTRO =

@@ -8,14 +8,14 @@ import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
-import { EXIT_A, EXIT_B, EXIT_B_THANKS, PHASE2_AGENT_INTRO } from '../exit-messages'
+import { EXIT_A, EXIT_B, EXIT_B_THANKS, PHASE2_AGENT_INTRO, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
 import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
-import { detectAcceptDeclineIntent } from '../detect-accept-decline'
+import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import type { Lead } from '@/types/lead'
 
@@ -85,17 +85,17 @@ async function maybeAnswerFaq(
   messageText: string,
   correlationId: string,
   pendingQuestionText: string,
-): Promise<void> {
-  if (!messageText.trim()) return
+): Promise<boolean> {
+  if (!messageText.trim()) return false
   const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-  await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
+  return tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
 }
 
 /**
  * Resolves a decision-gate turn to 'accept'/'decline' when the tap itself didn't
  * already say so — matchButtonChoice first (cheap, handles "1"/"2" or an exact/short
- * label like "sí"/"no"), then an LLM classifier for everything else (e.g. "acepto",
- * "no quiero", "dale"), since these buttons' labels are multi-word phrases
+ * label like "sí"/"no"), then interpretButtonAnswer (AI) for everything else (e.g.
+ * "acepto", "no quiero", "dale"), since these buttons' labels are multi-word phrases
  * ("Confirmo y acepto") that free text rarely repeats verbatim. Returns null — no
  * accept/decline signal found — for empty text, real questions, or noise, so the
  * caller falls through to its existing FAQ-then-reask behavior.
@@ -118,7 +118,10 @@ async function resolveGateDecision(
   if (matched === acceptCallback) return 'accept'
   if (matched === declineCallback) return 'decline'
 
-  return detectAcceptDeclineIntent(messageText, pendingQuestionText, { leadId, correlationId })
+  const interpreted = await interpretButtonAnswer(buttons, messageText, pendingQuestionText, { leadId, correlationId })
+  if (interpreted === acceptCallback) return 'accept'
+  if (interpreted === declineCallback) return 'decline'
+  return null
 }
 
 // Handle Phase 1: opt-in gate, decision points D1→D2→D3, then the survey (SURVEY_QUESTION_COUNT questions)
@@ -157,7 +160,8 @@ export async function handlePhase1(
     } else {
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
-      await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendOptIn(to)
     }
     return
@@ -182,7 +186,8 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendD1(to)
     }
     return
@@ -207,7 +212,8 @@ export async function handlePhase1(
       await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await sendD2(to)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendReEngagementConsent(to)
     }
     return
@@ -233,7 +239,8 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'not_qualified', 'd2_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId, D2_TEXT)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, D2_TEXT)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendD2(to)
     }
     return
@@ -263,7 +270,8 @@ export async function handlePhase1(
       await transitionLead(lead.id, 'quota_exhausted', 'd3_no', correlationId)
       await sendText(to, EXIT_B)
     } else {
-      await maybeAnswerFaq(lead, messageText, correlationId, D3_TEXT)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, D3_TEXT)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendD3(to)
     }
     return
@@ -304,24 +312,41 @@ export async function handlePhase1(
       const matched = matchButtonChoice(question.buttons, messageText)
       if (matched) resolvedCallback = matched
     }
+    // householdSize/bedrooms only offer quick-pick buttons up to 6 — a typed number
+    // outside that range still needs to go through, via the same extraction path
+    // free-text fields use, so it skips the AI-interpretation step below.
+    const isUnresolvedNumericTyped =
+      !resolvedCallback?.startsWith(`${question.fieldName}:`) &&
+      NUMERIC_BUTTON_FIELDS.has(question.fieldName) &&
+      /^\d+$/.test(messageText.trim())
+    if (
+      !resolvedCallback?.startsWith(`${question.fieldName}:`) &&
+      messageText.trim() &&
+      question.buttons &&
+      !isUnresolvedNumericTyped
+    ) {
+      const interpreted = await interpretButtonAnswer(question.buttons, messageText, question.text, {
+        leadId: lead.id,
+        correlationId,
+      })
+      if (interpreted) resolvedCallback = interpreted
+    }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
-      // householdSize/bedrooms only offer quick-pick buttons up to 6 — a typed number
-      // outside that range still needs to go through, via the same extraction path
-      // free-text fields use.
-      if (NUMERIC_BUTTON_FIELDS.has(question.fieldName) && /^\d+$/.test(messageText.trim())) {
+      if (isUnresolvedNumericTyped) {
         const result = await extractField(
           question.fieldName as 'householdSize' | 'bedrooms',
           messageText,
           { leadId: lead.id },
         )
         if (!result.ok) {
-          await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
           await sendSurveyQuestion(to, idx, lead.id)
           return
         }
         fieldValue = result.value
       } else {
-        await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+        const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+        if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
         await sendSurveyQuestion(to, idx, lead.id)
         return
       }
@@ -337,7 +362,7 @@ export async function handlePhase1(
   } else {
     // Free-text: ignore empty / stray button callbacks — just re-ask
     if (!messageText.trim()) {
-      await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendSurveyQuestion(to, idx, lead.id)
       return
     }
@@ -386,7 +411,7 @@ export async function handlePhase1(
         const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
         const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
         if (!answered) {
-          await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
         }
         await sendSurveyQuestion(to, idx, lead.id)
         return

@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client'
 import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard, sendVideo } from '@/lib/messaging/send'
-import { supportRedirect, EXIT_A } from '../exit-messages'
+import { supportRedirect, EXIT_A, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import type { Lead } from '@/types/lead'
 import { FICHA_HOGAR_BUTTON_FIELDS } from '@/types/lead'
 import { generateObject } from 'ai'
@@ -17,6 +17,7 @@ import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
 import { describeQuotaMatch } from '@/lib/scoring/quota'
 import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
 import { matchButtonChoice } from '../match-button-choice'
+import { interpretButtonAnswer } from '../interpret-button-answer'
 import type { ChannelRecipient } from '@/types/channel'
 
 const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
@@ -70,10 +71,10 @@ async function maybeAnswerFaq(
   messageText: string,
   correlationId: string,
   pendingQuestionText: string,
-): Promise<void> {
-  if (!messageText.trim()) return
+): Promise<boolean> {
+  if (!messageText.trim()) return false
   const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-  await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
+  return tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, pendingQuestionText)
 }
 
 /**
@@ -112,8 +113,16 @@ export async function handleFichaHogar(
       const matched = matchButtonChoice(question.buttons, messageText)
       if (matched) resolvedCallback = matched
     }
+    if (!resolvedCallback?.startsWith(`${question.fieldName}:`) && messageText.trim() && question.buttons) {
+      const interpreted = await interpretButtonAnswer(question.buttons, messageText, question.text, {
+        leadId: lead.id,
+        correlationId,
+      })
+      if (interpreted) resolvedCallback = interpreted
+    }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
-      await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendFichaHogarQuestion(to, idx)
       return
     }
@@ -124,7 +133,7 @@ export async function handleFichaHogar(
         : raw
   } else {
     if (!messageText.trim()) {
-      await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+      await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendFichaHogarQuestion(to, idx)
       return
     }
@@ -137,7 +146,7 @@ export async function handleFichaHogar(
       const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
       const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
       if (!answered) {
-        await sendText(to, 'Tuve un problema, ¿puedes repetirlo?')
+        await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       }
       await sendFichaHogarQuestion(to, idx)
       return
