@@ -13,6 +13,7 @@ import { handleCorrectionFlow, handleCorrectionIntent } from './correction'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
+import { mightBeAgenteTypo } from './agent-typo'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -35,8 +36,8 @@ function isRestartRequest(text: string): boolean {
   return false
 }
 
-/** User asks to be handed off to a human agent ("agente"), from any state. */
-function isAgentHandoffRequest(text: string): boolean {
+/** Exact ask, no typo — the common case, handled without an AI call. */
+function isExactAgentHandoffRequest(text: string): boolean {
   const t = text.trim().toLowerCase()
   if (!t) return false
   return /^agente\b/.test(t)
@@ -84,9 +85,21 @@ export async function routeMessage(
   }
 
   // Allow agent handoff from any state — purely informational, doesn't change lead status/phase.
-  if (messageText && isAgentHandoffRequest(messageText)) {
-    await sendText(lead, agentHandoffReply())
-    return
+  // Exact "agente" is handled with no AI cost; anything typo-close to it (mightBeAgenteTypo)
+  // is confirmed with an AI call before treating it as a handoff request, so an unrelated
+  // short survey answer that happens to resemble "agente" isn't misrouted.
+  if (messageText) {
+    if (isExactAgentHandoffRequest(messageText)) {
+      await sendText(lead, agentHandoffReply())
+      return
+    }
+    if (mightBeAgenteTypo(messageText)) {
+      const { detectAgentHandoffIntent } = await import('./detect-agent-handoff')
+      if (await detectAgentHandoffIntent(messageText, { leadId: lead.id, correlationId })) {
+        await sendText(lead, agentHandoffReply())
+        return
+      }
+    }
   }
 
   // code_delivered_no_response means the inactivity freeze fired before the user
