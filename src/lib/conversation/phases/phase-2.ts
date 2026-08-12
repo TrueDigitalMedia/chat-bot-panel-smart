@@ -5,7 +5,7 @@ import { sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import { PHASE2_CODE_DELAY_SECONDS } from '@/lib/scheduler/constants'
 import { APP_DOWNLOADED_CALLBACK } from '@/lib/onboarding/app-downloaded'
-import { IOS_APP_LINK, ANDROID_APP_LINK } from '../exit-messages'
+import { IOS_APP_LINK, ANDROID_APP_LINK, PHASE2_AGENT_INTRO } from '../exit-messages'
 import type { Lead } from '@/types/lead'
 
 export async function handlePhase2(lead: Lead, _correlationId: string): Promise<void> {
@@ -16,6 +16,7 @@ export async function handlePhase2(lead: Lead, _correlationId: string): Promise<
   await sendInlineKeyboard(
     chatId,
     `🎉 ¡Felicidades! Tienes un cupo disponible.\n\n` +
+      `${PHASE2_AGENT_INTRO}\n\n` +
       `Descarga la app:\n📱 iOS: ${IOS_APP_LINK}\n🤖 Android: ${ANDROID_APP_LINK}\n\n` +
       `Una vez descargada, recibirás tu código de registro.`,
     [[{ text: '📲 Ya la descargué', callback_data: APP_DOWNLOADED_CALLBACK }]],

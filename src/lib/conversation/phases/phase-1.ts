@@ -8,7 +8,7 @@ import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
-import { EXIT_A, EXIT_B, EXIT_B_THANKS, PHASE2_AGENT_INTRO, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
+import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
@@ -584,7 +584,6 @@ export async function handlePhase1(
 
   // Advance to Phase 2
   await transitionLead(lead.id, 'link_sent', 'survey_complete_quota_available', correlationId)
-  await sendText(to, PHASE2_AGENT_INTRO)
   // Phase 2 handler will be called by the router on next tick
   const { handlePhase2 } = await import('./phase-2')
   await handlePhase2(lead, correlationId)
