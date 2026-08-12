@@ -3,6 +3,9 @@ import { db } from '@/lib/db/client'
 import { flowStates, leads, surveyProfiles } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { SURVEY_FIELDS, type Lead, type SurveyFieldName } from '@/types/lead'
+import { transitionLead } from '@/lib/state-machine'
+import { EXIT_A } from './exit-messages'
+import { isMinorAge } from './age-eligibility'
 import {
   FIELD_LABELS,
   cascadeClearFields,
@@ -161,7 +164,16 @@ export async function applyFieldAndContinue(
   lead: Lead,
   field: SurveyFieldName,
   value: unknown,
+  correlationId: string = generateCorrelationId(),
 ): Promise<void> {
+  // Minors don't qualify as panelists — also checked in phase-1.ts for the first
+  // answer; this catches a correction that changes age back down below the minimum.
+  if (field === 'age' && typeof value === 'number' && isMinorAge(value)) {
+    await transitionLead(lead.id, 'not_qualified', 'age_minor', correlationId)
+    await sendText(lead, EXIT_A)
+    return
+  }
+
   const cascade = cascadeClearFields(field)
   const patch: Record<string, unknown> = { [field]: value }
   for (const f of cascade) patch[f] = null
@@ -391,7 +403,7 @@ export async function tryHandleCorrectionRequest(
       )
       return true
     }
-    await applyFieldAndContinue(lead, field, captured.value)
+    await applyFieldAndContinue(lead, field, captured.value, correlationId)
     return true
   }
 

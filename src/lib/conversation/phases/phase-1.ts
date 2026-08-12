@@ -17,6 +17,7 @@ import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
+import { isMinorAge } from '../age-eligibility'
 import type { Lead } from '@/types/lead'
 
 import type { ChannelRecipient } from '@/types/channel'
@@ -486,6 +487,14 @@ export async function handlePhase1(
     .update(surveyProfiles)
     .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
     .where(eq(surveyProfiles.leadId, lead.id))
+
+  // Minors don't qualify as panelists — checked right after age is captured, before
+  // advancing to the next question.
+  if (question.fieldName === 'age' && typeof fieldValue === 'number' && isMinorAge(fieldValue)) {
+    await transitionLead(lead.id, 'not_qualified', 'age_minor', correlationId)
+    await sendText(to, EXIT_A)
+    return
+  }
 
   // Manual path: NSE allowlist after municipality (before neighborhood)
   if (question.fieldName === 'municipality') {
