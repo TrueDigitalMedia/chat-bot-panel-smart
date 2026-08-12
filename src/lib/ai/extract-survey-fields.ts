@@ -45,6 +45,10 @@ export const FIELD_HINTS: Partial<Record<FieldSchemaKey, string>> = {
   dateOfBirth:
     'Formato esperado: DD/MM/AAAA (día/mes/año, con ceros a la izquierda). Convierte cualquier fecha mencionada en el mensaje a ese formato exacto.',
   shoppingCategories: `Esta pregunta le mostró al usuario una lista numerada de categorías y le pidió indicar todas las que apliquen, usando los números directamente: ${SHOPPING_CATEGORIES_HINT_LIST}. El usuario puede responder con números sueltos o separados por comas/espacios ("1", "1,3,8", "1 y 3"), con los nombres de las categorías, o combinando ambos — en cualquier caso, mapea cada mención al id numérico correspondiente de esa lista y devuelve el arreglo de esos ids, sin duplicados, en cualquier orden. Si el usuario indica explícitamente que no compra ninguna de estas categorías (por ejemplo "ninguna" o "no compro nada"), devuelve un arreglo vacío []. Devuelve null únicamente si el mensaje no tiene relación alguna con esta pregunta.`,
+  householdSize:
+    'Si el usuario escribe el número en palabras (p. ej. "siete", "ocho", "diez"), conviértelo a su forma numérica.',
+  bedrooms:
+    'Si el usuario escribe el número en palabras (p. ej. "siete", "ocho", "diez"), conviértelo a su forma numérica.',
 }
 
 export async function extractField(

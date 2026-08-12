@@ -312,13 +312,14 @@ export async function handlePhase1(
       const matched = matchButtonChoice(question.buttons, messageText)
       if (matched) resolvedCallback = matched
     }
-    // householdSize/bedrooms only offer quick-pick buttons up to 6 — a typed number
-    // outside that range still needs to go through, via the same extraction path
-    // free-text fields use, so it skips the AI-interpretation step below.
+    // householdSize/bedrooms only offer quick-pick buttons up to 6 — a typed answer
+    // outside that range (digits or spelled out, e.g. "siete") still needs to go
+    // through the same AI extraction path free-text fields use, so it skips the
+    // button-interpretation step below (which can only ever resolve to one of the
+    // 1-6 button values anyway, never a number outside that range).
     const isUnresolvedNumericTyped =
       !resolvedCallback?.startsWith(`${question.fieldName}:`) &&
-      NUMERIC_BUTTON_FIELDS.has(question.fieldName) &&
-      /^\d+$/.test(messageText.trim())
+      NUMERIC_BUTTON_FIELDS.has(question.fieldName)
     if (
       !resolvedCallback?.startsWith(`${question.fieldName}:`) &&
       messageText.trim() &&
