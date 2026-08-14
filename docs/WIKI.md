@@ -94,7 +94,7 @@ Usuario (Telegram / WhatsApp)
 
 ```
 incomplete
-  ├─→ not_qualified        (D1 decline / D2 decline / D3 no)
+  ├─→ not_qualified        (D1 decline / D3 no)
   ├─→ quota_exhausted      (D3 no / sin cupo tras encuesta)
   └─→ link_sent            (encuesta completa + cupo disponible)
         └─→ waiting_for_code
@@ -110,13 +110,15 @@ incomplete
 
 ### Fase 1 — Calificación + Encuesta
 
-**Decision Points (D1 / D2 / D3):**
+**Decision Points (D1 / D3):**
 
 | Paso | Pregunta | Acción si rechaza |
 |------|----------|-------------------|
 | D1 | Aceptación de T&C | → `not_qualified` |
-| D2 | ¿Quieres ganar premios? | → `not_qualified` |
 | D3 | ¿Eres quien organiza las compras? | → `quota_exhausted` |
+
+D2 ("¿Quieres ganar premios por decirnos qué compras?") fue removido del flujo (2026-08-14) — tras
+el consentimiento de re-contacto, el bot pasa directo a D3.
 
 El opt-in inicial ("¿Te gustaría inscribirte...?") se envía junto con el saludo en un solo mensaje combinado (no dos mensajes separados) — ver [§15](#15-mejoras-de-conversación-e-ia-2026-08-12).
 
@@ -148,7 +150,7 @@ El archivo `docs/Preguntas_Kantar_CAM_Ecuador_México (MX Y EC TBD).xlsx`, hoja 
 |---|----------|------------------|-------|
 | 1 | ¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios? | Inscribirme / No | **NUEVO** — no está implementado |
 | 2 | Confirma T&C (link panelsmart-cenam.com) | Confirmo y acepto / No, gracias | = D1 actual |
-| 3 | ¿Quieres ganar premios por decirnos qué compras? | Sí quiero / No, gracias | = D2 actual |
+| 3 | ¿Quieres ganar premios por decirnos qué compras? | Sí quiero / No, gracias | **REMOVIDA de la implementación** (2026-08-14) — era D2, ya no se pregunta; el bot pasa de D1 directo a D3 |
 | 4 | ¿Eres quien administra y organiza las compras del hogar? | Sí / No | = D3 actual |
 | 5 | ¿Cuál es tu nombre y apellido? | Texto libre | = Q1 actual |
 | 6 | ¿En qué país te encuentras? | Panamá, CR, HN, SV, GT, RD, NI | = Q2 actual |
@@ -600,7 +602,7 @@ GET /api/admin/dashboard/by-country  → resumen por país
 ### ✅ Implementado y funcionando
 
 - Flujo completo de 4 fases (Telegram y WhatsApp)
-- Opt-in inicial + Decision points D1, D2, D3 (spec `007-fase1-new-survey-questions`)
+- Opt-in inicial + Decision points D1, D3 (spec `007-fase1-new-survey-questions`; D2 fue removido del flujo)
 - Encuesta de 19 preguntas (16 originales + edad/embarazo/bebé<3, spec `007-fase1-new-survey-questions`)
 - GPS gate + reverse geocoding + catálogo NSE-GEO CAM
 - Validación geográfica de Guatemala (departamento → municipio → zona)

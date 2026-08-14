@@ -27,7 +27,6 @@ type LeadDetail = {
   quotaSegment: string | null
   conversationSummary: string | null
   d1Accepted: boolean
-  d2Accepted: boolean | null
   d3IsShopper: boolean | null
   lastActivityAt: string
   fullName: string | null

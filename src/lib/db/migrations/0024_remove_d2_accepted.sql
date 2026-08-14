@@ -1,0 +1,1 @@
+ALTER TABLE "leads" DROP COLUMN "d2_accepted";

@@ -176,7 +176,6 @@ export async function getConversationDetail(leadId: string) {
       quotaSegment: leads.quotaSegment,
       conversationSummary: leads.conversationSummary,
       d1Accepted: leads.d1Accepted,
-      d2Accepted: leads.d2Accepted,
       d3IsShopper: leads.d3IsShopper,
       lastActivityAt: leads.lastActivityAt,
       createdAt: leads.createdAt,

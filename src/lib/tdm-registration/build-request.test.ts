@@ -19,7 +19,7 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     score: 42,
     optInAccepted: true,
     d1Accepted: true,
-    d2Accepted: true,
+    reEngagementConsentAccepted: true,
     d3IsShopper: true,
     conversationSummary: null,
     reEngagementCount: 0,

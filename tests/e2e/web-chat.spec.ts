@@ -79,7 +79,7 @@ test.describe('Chat web — location gate (US3)', () => {
     await request.get('/api/chat/web')
     await request.post('/api/chat/web', { data: { callbackData: 'optin:accept', label: 'Inscribirme' } })
     await request.post('/api/chat/web', { data: { callbackData: 'd1:accept', label: 'Confirmo y acepto' } })
-    await request.post('/api/chat/web', { data: { callbackData: 'd2:accept', label: 'Sí quiero' } })
+    await request.post('/api/chat/web', { data: { callbackData: 'reengagement_consent:accept', label: 'Sí, autorizo' } })
     const afterD3 = await request.post('/api/chat/web', { data: { callbackData: 'd3:yes', label: 'Sí' } })
     expect(afterD3.status()).toBe(200)
     const afterD3Body = await afterD3.json()

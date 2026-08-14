@@ -8,7 +8,6 @@ export const EVAL_PASS_THRESHOLD = 80
 /** Phase-1 terminal reasons that trigger a conversation eval. */
 export const PHASE1_EVAL_REASONS = new Set([
   'd1_decline',
-  'd2_decline',
   'd3_no',
   'nse_geo_out_of_sample',
   'nse_geo_out_of_sample_manual',
@@ -34,8 +33,6 @@ export function inferPhase1EvalReason(actual: QualificationActual): string | nul
   const status = actual.leadStatus
 
   if (status === 'not_qualified') {
-    if (actual.d1Accepted === false) return 'd1_decline'
-    if (actual.d2Accepted === false) return 'd2_decline'
     return 'd1_decline'
   }
 
@@ -83,7 +80,6 @@ export function statusMatchesExpected(
 
 export type EvalScenarioType =
   | 'd1_decline'
-  | 'd2_decline'
   | 'd3_no'
   | 'geo_out'
   | 'survey_complete_no_quota'
@@ -92,7 +88,6 @@ export type EvalScenarioType =
 export interface QualificationActual {
   leadStatus: LeadStatus | string
   d1Accepted: boolean
-  d2Accepted: boolean | null
   d3IsShopper: boolean | null
   score: number | null
   quotaSegment: string | null
@@ -156,7 +151,6 @@ const WEIGHTS: Record<keyof EvalChecks, number> = {
 
 export function reasonToScenarioType(reason: string): EvalScenarioType {
   if (reason === 'd1_decline') return 'd1_decline'
-  if (reason === 'd2_decline') return 'd2_decline'
   if (reason === 'd3_no') return 'd3_no'
   if (reason === 'nse_geo_out_of_sample' || reason === 'nse_geo_out_of_sample_manual') {
     return 'geo_out'
@@ -173,8 +167,6 @@ export function deriveExpected(
 
   switch (scenario) {
     case 'd1_decline':
-      return { leadStatus: 'not_qualified', requireScoring: false, requireGeo: false }
-    case 'd2_decline':
       return { leadStatus: 'not_qualified', requireScoring: false, requireGeo: false }
     case 'd3_no':
       return { leadStatus: 'quota_exhausted', requireScoring: false, requireGeo: false }
@@ -274,7 +266,6 @@ export function runQualificationEval(
       expected: reasonToScenarioType(reason),
       actual: {
         d1Accepted: actual.d1Accepted,
-        d2Accepted: actual.d2Accepted,
         d3IsShopper: actual.d3IsShopper,
         leadStatus: actual.leadStatus,
       },
@@ -341,33 +332,21 @@ function checkQualification(reason: string, actual: QualificationActual): boolea
   switch (scenario) {
     case 'd1_decline':
       return actual.d1Accepted === false && actual.leadStatus === 'not_qualified'
-    case 'd2_decline':
-      return (
-        actual.d1Accepted === true &&
-        actual.d2Accepted === false &&
-        actual.leadStatus === 'not_qualified'
-      )
     case 'd3_no':
       return (
         actual.d1Accepted === true &&
-        actual.d2Accepted === true &&
         actual.d3IsShopper === false &&
         actual.leadStatus === 'quota_exhausted'
       )
     case 'geo_out':
       return (
         actual.d1Accepted === true &&
-        actual.d2Accepted === true &&
         actual.d3IsShopper === true &&
         actual.leadStatus === 'quota_exhausted'
       )
     case 'survey_complete_no_quota':
     case 'survey_complete_quota_available':
-      return (
-        actual.d1Accepted === true &&
-        actual.d2Accepted === true &&
-        actual.d3IsShopper === true
-      )
+      return actual.d1Accepted === true && actual.d3IsShopper === true
   }
 }
 

@@ -30,7 +30,6 @@ async function loadQualificationActual(leadId: string): Promise<QualificationAct
     .select({
       leadStatus: leads.leadStatus,
       d1Accepted: leads.d1Accepted,
-      d2Accepted: leads.d2Accepted,
       d3IsShopper: leads.d3IsShopper,
       score: leads.score,
       quotaSegment: leads.quotaSegment,
@@ -55,7 +54,6 @@ async function loadQualificationActual(leadId: string): Promise<QualificationAct
   return {
     leadStatus: row.leadStatus,
     d1Accepted: row.d1Accepted,
-    d2Accepted: row.d2Accepted,
     d3IsShopper: row.d3IsShopper,
     score: row.score,
     quotaSegment: row.quotaSegment,

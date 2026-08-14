@@ -31,8 +31,6 @@ const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar
 const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
 const REENGAGEMENT_CONSENT_TEXT =
   '📋 Para mejorarte la experiencia, nos gustaría hacer seguimiento de tu conversación y ponernos en contacto si abandonas el registro.\n¿Autorizas que te contactemos en caso de que dejes el proceso a mitad?'
-const D2_TEXT =
-  'A continuación te haremos unas preguntas que nos ayudarán a clasificar tu hogar dentro del panel, y poder ganar premios más rápido.\n¿Quieres ganar premios por decirnos qué compras?'
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
 
 // Decision-gate button layouts — shared between the send* helpers below and
@@ -53,12 +51,6 @@ const REENGAGEMENT_CONSENT_BUTTONS: InlineKeyboardButton[][] = [
   [
     { text: 'Sí, autorizo', callback_data: 'reengagement_consent:accept' },
     { text: 'No, gracias', callback_data: 'reengagement_consent:decline' },
-  ],
-]
-const D2_BUTTONS: InlineKeyboardButton[][] = [
-  [
-    { text: 'Sí quiero', callback_data: 'd2:accept' },
-    { text: 'No, gracias', callback_data: 'd2:decline' },
   ],
 ]
 const D3_BUTTONS: InlineKeyboardButton[][] = [
@@ -125,7 +117,7 @@ async function resolveGateDecision(
   return null
 }
 
-// Handle Phase 1: opt-in gate, decision points D1→D2→D3, then the survey (SURVEY_QUESTION_COUNT questions)
+// Handle Phase 1: opt-in gate, decision points D1→D3, then the survey (SURVEY_QUESTION_COUNT questions)
 export async function handlePhase1(
   lead: Lead,
   messageText: string,
@@ -208,41 +200,14 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ reEngagementConsentAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await sendD2(to)
+      await sendD3(to)
     } else if (decision === 'decline') {
       await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await sendD2(to)
+      await sendD3(to)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
       if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       await sendReEngagementConsent(to)
-    }
-    return
-  }
-
-  // D2: Prizes
-  if (lead.d2Accepted === null) {
-    const decision = await resolveGateDecision(
-      D2_BUTTONS,
-      messageText,
-      callbackData,
-      'd2:accept',
-      'd2:decline',
-      D2_TEXT,
-      correlationId,
-      lead.id,
-    )
-    if (decision === 'accept') {
-      await db.update(leads).set({ d2Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await sendD3(to)
-    } else if (decision === 'decline') {
-      await db.update(leads).set({ d2Accepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await transitionLead(lead.id, 'not_qualified', 'd2_decline', correlationId)
-      await sendText(to, EXIT_A)
-    } else {
-      const answered = await maybeAnswerFaq(lead, messageText, correlationId, D2_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendD2(to)
     }
     return
   }
@@ -611,10 +576,6 @@ async function sendD1(to: ChannelRecipient): Promise<void> {
 
 async function sendReEngagementConsent(to: ChannelRecipient): Promise<void> {
   await sendInlineKeyboard(to, REENGAGEMENT_CONSENT_TEXT, REENGAGEMENT_CONSENT_BUTTONS)
-}
-
-async function sendD2(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, D2_TEXT, D2_BUTTONS)
 }
 
 async function sendD3(to: ChannelRecipient): Promise<void> {

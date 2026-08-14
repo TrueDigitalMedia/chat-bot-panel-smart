@@ -122,11 +122,6 @@ async function resendPendingQuestion(
     await handlePhase1(lead, '', undefined, '')
     return
   }
-  if (lead.d2Accepted === null) {
-    const { handlePhase1 } = await import('./phases/phase-1')
-    await handlePhase1(lead, '', undefined, '')
-    return
-  }
   if (lead.d3IsShopper === null) {
     const { handlePhase1 } = await import('./phases/phase-1')
     await handlePhase1(lead, '', undefined, '')

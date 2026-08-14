@@ -12,7 +12,6 @@ function baseActual(overrides: Partial<QualificationActual> = {}): Qualification
   return {
     leadStatus: 'incomplete',
     d1Accepted: false,
-    d2Accepted: null,
     d3IsShopper: null,
     score: null,
     quotaSegment: null,
@@ -65,7 +64,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'quota_exhausted',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: false,
     })
     const result = runQualificationEval('d3_no', actual)
@@ -77,7 +75,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'quota_exhausted',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: true,
       country: 'Guatemala',
       stateProvince: 'Guatemala',
@@ -95,7 +92,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'quota_exhausted',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: true,
       country: 'Guatemala',
       stateProvince: 'Guatemala',
@@ -113,7 +109,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'link_sent',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: true,
       country: 'Guatemala',
       stateProvince: 'Guatemala',
@@ -142,7 +137,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'link_sent',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: true,
       country: 'Guatemala',
       stateProvince: 'Guatemala',
@@ -166,7 +160,6 @@ describe('runQualificationEval', () => {
     const actual = baseActual({
       leadStatus: 'quota_exhausted',
       d1Accepted: true,
-      d2Accepted: true,
       d3IsShopper: true,
       country: 'Guatemala',
       stateProvince: 'Guatemala',
@@ -224,7 +217,6 @@ describe('inferPhase1EvalReason', () => {
         baseActual({
           leadStatus: 'quota_exhausted',
           d1Accepted: true,
-          d2Accepted: true,
           d3IsShopper: true,
           inQuotaGeo: false,
           country: 'Guatemala',

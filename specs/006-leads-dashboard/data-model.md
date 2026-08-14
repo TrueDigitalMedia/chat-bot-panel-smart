@@ -64,7 +64,7 @@ export interface FunnelFilters {
 ## Relación con entidades existentes
 
 ```
-leads (channel, country* via join, d1Accepted, d2Accepted, d3IsShopper, leadStatus, quotaSegment, createdAt)
+leads (channel, country* via join, d1Accepted, d3IsShopper, leadStatus, quotaSegment, createdAt)
   │
   ├─ survey_profiles (country, nseRegion, completedAt)  — 1:1, creado junto con el lead
   │

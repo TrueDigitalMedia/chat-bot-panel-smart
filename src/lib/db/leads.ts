@@ -116,7 +116,7 @@ export async function deleteConversation(leadId: string): Promise<boolean> {
 
 /**
  * Un-declines a lead stuck in `not_qualified`/`quota_exhausted` from saying "No" at the
- * opt-in/D1/D2/D3 gate (not the other paths to those statuses, e.g. a real no-quota
+ * opt-in/D1/D3 gate (not the other paths to those statuses, e.g. a real no-quota
  * result after finishing the survey — that has d3IsShopper: true, so it falls through
  * to `null` below and this returns null). Resumes exactly at the declined gate: earlier
  * accepted gates are left untouched, that gate and everything after it go back to their
@@ -129,8 +129,6 @@ export async function reviveDeclinedLead(lead: Lead): Promise<Lead | null> {
     patch = {}
   } else if (!lead.d1Accepted) {
     patch = {}
-  } else if (lead.d2Accepted === false) {
-    patch = { d2Accepted: null, d3IsShopper: null }
   } else if (lead.d3IsShopper === false) {
     patch = { d3IsShopper: null }
   }
@@ -160,7 +158,6 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
       quotaSegment: null,
       score: null,
       d1Accepted: false,
-      d2Accepted: null,
       d3IsShopper: null,
       conversationSummary: null,
       phoneNumber: null,

@@ -43,6 +43,13 @@
       "when": 1786058857124,
       "tag": "0023_lead_status_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786733473411,
+      "tag": "0024_remove_d2_accepted",
+      "breakpoints": true
     }
   ]
 }

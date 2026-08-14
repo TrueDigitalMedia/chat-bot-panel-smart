@@ -94,7 +94,6 @@ export const leads = pgTable(
     optInAccepted: boolean('opt_in_accepted').notNull().default(false),
     d1Accepted: boolean('d1_accepted').notNull().default(false),
     reEngagementConsentAccepted: boolean('re_engagement_consent_accepted'),
-    d2Accepted: boolean('d2_accepted'),
     d3IsShopper: boolean('d3_is_shopper'),
     conversationSummary: text('conversation_summary'),
     reEngagementCount: smallint('re_engagement_count').notNull().default(0),
