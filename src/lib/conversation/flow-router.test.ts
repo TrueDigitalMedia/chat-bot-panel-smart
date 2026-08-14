@@ -44,6 +44,12 @@ vi.mock('@/lib/onboarding/registration-choice', () => ({
   REGISTER_CALLBACK_YES: 'register:yes',
 }))
 vi.mock('@/lib/onboarding/app-downloaded', () => ({ handleAppDownloaded, isAppDownloadedCallback }))
+vi.mock('./reengage-choice', () => ({
+  handleReengageChoice: vi.fn(),
+  isReengageCallback: vi.fn().mockReturnValue(false),
+  REENGAGE_CALLBACK_CONTINUE: 'reengage:continue',
+  REENGAGE_CALLBACK_STOP: 'reengage:stop',
+}))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
 vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn() }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))

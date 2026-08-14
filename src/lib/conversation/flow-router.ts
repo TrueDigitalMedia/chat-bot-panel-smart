@@ -9,6 +9,7 @@ import {
   REGISTER_CALLBACK_YES,
 } from '@/lib/onboarding/registration-choice'
 import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/app-downloaded'
+import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import { resetLeadConversation } from '@/lib/db/leads'
@@ -19,7 +20,7 @@ import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
 const BUTTON_PREFIXES = [
-  'optin:', 'd1:', 'reengagement_consent:', 'd2:', 'd3:', 'country:', 'gender:', 'educationPsh:', 'cars:',
+  'optin:', 'd1:', 'reengagement_consent:', 'd3:', 'country:', 'gender:', 'educationPsh:', 'cars:',
   'domesticHelp:', 'shoppingFrequency:', 'contactChannel:', 'contactSchedule:',
   'isPregnant:', 'hasBabyUnder3:', 'householdSize:', 'bedrooms:',
   'correct:',
@@ -111,6 +112,14 @@ export async function routeMessage(
     isRegistrationCallback(callbackData)
   ) {
     await handleRegistrationChoice(lead, callbackData!, correlationId)
+    return
+  }
+
+  // Continue/stop buttons attached to the 2nd re-engagement nudge (jobs/re-engage) —
+  // checked before any status branch since it can arrive while the lead is in any of
+  // the 3 recontact pools (phase 1, link_sent, code_delivered_registered).
+  if (isReengageCallback(callbackData)) {
+    await handleReengageChoice(lead, callbackData!, correlationId)
     return
   }
 

@@ -6,7 +6,8 @@ import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { isTerminal } from '@/lib/state-machine/transitions'
 import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registration-code'
-import { sendText } from '@/lib/messaging/send'
+import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
+import { REENGAGE_CALLBACK_CONTINUE, REENGAGE_CALLBACK_STOP } from '@/lib/conversation/reengage-choice'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import { MAX_REENGAGEMENT_ATTEMPTS, reengagementDelaySeconds } from '@/lib/scheduler/constants'
 import { getNextMessageVariant, resolveMessagePool } from '@/lib/scheduler/messages'
@@ -162,7 +163,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const attempt = payload.attemptNumber as 1 | 2 | 3
     const pool = resolveMessagePool(lead.leadStatus as LeadStatus)
     const message = await getNextMessageVariant(lead.id, attempt, pool)
-    await sendText(lead, message)
+    // 2nd nudge only — offers an explicit way out instead of just repeating the ask,
+    // so a genuinely uninterested lead can opt out (`re_engagement_declined`) rather
+    // than silently riding out to attempt 3's `re_engagement_exhausted`.
+    if (attempt === 2) {
+      await sendInlineKeyboard(lead, message, [
+        [
+          { text: '✅ Sí, quiero continuar', callback_data: REENGAGE_CALLBACK_CONTINUE },
+          { text: '❌ No, gracias', callback_data: REENGAGE_CALLBACK_STOP },
+        ],
+      ])
+    } else {
+      await sendText(lead, message)
+    }
 
     await db
       .update(reEngagementSchedules)
