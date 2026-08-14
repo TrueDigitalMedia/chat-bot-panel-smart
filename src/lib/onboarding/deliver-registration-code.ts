@@ -2,12 +2,20 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
+import { sendText, sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
 import type { Lead } from '@/types/lead'
 
 const ONBOARDING_VIDEO = process.env.ONBOARDING_VIDEO_URL ?? ''
+
+const ONBOARDING_INSTRUCTIONS_TEXT =
+  '📋 Estos son los pasos para registrarte en la app; tu código de registro va justo a continuación 👇\n\n' +
+  '1️⃣ Abre la app e ingresa a «¿Ha olvidado su contraseña?».\n' +
+  '2️⃣ Escribe tu código de usuario y pulsa «entregar».\n' +
+  '3️⃣ Escribe los últimos 4 dígitos de tu celular (el mismo que colocaste para contactarte).\n' +
+  '4️⃣ Recibirás un código por mensaje de texto a tu número de celular; escríbelo para terminar la verificación.\n\n' +
+  'Si tienes cualquier duda durante el registro, escríbeme y te ayudo.'
 
 /**
  * Everything that happens once a registration code is in hand, however it arrived
@@ -31,6 +39,7 @@ export async function deliverRegistrationCode(
     .where(eq(leads.id, lead.id))
 
   const label = opts.mock ? ' (mock)' : ''
+  await sendText(lead, ONBOARDING_INSTRUCTIONS_TEXT)
   if (ONBOARDING_VIDEO) {
     await sendVideo(lead, ONBOARDING_VIDEO, `🎬 Código${label}: ${code}`)
   }
