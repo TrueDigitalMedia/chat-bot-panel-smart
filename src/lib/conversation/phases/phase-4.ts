@@ -296,8 +296,5 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
     await sendVideo(lead, THANK_YOU_VIDEO, '📹 Así registras tus compras en la app')
   }
 
-  await sendText(
-    lead,
-    'Gracias por tu interés y por el tiempo que has dedicado. 🙌\n\n💬 Si necesitas ayuda, escríbenos y nuestro equipo de atención al cliente te apoyará.',
-  )
+  await sendText(lead, 'Gracias por tu interés y por el tiempo que has dedicado. 🙌')
 }
