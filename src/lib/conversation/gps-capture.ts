@@ -275,14 +275,15 @@ async function applyAllowlistAfterConfirm(
     })
   }
 
-  const neighborhood = proposal.neighborhood?.trim() || null
+  // Q5 (neighborhood) is never asked — recorded as null unconditionally, GPS-detected
+  // value included, so it's silently hidden from every user regardless of channel.
   await db
     .update(surveyProfiles)
     .set({
       country,
       stateProvince: proposal.stateProvince,
       municipality: proposal.municipality,
-      neighborhood,
+      neighborhood: null,
       nseRegion,
       geoSource: 'gps_share' satisfies GeoSource,
       inQuotaGeo: nseRegion !== null,
@@ -291,21 +292,7 @@ async function applyAllowlistAfterConfirm(
 
   await setGpsState(lead.id, { gpsGateStatus: 'done', gpsProposal: null })
 
-  if (!neighborhood) {
-    // Ask only neighborhood (Q5), then continue
-    await db
-      .update(leads)
-      .set({ surveyQuestionIndex: 5, updatedAt: new Date() })
-      .where(eq(leads.id, lead.id))
-    await db
-      .update(flowStates)
-      .set({ surveyQuestionIndex: 5, updatedAt: new Date() })
-      .where(eq(flowStates.leadId, lead.id))
-    await sendSurveyQuestion(lead, 5, lead.id)
-    return
-  }
-
-  // Skip to email (Q6)
+  // Skip straight to email (Q6)
   await db
     .update(leads)
     .set({ surveyQuestionIndex: 6, updatedAt: new Date() })

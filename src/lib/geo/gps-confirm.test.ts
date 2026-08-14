@@ -2,15 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { formatGpsConfirmText } from '@/lib/geo/gps-confirm-format'
 
 describe('gps-confirm-format', () => {
-  it('shows No identificado when barrio missing', () => {
+  it('never shows barrio/neighborhood, even when the proposal has one', () => {
     const text = formatGpsConfirmText({
       country: 'Guatemala',
       stateProvince: 'Guatemala',
       municipality: 'Mixco',
-      neighborhood: null,
+      neighborhood: 'Zona 1',
     })
     expect(text).toContain('País: Guatemala')
     expect(text).toContain('Municipio/Cantón: Mixco')
-    expect(text).toContain('Barrio: No identificado')
+    expect(text).not.toContain('Barrio')
+    expect(text).not.toContain('Zona 1')
   })
 })

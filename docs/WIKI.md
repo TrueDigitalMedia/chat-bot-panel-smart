@@ -156,7 +156,7 @@ El archivo `docs/Preguntas_Kantar_CAM_Ecuador_México (MX Y EC TBD).xlsx`, hoja 
 | 6 | ¿En qué país te encuentras? | Panamá, CR, HN, SV, GT, RD, NI | = Q2 actual |
 | 7 | ¿En qué provincia o departamento vives? | Geo Kantar | = Q3 actual |
 | 8 | ¿En qué cantón o municipio vives? | Geo Kantar | = Q4 actual |
-| 9 | ¿En qué parroquia, barrio o distrito vives? | Geo Kantar | = Q5 actual |
+| 9 | ¿En qué parroquia, barrio o distrito vives? | Geo Kantar | = Q5 actual — **OCULTA al usuario** (2026-08-14): sigue en `SURVEY_QUESTIONS`/se sincroniza a TDM y Kantar, pero nunca se pregunta; `neighborhood` siempre se guarda `null` |
 | 10 | ¿Cuál es tu correo electrónico? | Texto libre | = Q6 actual |
 | 11 | ¿Cuál es tu género? | Masculino / Femenino | = Q7 actual (opción Femenino reemplaza Mujer) |
 | 12 | ¿Cuántos años cumplidos tienes? | Texto libre | **NUEVO** — cuota extra, NO influye en NSE |

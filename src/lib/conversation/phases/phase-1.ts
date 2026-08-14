@@ -507,6 +507,23 @@ export async function handlePhase1(
     return
   }
 
+  // Q5 (neighborhood) is hidden from every user — same "always null, skip to Q6" rule
+  // as the GPS path (gps-capture.ts's applyAllowlistAfterConfirm).
+  if (finalIdx === 5) {
+    await db
+      .update(surveyProfiles)
+      .set({ neighborhood: null })
+      .where(eq(surveyProfiles.leadId, lead.id))
+    const skipIdx = 6
+    await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+    await db
+      .update(flowStates)
+      .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
+      .where(eq(flowStates.leadId, lead.id))
+    await sendSurveyQuestion(to, skipIdx, lead.id)
+    return
+  }
+
   if (finalIdx <= SURVEY_QUESTION_COUNT) {
     await sendSurveyQuestion(to, finalIdx, lead.id)
     return
