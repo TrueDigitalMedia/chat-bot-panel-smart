@@ -23,7 +23,7 @@ import type { Lead } from '@/types/lead'
 import type { ChannelRecipient } from '@/types/channel'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
-const TNC_LINK = 'https://upg-cd-ne.kantar.com/latin-america/cookies-y-politica-de-privacidad'
+const TNC_LINK = 'https://www.panelsmart-cenam.com/terminos-y-condiciones'
 
 const GREETING_TEXT =
   '¡Hola! Soy el asistente virtual de PanelSmart 🙂. Te voy a hacer algunas preguntas para ver si calificás como panelista. Empecemos: ¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
