@@ -182,7 +182,7 @@ export async function routeMessage(
     }
     await sendText(
       lead,
-      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo.`,
+      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo en un plazo de 24 a 72 horas.`,
     )
     await scheduleRecontact(lead.id, correlationId).catch(() => {})
     return
