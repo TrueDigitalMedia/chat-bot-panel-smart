@@ -14,7 +14,10 @@ import {
   type GeoSource,
 } from '@/lib/geo/cam-nse-catalog'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
+import { matchButtonChoice } from './match-button-choice'
+import { interpretButtonAnswer } from './interpret-button-answer'
 import type { Lead } from '@/types/lead'
+import type { InlineKeyboardButton } from '@/types/telegram'
 
 export type GpsGateStatus =
   | 'pending_request'
@@ -24,7 +27,51 @@ export type GpsGateStatus =
   | 'skipped_manual'
   | null
 
-const SKIP_TEXT = /^escribir mi ubicaci[oó]n$/i
+// Shared literal with messaging/send.ts's own copy (see that file's comment on why it
+// isn't imported from here instead).
+const GPS_MANUAL_CALLBACK = 'gps:manual'
+// Any mention of "escribir"/"manual"/"a mano" anywhere in the text — not anchored to
+// the full button label — so "escribir", "escribir ubicacion", "escribir mi
+// ubicación", "quiero hacerlo manual", "a mano" etc. all resolve. Safe to be this
+// permissive: this gate only has two ways out (share GPS or type it), so any mention
+// of "escribir"/"manual" here is never ambiguous with anything else.
+const SKIP_TEXT = /\b(?:escribir|manual)\b|\ba mano\b/i
+const SKIP_BUTTON: InlineKeyboardButton[][] = [
+  [{ text: 'Escribir mi ubicación', callback_data: GPS_MANUAL_CALLBACK }],
+]
+// Only used to give interpretButtonAnswer two options to classify against — it
+// self-discards (returns null unconditionally) for a single-option set. GPS sharing
+// itself has no real button (it's a native location share), so this entry is never
+// actually sent to the user; it exists purely for the AI prompt's option list.
+const GPS_SHARE_PSEUDO_CALLBACK = 'gps:share'
+const MANUAL_ENTRY_CLASSIFY_BUTTONS: InlineKeyboardButton[][] = [
+  [{ text: 'Compartir mi ubicación GPS', callback_data: GPS_SHARE_PSEUDO_CALLBACK }],
+  [{ text: 'Escribir mi ubicación a mano', callback_data: GPS_MANUAL_CALLBACK }],
+]
+
+/**
+ * Resolves free text typed at the GPS gate to "wants manual entry" — regex first
+ * (cheap, no AI cost), then matchButtonChoice (numeric "1", exact/typo-tolerant label),
+ * then interpretButtonAnswer (AI) as the final fallback for anything phrased
+ * differently ("prefiero hacerlo yo mismo", "no tengo gps", etc.) — same 3-tier
+ * resolution every other button-adjacent free-text gate in this codebase uses
+ * (resolveGateDecision in phase-1.ts).
+ */
+async function wantsManualEntry(
+  text: string,
+  opts: { leadId: string; correlationId: string },
+): Promise<boolean> {
+  if (!text.trim()) return false
+  if (SKIP_TEXT.test(text)) return true
+  if (matchButtonChoice(SKIP_BUTTON, text) === GPS_MANUAL_CALLBACK) return true
+  const interpreted = await interpretButtonAnswer(
+    MANUAL_ENTRY_CLASSIFY_BUTTONS,
+    text,
+    'Comparte tu ubicación GPS o escribe tu ubicación a mano.',
+    opts,
+  )
+  return interpreted === GPS_MANUAL_CALLBACK
+}
 /** Button label with or without leading emoji — if Telegram sends text instead of location. */
 const SHARE_LOCATION_TEXT = /^(?:📍\s*)?compartir ubicaci[oó]n$/i
 
@@ -144,6 +191,15 @@ export async function handleGpsCapture(
   }
 
   if (gpsGateStatus === 'awaiting_location') {
+    if (opts.callbackData === GPS_MANUAL_CALLBACK) {
+      await confirmLocationKeyboardRemoved(
+        lead,
+        'De acuerdo, continuamos con las preguntas de ubicación.',
+      )
+      await beginManualGeo(lead)
+      return true
+    }
+
     if (opts.location) {
       console.info('[gps] gps_received', { leadId: lead.id })
       const proposal = await reverseGeocode(opts.location.latitude, opts.location.longitude)
@@ -173,7 +229,7 @@ export async function handleGpsCapture(
     }
 
     const text = opts.text?.trim() ?? ''
-    if (SKIP_TEXT.test(text)) {
+    if (await wantsManualEntry(text, { leadId: lead.id, correlationId: opts.correlationId })) {
       await confirmLocationKeyboardRemoved(
         lead,
         'De acuerdo, continuamos con las preguntas de ubicación.',

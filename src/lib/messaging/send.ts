@@ -9,6 +9,11 @@ import * as whatsapp from '@/lib/whatsapp/send'
 import { setPendingWaChoices } from '@/lib/whatsapp/pending-choices'
 import { logConversationMessage } from '@/lib/db/conversation-messages'
 
+// Shared literal with gps-capture.ts's own GPS_MANUAL_CALLBACK (not imported — this
+// module is transport-only and shouldn't depend on conversation-domain modules, which
+// themselves already import from here).
+const GPS_MANUAL_CALLBACK = 'gps:manual'
+
 function leadIdOf(to: ChannelRecipient): string | undefined {
   const maybe = to as ChannelRecipient & { id?: string }
   return typeof maybe.id === 'string' ? maybe.id : undefined
@@ -166,9 +171,10 @@ export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
     }
     case 'whatsapp': {
       const prompt =
-        '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS (pin de WhatsApp) o escribe «Escribir mi ubicación» para continuar a mano.'
-      await whatsapp.sendWhatsAppText(to.channelUserId, prompt)
-      await logOut(to, 'text', prompt, { type: 'location_request' })
+        '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS (pin de WhatsApp) o toca el botón para continuar a mano.'
+      await sendInlineKeyboard(to, prompt, [
+        [{ text: 'Escribir mi ubicación', callback_data: GPS_MANUAL_CALLBACK }],
+      ])
       break
     }
     case 'web': {
