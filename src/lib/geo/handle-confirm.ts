@@ -75,6 +75,25 @@ export async function persistSurveyFieldAndAdvance(
     return
   }
 
+  // Q5 (neighborhood) is hidden from every user — same "always null, skip to Q6" rule
+  // as the other two advance paths (phase-1.ts, gps-capture.ts's
+  // applyAllowlistAfterConfirm). This is the fuzzy-geo-confirm advance path, so it
+  // needs its own copy of the skip.
+  if (nextIdx === 5) {
+    await db
+      .update(surveyProfiles)
+      .set({ neighborhood: null })
+      .where(eq(surveyProfiles.leadId, lead.id))
+    const skipIdx = 6
+    await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+    await db
+      .update(flowStates)
+      .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
+      .where(eq(flowStates.leadId, lead.id))
+    await sendSurveyQuestion(to, skipIdx, lead.id)
+    return
+  }
+
   if (nextIdx <= SURVEY_QUESTION_COUNT) {
     await sendSurveyQuestion(to, nextIdx, lead.id)
     return
@@ -151,6 +170,25 @@ export async function handleGeoConfirmCallback(
 
   const noField = parseGeoConfirmNo(callbackData)
   if (noField) {
+    // Q5 (neighborhood) is hidden from every user — only reachable here via a
+    // natural-language correction request (correction.ts) for a Guatemala zone that
+    // fuzzy-matched, never via the normal survey flow. Rejecting the guess must not
+    // re-ask the question itself; just drop it back to null and move on.
+    if (noField === 'neighborhood') {
+      await db
+        .update(surveyProfiles)
+        .set({ neighborhood: null })
+        .where(eq(surveyProfiles.leadId, lead.id))
+      const skipIdx = 6
+      await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await db
+        .update(flowStates)
+        .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
+        .where(eq(flowStates.leadId, lead.id))
+      await sendText(lead, 'Entendido, seguimos.')
+      await sendSurveyQuestion(lead, skipIdx, lead.id)
+      return true
+    }
     await sendText(lead, 'Ok, escríbelo de nuevo por favor.')
     const fieldIdx = questionIndexForField(noField as Parameters<typeof questionIndexForField>[0])
     await sendSurveyQuestion(lead, fieldIdx, lead.id)
