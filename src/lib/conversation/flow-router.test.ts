@@ -16,6 +16,7 @@ const {
   handleFichaHogarCorrectionFlow,
   tryHandleFichaHogarCorrectionRequest,
   handleFichaHogar,
+  hasSentOutboundMessage,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -32,6 +33,7 @@ const {
   handleFichaHogarCorrectionFlow: vi.fn(),
   tryHandleFichaHogarCorrectionRequest: vi.fn(),
   handleFichaHogar: vi.fn(),
+  hasSentOutboundMessage: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -52,6 +54,7 @@ vi.mock('./reengage-choice', () => ({
 }))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
 vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn() }))
+vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
 vi.mock('./ficha-hogar-correction', () => ({
@@ -88,6 +91,7 @@ beforeEach(() => {
   tryHandleCorrectionRequest.mockResolvedValue(false)
   tryHandleFichaHogarCorrectionRequest.mockResolvedValue(false)
   isAppDownloadedCallback.mockReturnValue(false)
+  hasSentOutboundMessage.mockResolvedValue(true)
 })
 
 describe('routeMessage — recontact scheduling', () => {
@@ -184,5 +188,16 @@ describe('routeMessage — recontact scheduling', () => {
 
     expect(cancelPendingJobs).toHaveBeenCalledWith('lead-1', 1)
     expect(cancelPendingRecontact).toHaveBeenCalledWith('lead-1')
+  })
+
+  it('a brand new lead\'s first "hola" is not treated as a restart — the bot never spoke to them yet', async () => {
+    hasSentOutboundMessage.mockResolvedValue(false)
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'hola' }), 'corr-1')
+
+    expect(resetLeadConversation).not.toHaveBeenCalled()
+    expect(sendText).not.toHaveBeenCalled()
+    expect(handlePhase1).toHaveBeenCalledWith(lead, 'hola', undefined, 'corr-1')
   })
 })

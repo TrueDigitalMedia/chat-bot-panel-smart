@@ -13,6 +13,7 @@ import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import { resetLeadConversation } from '@/lib/db/leads'
+import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
 import { mightBeAgenteTypo } from './agent-typo'
@@ -72,8 +73,13 @@ export async function routeMessage(
     await cancelPendingRecontact(lead.id).catch(() => {})
   }
 
-  // Allow restart from any state (including terminal) — avoids support-message loop
-  if (messageText && isRestartRequest(messageText)) {
+  // Allow restart from any state (including terminal) — avoids support-message loop.
+  // Only applies once the bot has actually said something to this lead before — a brand
+  // new lead's first "hola" is a greeting, not a restart request, and routing it through
+  // here would send the restart ack before handlePhase1 runs, which would make its own
+  // hasSentOutboundMessage check (the one gating the bootstrap GREETING_TEXT) see a
+  // message that was never really part of the conversation.
+  if (messageText && isRestartRequest(messageText) && (await hasSentOutboundMessage(lead.id))) {
     const fresh = await resetLeadConversation(lead.id)
     // cancelPendingJobs (phase-scoped) also cancels functional jobs (e.g.
     // request_registration_code) the lead may have had pending mid-registration;
