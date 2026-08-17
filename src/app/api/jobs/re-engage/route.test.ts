@@ -7,6 +7,7 @@ const {
   transitionLead,
   requestRegistrationCodeForLead,
   sendText,
+  sendInlineKeyboard,
   scheduleJob,
   getNextMessageVariant,
 } = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const {
   transitionLead: vi.fn(),
   requestRegistrationCodeForLead: vi.fn(),
   sendText: vi.fn(),
+  sendInlineKeyboard: vi.fn(),
   scheduleJob: vi.fn(),
   getNextMessageVariant: vi.fn(),
 }))
@@ -30,7 +32,14 @@ vi.mock('@/lib/state-machine', () => ({ transitionLead: (...args: unknown[]) => 
 vi.mock('@/lib/onboarding/request-registration-code', () => ({
   requestRegistrationCodeForLead: (...args: unknown[]) => requestRegistrationCodeForLead(...args),
 }))
-vi.mock('@/lib/messaging/send', () => ({ sendText: (...args: unknown[]) => sendText(...args) }))
+vi.mock('@/lib/messaging/send', () => ({
+  sendText: (...args: unknown[]) => sendText(...args),
+  sendInlineKeyboard: (...args: unknown[]) => sendInlineKeyboard(...args),
+}))
+vi.mock('@/lib/conversation/reengage-choice', () => ({
+  REENGAGE_CALLBACK_CONTINUE: 'reengage:continue',
+  REENGAGE_CALLBACK_STOP: 'reengage:stop',
+}))
 vi.mock('@/lib/scheduler/re-engagement', () => ({ scheduleJob: (...args: unknown[]) => scheduleJob(...args) }))
 vi.mock('@/lib/scheduler/messages', async () => {
   const actual = await vi.importActual<typeof import('@/lib/scheduler/messages')>('@/lib/scheduler/messages')
@@ -149,7 +158,16 @@ describe('POST /api/jobs/re-engage', () => {
     const body = await res.json()
 
     expect(getNextMessageVariant).toHaveBeenCalledWith('lead-1', 1, 'phase2_link_reminder')
-    expect(sendText).toHaveBeenCalledWith(expect.anything(), '¿Ya descargaste la app?')
+    expect(sendInlineKeyboard).toHaveBeenCalledWith(
+      expect.anything(),
+      '¿Ya descargaste la app?',
+      [
+        [
+          { text: '✅ Sí, quiero continuar', callback_data: 'reengage:continue' },
+          { text: '❌ No, gracias', callback_data: 'reengage:stop' },
+        ],
+      ],
+    )
     // Escalates using the freshly-read currentPhase (2), not payload.phase (1).
     expect(scheduleJob).toHaveBeenCalledWith('lead-1', 2, 2, expect.any(Number), 're-engage')
     expect(body.outcome).toBe('sent')

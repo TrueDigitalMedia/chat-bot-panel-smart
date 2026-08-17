@@ -76,14 +76,17 @@ export async function getOrCreateListPickerContent(
   body: string,
   buttons: InlineKeyboardButton[],
 ): Promise<string> {
+  // `description` is optional — omitted, not copied from `item`, so WhatsApp's list
+  // confirmation bubble doesn't render the same label twice stacked on two lines.
   const items = buttons.slice(0, 10).map((b) => ({
     item: truncate(b.text, 24),
     id: truncate(b.callback_data, 200),
-    description: truncate(b.text, 72),
   }))
   const bodyText = truncate(body, 1024)
+  // 'lp2' (not 'lp') so this never resolves to a Content SID cached under the old key
+  // shape from before description was dropped.
   const key = cacheKey(
-    'lp',
+    'lp2',
     bodyText,
     items.map((i) => ({ title: i.item, id: i.id })),
   )
