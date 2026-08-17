@@ -36,7 +36,18 @@ export async function handleReengageChoice(
 
   if (callbackData === REENGAGE_CALLBACK_STOP) {
     await cancelPendingRecontact(lead.id).catch(() => {})
-    await transitionLead(lead.id, 'abandono', 're_engagement_declined', correlationId)
+    // Every nudge (jobs/re-engage/route.ts) now ships the Continue/Stop buttons, and
+    // reEngagementCount is bumped there right after sending each one — so by the time
+    // this callback lands, reEngagementCount identifies which attempt it was declined
+    // on. Falls back to the generic reason for any count outside 1-3 (shouldn't happen,
+    // but a decline should never go unrecorded over an unexpected count).
+    const DECLINE_REASON_BY_ATTEMPT: Record<number, string> = {
+      1: 're_engagement_declined_1st_attempt',
+      2: 're_engagement_declined_2nd_attempt',
+      3: 're_engagement_declined_3rd_attempt',
+    }
+    const reason = DECLINE_REASON_BY_ATTEMPT[lead.reEngagementCount] ?? 're_engagement_declined'
+    await transitionLead(lead.id, 'abandono', reason, correlationId)
     await sendText(
       lead,
       'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
