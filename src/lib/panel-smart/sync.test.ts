@@ -10,7 +10,7 @@ vi.mock('@/lib/db/call-log', () => ({ logCall: vi.fn().mockResolvedValue(undefin
 vi.mock('@/lib/env', () => ({ isPanelSmartSyncEnabled: () => isPanelSmartSyncEnabled() }))
 vi.mock('./client', () => ({ syncToPanelSmart: (...args: unknown[]) => syncToPanelSmart(...args) }))
 
-import { syncPendingPanelSmartAnswers } from './sync'
+import { syncPendingPanelSmartAnswers, previewPanelSmartSync } from './sync'
 import { logCall } from '@/lib/db/call-log'
 
 /** Chainable fake matching `db.select().from(X).where(Y).limit(Z)` → resolves to `rows`. */
@@ -142,5 +142,96 @@ describe('syncPendingPanelSmartAnswers', () => {
 
     expect(result).toBe(false)
     expect(syncToPanelSmart).not.toHaveBeenCalled()
+  })
+
+  it('force: true resends every filled field even when the snapshot already matches, and logs the payload', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    dbMock.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...LEAD_ROW,
+            leadStatus: 'incomplete',
+            panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
+          },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+    syncToPanelSmart.mockResolvedValue(undefined)
+
+    const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'manual', force: true })
+
+    expect(result).toBe(true)
+    const sentPayload = syncToPanelSmart.mock.calls[0][0] as {
+      lead_id: string
+      responses: Array<{ codigo_pregunta: string; respuesta: unknown }>
+    }
+    // Both fields already matched the synced snapshot — a non-forced sync would have
+    // sent neither (see the "no-ops when every filled field already matches" test above).
+    expect(sentPayload.responses).toEqual(
+      expect.arrayContaining([
+        { codigo_pregunta: 'fullName', pregunta: expect.any(String), respuesta: 'Ana López' },
+        { codigo_pregunta: 'cars', pregunta: expect.any(String), respuesta: '2 o más' },
+      ]),
+    )
+
+    const loggedCall = consoleLogSpy.mock.calls.find((args) => String(args[0]).includes('panel_smart_sync_payload'))
+    expect(loggedCall).toBeDefined()
+    const logged = JSON.parse(loggedCall![0] as string)
+    expect(logged).toMatchObject({
+      event: 'panel_smart_sync_payload',
+      lead_id: 'lead-1',
+      correlation_id: 'corr-1',
+      trigger: 'manual',
+      force: true,
+    })
+    expect(logged.payload).toEqual(sentPayload)
+
+    consoleLogSpy.mockRestore()
+  })
+})
+
+describe('previewPanelSmartSync', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('force: true previews every filled field even when the snapshot already matches', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...LEAD_ROW,
+            leadStatus: 'incomplete',
+            panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
+          },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.status).toBe('ok')
+    expect(preview.fieldNames).toEqual(expect.arrayContaining(['fullName', 'cars']))
+  })
+
+  it('without force, an already-synced lead has nothing pending', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(
+        selectChain([
+          { ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1')
+
+    expect(preview.status).toBe('nothing_pending')
   })
 })

@@ -15,6 +15,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'leadId requerido' }, { status: 400 })
   }
 
-  const preview = await previewPanelSmartSync(body.leadId)
+  // force: true — this route is only ever called from the conversation page's
+  // "Sincronizar a TDM" button, which should always preview the full answer set, not
+  // just the diff since the last sync.
+  const preview = await previewPanelSmartSync(body.leadId, { force: true })
   return NextResponse.json(preview)
 }

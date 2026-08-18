@@ -23,6 +23,12 @@ export interface PanelSmartSyncOptions {
    *  cron creates one run up front and passes it to every lead in its sweep). Omitted
    *  for single-lead triggers (state transition / correction), which get their own run. */
   runId?: string
+  /** Ignore `leads.panelSmartSyncedAnswersJson` and treat every field with a value as
+   *  pending — used only by the admin conversation page's "Sincronizar a TDM" button, to
+   *  resend everything on demand rather than just the diff. Never set by the sweep/cron
+   *  paths, which must keep diffing to avoid resending every pending lead's full answer
+   *  set on every run. */
+  force?: boolean
 }
 
 async function loadLead(leadId: string): Promise<Lead | null> {
@@ -165,7 +171,7 @@ type PendingSyncResult =
  * POSTed to Kantar's /api/ai-lead-responses — without touching `syncToPanelSmart`/the OAuth token,
  * so callers that only need the payload (e.g. an admin preview) never come near the secret.
  */
-async function computePendingSync(leadId: string): Promise<PendingSyncResult> {
+async function computePendingSync(leadId: string, opts?: { force?: boolean }): Promise<PendingSyncResult> {
   if (!isPanelSmartSyncEnabled()) return { status: 'disabled' }
 
   const lead = await loadLead(leadId)
@@ -174,7 +180,10 @@ async function computePendingSync(leadId: string): Promise<PendingSyncResult> {
   const profile = await loadSurveyProfile(leadId)
   const fichaHogar = await loadFichaHogarProfile(leadId)
 
-  const pending = computePendingFields(profile, fichaHogar, lead.panelSmartSyncedAnswersJson)
+  // force=true diffs against an empty snapshot instead of the real one, so every field
+  // with a value comes back as "pending" — same computePendingFields logic, just fed a
+  // blank baseline.
+  const pending = computePendingFields(profile, fichaHogar, opts?.force ? null : lead.panelSmartSyncedAnswersJson)
   if (pending.length === 0) return { status: 'nothing_pending' }
 
   const responses: PanelSmartResponseItem[] = pending.map(({ field, value }) => buildResponseItem(field, value))
@@ -232,12 +241,24 @@ export async function syncPendingPanelSmartAnswers(
   let runId: string | undefined
   let fieldNames: string[] = []
   try {
-    const computed = await computePendingSync(leadId)
+    const computed = await computePendingSync(leadId, { force: opts.force })
     if (computed.status !== 'ok') return computed.status !== 'not_found'
 
     const { lead, pending, payload } = computed
     fieldNames = pending.map(({ field }) => field)
     runId = opts.runId ?? (await createPanelSmartSyncRun(opts.trigger, 1))
+
+    console.log(
+      JSON.stringify({
+        event: 'panel_smart_sync_payload',
+        lead_id: leadId,
+        correlation_id: correlationId,
+        trigger: opts.trigger,
+        force: Boolean(opts.force),
+        payload,
+        timestamp: new Date().toISOString(),
+      }),
+    )
 
     await syncToPanelSmart(payload)
 
@@ -276,8 +297,11 @@ export interface PanelSmartSyncPreview {
  * never imports `./client` or `tdm-registration/oauth`, so there's no code path here that could
  * leak the bearer token/client secret into the response.
  */
-export async function previewPanelSmartSync(leadId: string): Promise<PanelSmartSyncPreview> {
-  const result = await computePendingSync(leadId)
+export async function previewPanelSmartSync(
+  leadId: string,
+  opts?: { force?: boolean },
+): Promise<PanelSmartSyncPreview> {
+  const result = await computePendingSync(leadId, opts)
   if (result.status !== 'ok') return { status: result.status, payload: null, fieldNames: [] }
   return { status: 'ok', payload: result.payload, fieldNames: result.pending.map(({ field }) => field) }
 }

@@ -21,7 +21,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   if (body.leadId) {
-    const ok = await syncPendingPanelSmartAnswers(body.leadId, generateCorrelationId(), { trigger: 'manual' })
+    // force: true — this branch is only reached from the conversation page's
+    // "Sincronizar a TDM" button (the leadId-less branch below is the batch sweep and
+    // must keep diffing). Resend the full answer set on demand rather than just the diff.
+    const ok = await syncPendingPanelSmartAnswers(body.leadId, generateCorrelationId(), {
+      trigger: 'manual',
+      force: true,
+    })
     const lead = await getLeadById(body.leadId)
     return NextResponse.json({
       ok,

@@ -281,12 +281,12 @@ export function ConversationMonitor({ leadId }: { leadId: string }) {
               <div className={styles.muted}>No se pudo obtener la vista previa.</div>
             ) : null}
             {preview && preview.status === 'nothing_pending' ? (
-              <div className={styles.muted}>No hay cambios pendientes por sincronizar.</div>
+              <div className={styles.muted}>No hay respuestas para sincronizar.</div>
             ) : null}
             {preview && preview.status === 'ok' && preview.payload ? (
               <div className={styles.evalBox} style={{ marginTop: '0.5rem' }}>
                 <p className={styles.muted}>
-                  {preview.fieldNames.length} campo(s) nuevos/modificados: {preview.fieldNames.join(', ')}
+                  {preview.fieldNames.length} campo(s) a sincronizar: {preview.fieldNames.join(', ')}
                 </p>
                 <pre className={styles.evalMismatches}>{JSON.stringify(preview.payload, null, 2)}</pre>
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
