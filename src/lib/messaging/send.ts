@@ -7,7 +7,7 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 import * as telegram from '@/lib/telegram/send'
 import * as whatsapp from '@/lib/whatsapp/send'
 import { setPendingWaChoices } from '@/lib/whatsapp/pending-choices'
-import { logConversationMessage } from '@/lib/db/conversation-messages'
+import { logConversationMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 
 // Shared literal with gps-capture.ts's own GPS_MANUAL_CALLBACK (not imported — this
 // module is transport-only and shouldn't depend on conversation-domain modules, which
@@ -17,6 +17,38 @@ const GPS_MANUAL_CALLBACK = 'gps:manual'
 function leadIdOf(to: ChannelRecipient): string | undefined {
   const maybe = to as ChannelRecipient & { id?: string }
   return typeof maybe.id === 'string' ? maybe.id : undefined
+}
+
+// Generic enough to trail any statement or question (a re-asked gate, a resent survey
+// question, a repeated support redirect) without reading oddly — indexed by how many
+// consecutive times the same message has gone out, capped at the last entry.
+const REPEAT_NUDGES = ['', '\n\n(Sigo por aquí 👋)', '\n\n(Aquí sigo, cuando quieras 🙂)', '\n\n(Seguimos en contacto 🙏)']
+
+interface DedupeResult {
+  text: string
+  meta: { dedupeBase: string; dedupeIndex: number }
+}
+
+/**
+ * Never send the exact same text twice in a row to the same lead — many gates/questions
+ * re-show byte-identical prompts when the user's reply didn't resolve to anything (see
+ * flow-router.ts's waiting_for_code reminder, phase-1.ts's NOT_UNDERSTOOD_MESSAGE +
+ * re-ask combo, survey question resends, etc.), which reads as broken/robotic.
+ *
+ * Tracks the repeat run via `meta.dedupeBase`/`dedupeIndex` on the previous message
+ * rather than comparing raw bodies directly, so appending a nudge doesn't itself break
+ * the chain (an already-nudged message's dedupeBase is still the original text).
+ */
+async function dedupeRepeat(leadId: string | undefined, text: string): Promise<DedupeResult> {
+  if (!leadId) return { text, meta: { dedupeBase: text, dedupeIndex: 0 } }
+  const last = await getLastOutboundMessage(leadId)
+  const lastBase = (last?.meta?.dedupeBase as string | undefined) ?? last?.body
+  if (!last || lastBase !== text) {
+    return { text, meta: { dedupeBase: text, dedupeIndex: 0 } }
+  }
+  const dedupeIndex = ((last.meta?.dedupeIndex as number | undefined) ?? 0) + 1
+  const nudge = REPEAT_NUDGES[Math.min(dedupeIndex, REPEAT_NUDGES.length - 1)]
+  return { text: text + nudge, meta: { dedupeBase: text, dedupeIndex } }
 }
 
 async function logOut(
@@ -38,12 +70,13 @@ async function logOut(
 }
 
 export async function sendText(to: ChannelRecipient, text: string): Promise<void> {
+  const { text: outText, meta } = await dedupeRepeat(leadIdOf(to), text)
   switch (to.channel) {
     case 'telegram':
-      await telegram.sendText(BigInt(to.channelUserId), text)
+      await telegram.sendText(BigInt(to.channelUserId), outText)
       break
     case 'whatsapp':
-      await whatsapp.sendWhatsAppText(to.channelUserId, text)
+      await whatsapp.sendWhatsAppText(to.channelUserId, outText)
       break
     case 'web':
       // No external SDK to push to — the message is "delivered" by persisting it below;
@@ -54,7 +87,7 @@ export async function sendText(to: ChannelRecipient, text: string): Promise<void
       throw new Error(`Unknown channel: ${_exhaustive}`)
     }
   }
-  await logOut(to, 'text', text)
+  await logOut(to, 'text', outText, meta)
 }
 
 export async function sendVideo(
@@ -85,14 +118,15 @@ export async function sendInlineKeyboard(
   text: string,
   buttons: InlineKeyboardButton[][],
 ): Promise<void> {
+  const { text: outText, meta: dedupeMeta } = await dedupeRepeat(leadIdOf(to), text)
   switch (to.channel) {
     case 'telegram':
-      await telegram.sendInlineKeyboard(BigInt(to.channelUserId), text, buttons)
+      await telegram.sendInlineKeyboard(BigInt(to.channelUserId), outText, buttons)
       break
     case 'whatsapp': {
       const { choices } = await whatsapp.sendWhatsAppKeyboard(
         to.channelUserId,
-        text,
+        outText,
         buttons,
       )
       const leadId = leadIdOf(to)
@@ -109,8 +143,9 @@ export async function sendInlineKeyboard(
       throw new Error(`Unknown channel: ${_exhaustive}`)
     }
   }
-  await logOut(to, 'keyboard', text, {
+  await logOut(to, 'keyboard', outText, {
     buttons: buttons.flat().map((b) => ({ text: b.text, callback_data: b.callback_data })),
+    ...dedupeMeta,
   })
 }
 

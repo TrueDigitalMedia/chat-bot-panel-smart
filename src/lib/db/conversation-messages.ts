@@ -53,6 +53,24 @@ export async function hasSentOutboundMessage(leadId: string): Promise<boolean> {
   return Boolean(row)
 }
 
+export interface LastOutboundMessage {
+  body: string
+  meta: Record<string, unknown> | null
+}
+
+/** Most recent outbound message for a lead — used to detect an about-to-repeat
+ *  verbatim re-prompt (e.g. the user's reply didn't advance the conversation and the
+ *  same gate/question is about to be re-shown) so it can be varied instead. */
+export async function getLastOutboundMessage(leadId: string): Promise<LastOutboundMessage | null> {
+  const [row] = await db
+    .select({ body: conversationMessages.body, meta: conversationMessages.meta })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'out')))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(1)
+  return row ?? null
+}
+
 /** Last `limit` turns for a lead, oldest → newest — used to ground LLM context in what was actually said. */
 export async function getRecentMessages(leadId: string, limit = 8): Promise<RecentMessage[]> {
   const rows = await db

@@ -13,6 +13,9 @@ vi.mock('@/lib/db/conversation-messages', () => ({
   logConversationMessage: vi.fn(async (input: (typeof logCalls)[number]) => {
     logCalls.push(input)
   }),
+  // No prior outbound message in any of these tests — dedupeRepeat (send.ts) should
+  // treat every send here as the first, not append a repeat nudge.
+  getLastOutboundMessage: vi.fn(async () => null),
 }))
 
 // Never actually called for channel 'web' — mocked only so importing send.ts doesn't
