@@ -193,6 +193,24 @@ async function computePendingSync(leadId: string): Promise<PendingSyncResult> {
     respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
   })
 
+  // Add socioeconomic score + quota segment — only once the survey has actually
+  // scored the lead (checkQuotaAvailability in phase-1.ts), so leads still mid-survey
+  // don't sync a meaningless null.
+  if (hasValue(lead.score)) {
+    responses.push({
+      codigo_pregunta: 'score',
+      pregunta: 'Puntaje Socioeconómico (NSE)',
+      respuesta: String(lead.score),
+    })
+  }
+  if (hasValue(lead.quotaSegment)) {
+    responses.push({
+      codigo_pregunta: 'quota_segment',
+      pregunta: 'Segmento de Cupo (NSE)',
+      respuesta: lead.quotaSegment as string,
+    })
+  }
+
   return { status: 'ok', lead, pending, payload: { lead_id: leadId, responses } }
 }
 
