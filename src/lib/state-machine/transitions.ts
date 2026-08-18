@@ -13,7 +13,9 @@ const ALLOWED_TRANSITIONS: Record<LeadStatus, Set<LeadStatus>> = {
     'abandono',
   ]),
   code_delivered_registered: new Set(['ficha_hogar_completada', 'ficha_hogar_descartado', 'abandono']),
-  code_delivered_not_registered: new Set(['abandono']),
+  // 'waiting_for_code' lets a mistaken "No pude registrarme" tap be reversed — see the
+  // registration_user_decline branch in flow-router.ts, which is the only caller.
+  code_delivered_not_registered: new Set(['abandono', 'waiting_for_code']),
   // Not a dead end: this only means the freeze timer fired before the user replied
   // (routinely 20h, but as little as RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS in tests) —
   // a late "Ya me registré"/"No pude registrarme" tap should still be honored instead

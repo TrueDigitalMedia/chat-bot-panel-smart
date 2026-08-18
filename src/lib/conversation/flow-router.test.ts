@@ -17,6 +17,9 @@ const {
   tryHandleFichaHogarCorrectionRequest,
   handleFichaHogar,
   hasSentOutboundMessage,
+  sendRegistrationConfirmReminder,
+  transitionLead,
+  detectRegistrationRetryIntent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -34,6 +37,9 @@ const {
   tryHandleFichaHogarCorrectionRequest: vi.fn(),
   handleFichaHogar: vi.fn(),
   hasSentOutboundMessage: vi.fn(),
+  sendRegistrationConfirmReminder: vi.fn(),
+  transitionLead: vi.fn(),
+  detectRegistrationRetryIntent: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -42,9 +48,10 @@ vi.mock('./faq-handler', () => ({ handleOutOfFlow }))
 vi.mock('@/lib/onboarding/registration-choice', () => ({
   handleRegistrationChoice: vi.fn(),
   isRegistrationCallback: vi.fn().mockReturnValue(false),
-  REGISTER_CALLBACK_NO: 'register:no',
-  REGISTER_CALLBACK_YES: 'register:yes',
+  sendRegistrationConfirmReminder,
 }))
+vi.mock('@/lib/state-machine', () => ({ transitionLead }))
+vi.mock('./detect-registration-retry', () => ({ detectRegistrationRetryIntent }))
 vi.mock('@/lib/onboarding/app-downloaded', () => ({ handleAppDownloaded, isAppDownloadedCallback }))
 vi.mock('./reengage-choice', () => ({
   handleReengageChoice: vi.fn(),
@@ -92,6 +99,8 @@ beforeEach(() => {
   tryHandleFichaHogarCorrectionRequest.mockResolvedValue(false)
   isAppDownloadedCallback.mockReturnValue(false)
   hasSentOutboundMessage.mockResolvedValue(true)
+  detectRegistrationRetryIntent.mockResolvedValue(false)
+  transitionLead.mockResolvedValue(undefined)
 })
 
 describe('routeMessage — recontact scheduling', () => {
@@ -199,5 +208,59 @@ describe('routeMessage — recontact scheduling', () => {
     expect(resetLeadConversation).not.toHaveBeenCalled()
     expect(sendText).not.toHaveBeenCalled()
     expect(handlePhase1).toHaveBeenCalledWith(lead, 'hola', undefined, 'corr-1')
+  })
+})
+
+describe('routeMessage — declined registration (code_delivered_not_registered)', () => {
+  it('a mistaken "No pude registrarme" tap is reversed when the user still sounds mid-registration', async () => {
+    detectRegistrationRetryIntent.mockResolvedValue(true)
+    const lead = makeLead({
+      leadStatus: 'code_delivered_not_registered',
+      statusReason: 'registration_user_decline',
+    })
+
+    await routeMessage(lead, makeInbound({ text: 'me pide una contraseña' }), 'corr-1')
+
+    expect(detectRegistrationRetryIntent).toHaveBeenCalledWith('me pide una contraseña', {
+      leadId: 'lead-1',
+      correlationId: 'corr-1',
+    })
+    expect(transitionLead).toHaveBeenCalledWith(
+      'lead-1',
+      'waiting_for_code',
+      'registration_decline_reversed',
+      'corr-1',
+    )
+    expect(sendRegistrationConfirmReminder).toHaveBeenCalledWith(lead)
+    expect(handleOutOfFlow).not.toHaveBeenCalled()
+  })
+
+  it('unrelated free text after a decline gets the plain support redirect, not the FAQ engine', async () => {
+    const lead = makeLead({
+      leadStatus: 'code_delivered_not_registered',
+      statusReason: 'registration_user_decline',
+    })
+
+    // Not "hola"/"reiniciar"/etc — those match isRestartRequest and short-circuit
+    // before this branch is ever reached (same caveat as the link_sent test above).
+    await routeMessage(lead, makeInbound({ text: '¿cuánto tarda esto?' }), 'corr-1')
+
+    expect(detectRegistrationRetryIntent).toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+    expect(handleOutOfFlow).not.toHaveBeenCalled()
+  })
+
+  it('a real TDM webhook failure never attempts the AI reversal check', async () => {
+    const lead = makeLead({
+      leadStatus: 'code_delivered_not_registered',
+      statusReason: 'registration_mock_webhook_failure',
+    })
+
+    await routeMessage(lead, makeInbound({ text: 'me pide una contraseña' }), 'corr-1')
+
+    expect(detectRegistrationRetryIntent).not.toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
   })
 })

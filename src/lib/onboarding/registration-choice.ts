@@ -1,6 +1,6 @@
 import { transitionLead } from '@/lib/state-machine'
 import { handlePhase3Success, handlePhase3Failure } from '@/lib/conversation/phases/phase-3'
-import { sendText } from '@/lib/messaging/send'
+import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import type { Lead } from '@/types/lead'
 
 export const REGISTER_CALLBACK_YES = 'register:yes'
@@ -8,6 +8,14 @@ export const REGISTER_CALLBACK_NO = 'register:no'
 
 export function isRegistrationCallback(callbackData: string | undefined): boolean {
   return callbackData === REGISTER_CALLBACK_YES || callbackData === REGISTER_CALLBACK_NO
+}
+
+/** Shared by the waiting_for_code reminder and the registration-decline reversal path. */
+export async function sendRegistrationConfirmReminder(lead: Lead): Promise<void> {
+  await sendInlineKeyboard(lead, 'Aún estamos en el paso de registro. Confirma con un botón:', [
+    [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
+    [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
+  ])
 }
 
 /**

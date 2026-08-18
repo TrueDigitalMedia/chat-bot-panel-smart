@@ -2,11 +2,11 @@ import { cancelPendingJobs, cancelPendingRecontact, scheduleRecontact } from '@/
 import { handlePhase1 } from './phases/phase-1'
 import { handleOutOfFlow } from './faq-handler'
 import { isTerminal } from '@/lib/state-machine/transitions'
+import { transitionLead } from '@/lib/state-machine'
 import {
   handleRegistrationChoice,
   isRegistrationCallback,
-  REGISTER_CALLBACK_NO,
-  REGISTER_CALLBACK_YES,
+  sendRegistrationConfirmReminder,
 } from '@/lib/onboarding/registration-choice'
 import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/app-downloaded'
 import { handleReengageChoice, isReengageCallback } from './reengage-choice'
@@ -14,7 +14,7 @@ import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import { resetLeadConversation } from '@/lib/db/leads'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
-import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
+import { sendText } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
 import { mightBeAgenteTypo } from './agent-typo'
 import type { Lead, LeadStatus } from '@/types/lead'
@@ -139,14 +139,29 @@ export async function routeMessage(
 
   // Waiting for mock registration confirmation — remind buttons, don't dump to support FAQ
   if (status === 'waiting_for_code') {
-    await sendInlineKeyboard(
-      lead,
-      'Aún estamos en el paso de registro. Confirma con un botón:',
-      [
-        [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
-        [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
-      ],
-    )
+    await sendRegistrationConfirmReminder(lead)
+    return
+  }
+
+  // Declined registration — a mistaken "No pude registrarme" tap isn't necessarily
+  // final: free text that reads like the user is still mid-registration ("me pide una
+  // contraseña", "me equivoqué") means take them back to the confirm-buttons step
+  // instead of dead-ending, same idea as the not_qualified/quota_exhausted reversal
+  // below. Only tried when the decline was the user's own tap — a real TDM webhook
+  // failure (registration_mock_webhook_failure) has nothing to "regret". Handled here,
+  // ahead of the generic isTerminal/handleOutOfFlow fallbacks below, so a declined
+  // registration never surfaces an unrelated FAQ answer.
+  if (status === 'code_delivered_not_registered') {
+    if (lead.statusReason === 'registration_user_decline' && messageText.trim()) {
+      const { detectRegistrationRetryIntent } = await import('./detect-registration-retry')
+      if (await detectRegistrationRetryIntent(messageText, { leadId: lead.id, correlationId })) {
+        await transitionLead(lead.id, 'waiting_for_code', 'registration_decline_reversed', correlationId)
+        await sendText(lead, '¡No hay problema! Confirmemos de nuevo:')
+        await sendRegistrationConfirmReminder(lead)
+        return
+      }
+    }
+    await sendText(lead, supportRedirect())
     return
   }
 

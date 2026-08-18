@@ -15,6 +15,6 @@ export async function handlePhase3Success(lead: Lead, correlationId: string): Pr
 export async function handlePhase3Failure(lead: Lead): Promise<void> {
   await sendText(
     lead,
-    `${supportRedirect()}\n\nHubo un error al completar tu registro (mock). Nuestro equipo te ayudará a resolverlo.`,
+    `${supportRedirect()}\n\nSi tuviste un problema al completar tu registro, escríbeme "agente" y te paso el contacto de nuestro equipo de soporte.`,
   )
 }
