@@ -289,7 +289,7 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
 
   await sendText(
     lead,
-    '¡Listo! 🙌 Has completado tu Ficha Hogar. Muchas gracias por tu tiempo. Si en algún momento tienes dudas con la app, escríbeme.',
+    '¡Listo! 🙌 Has completado tu registro. Muchas gracias por tu tiempo. Si en algún momento tienes dudas con la app, escríbeme "agente" y te pasamos un contacto.',
   )
 
   if (THANK_YOU_VIDEO) {
