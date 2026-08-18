@@ -37,7 +37,7 @@ const GPS_MANUAL_CALLBACK = 'gps:manual'
 // of "escribir"/"manual" here is never ambiguous with anything else.
 const SKIP_TEXT = /\b(?:escribir|manual)\b|\ba mano\b/i
 const SKIP_BUTTON: InlineKeyboardButton[][] = [
-  [{ text: 'Escribir mi ubicación', callback_data: GPS_MANUAL_CALLBACK }],
+  [{ text: 'Escribir ubicación', callback_data: GPS_MANUAL_CALLBACK }],
 ]
 // Only used to give interpretButtonAnswer two options to classify against — it
 // self-discards (returns null unconditionally) for a single-option set. GPS sharing

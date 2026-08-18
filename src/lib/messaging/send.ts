@@ -173,7 +173,7 @@ export async function sendLocationRequest(to: ChannelRecipient): Promise<void> {
       const prompt =
         '📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS (pin de WhatsApp) o toca el botón para continuar a mano.'
       await sendInlineKeyboard(to, prompt, [
-        [{ text: 'Escribir mi ubicación', callback_data: GPS_MANUAL_CALLBACK }],
+        [{ text: 'Escribir ubicación', callback_data: GPS_MANUAL_CALLBACK }],
       ])
       break
     }
