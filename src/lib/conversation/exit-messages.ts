@@ -17,7 +17,7 @@ export function supportRedirect(): string {
 
 export const NOT_UNDERSTOOD_MESSAGE = 'No entendí lo que respondiste 🤔. Te vuelvo a preguntar:'
 
-export const AGENT_HANDOFF_EMAIL = 'jaqueline.olicon@wp.numerator.com'
+export const AGENT_HANDOFF_EMAIL = 'hola@wp.numerator.com'
 
 export const PHASE2_AGENT_INTRO =
   `Antes de seguir: si en cualquier momento necesitás ayuda con la app o tenés alguna duda, escribime "agente" y te derivo con nuestro equipo.`
