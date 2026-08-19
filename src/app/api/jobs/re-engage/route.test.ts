@@ -141,6 +141,17 @@ describe('POST /api/jobs/re-engage', () => {
     expect(sendInlineKeyboard).not.toHaveBeenCalled()
   })
 
+  it('re-engage: skips with skipped_declined and does not send when a stale job outlives the inactivity freeze', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'code_delivered_no_response' }]))
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 2, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_declined')
+    expect(sendText).not.toHaveBeenCalled()
+    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+  })
+
   it('re-engage: skips with skipped_24h_window when the lead has been idle past the WhatsApp session window', async () => {
     dbMock.select.mockReturnValue(
       selectChain([{ ...BASE_LEAD, lastActivityAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }]),

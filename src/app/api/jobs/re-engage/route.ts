@@ -21,6 +21,18 @@ const receiver = new Receiver({
   nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY,
 })
 
+// Neither status is terminal (both have real transitions out — a mistaken decline can
+// be reversed, a late registration tap after the freeze can still be honored — see
+// transitions.ts), so isTerminal() alone won't stop an automated recontact here. But
+// resolveMessagePool has no dedicated pool for either: it falls back to phase1_reengage,
+// whose incentive/urgency copy ("¡gana premios!") is wrong for both — one already
+// explicitly declined, the other is mid-registration-confirmation, not mid-signup. The
+// only way a job reaches this state at all is a stale one scheduled earlier (e.g. during
+// link_sent) that outlives the status change — no phase-1/2/4 handler calls
+// scheduleRecontact while a lead is waiting_for_code, and registration-choice.ts already
+// cancels the job at decline time, so this is defense-in-depth against that race window.
+const NEVER_REENGAGE_STATUSES = new Set<LeadStatus>(['code_delivered_not_registered', 'code_delivered_no_response'])
+
 /**
  * Atomically claims this (leadId, phase, attemptNumber) delivery by flipping outcome
  * from NULL to 'received' in a single conditional UPDATE. QStash only guarantees
@@ -145,14 +157,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'skipped_terminal' })
     }
 
-    // code_delivered_not_registered isn't terminal (a mistaken decline can still be
-    // reversed — see registration-choice.ts), but it must never receive an automated
-    // recontact: the lead just explicitly declined the registration step, and
-    // resolveMessagePool would otherwise fall back to the phase1_reengage pool's
-    // incentive/urgency copy for it. registration-choice.ts already cancels any pending
-    // job at decline time — this is defense-in-depth against a job that fires in the
-    // race window before that cancellation lands.
-    if (lead.leadStatus === 'code_delivered_not_registered') {
+    if (NEVER_REENGAGE_STATUSES.has(lead.leadStatus as LeadStatus)) {
       await db
         .update(reEngagementSchedules)
         .set({ deliveredAt: new Date(), outcome: 'skipped_declined' })
