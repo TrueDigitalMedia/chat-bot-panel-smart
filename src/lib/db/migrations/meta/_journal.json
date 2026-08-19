@@ -50,6 +50,13 @@
       "when": 1786733473411,
       "tag": "0024_remove_d2_accepted",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787091337671,
+      "tag": "0025_panel_smart_synced_lead_status",
+      "breakpoints": true
     }
   ]
 }

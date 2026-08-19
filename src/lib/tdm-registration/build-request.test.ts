@@ -31,6 +31,7 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     panelSmartSyncStatus: null,
     panelSmartLastSyncAt: null,
     panelSmartSyncedAnswersJson: null,
+    panelSmartSyncedLeadStatus: null,
     ...overrides,
   }
 }

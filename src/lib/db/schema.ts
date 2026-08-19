@@ -116,6 +116,11 @@ export const leads = pgTable(
      *  what's actually changed since the last successful sync — the answer to "which
      *  survey/ficha-hogar answers are still pending" is just this vs. the current profile. */
     panelSmartSyncedAnswersJson: jsonb('panel_smart_synced_answers_json').$type<Record<string, unknown>>(),
+    /** The `leadStatus` value as of the last successful Panel Smart sync — compared against
+     *  the live `leadStatus` independently of `panelSmartSyncedAnswersJson` so a status
+     *  transition with no changed survey/ficha-hogar field still gets synced instead of being
+     *  silently dropped as "nothing pending". */
+    panelSmartSyncedLeadStatus: leadStatusEnum('panel_smart_synced_lead_status'),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )

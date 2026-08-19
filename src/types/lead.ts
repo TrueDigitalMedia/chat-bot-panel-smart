@@ -43,6 +43,7 @@ export interface Lead {
   panelSmartSyncStatus: string | null
   panelSmartLastSyncAt: Date | null
   panelSmartSyncedAnswersJson: Record<string, unknown> | null
+  panelSmartSyncedLeadStatus: LeadStatus | null
 }
 
 export interface SurveyProfile {

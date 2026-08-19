@@ -94,13 +94,18 @@ function computePendingFields(
   return pending
 }
 
-async function markSynced(leadId: string, snapshot: Record<string, unknown>): Promise<void> {
+async function markSynced(
+  leadId: string,
+  snapshot: Record<string, unknown>,
+  leadStatus: Lead['leadStatus'],
+): Promise<void> {
   await db
     .update(leads)
     .set({
       panelSmartSyncStatus: 'synced',
       panelSmartLastSyncAt: new Date(),
       panelSmartSyncedAnswersJson: snapshot,
+      panelSmartSyncedLeadStatus: leadStatus,
     })
     .where(eq(leads.id, leadId))
 }
@@ -166,10 +171,13 @@ type PendingSyncResult =
     }
 
 /**
- * Diffs the lead's current survey + ficha-hogar answers against `leads.panelSmartSyncedAnswersJson`
- * and, if there's anything pending, builds the exact `{lead_id, responses}` payload that would be
- * POSTed to Kantar's /api/ai-lead-responses — without touching `syncToPanelSmart`/the OAuth token,
- * so callers that only need the payload (e.g. an admin preview) never come near the secret.
+ * Diffs the lead's current survey + ficha-hogar answers against `leads.panelSmartSyncedAnswersJson`,
+ * and separately checks whether `leadStatus` has moved since `leads.panelSmartSyncedLeadStatus` — a
+ * status transition with no changed survey/ficha-hogar field (e.g. link_sent -> waiting_for_code)
+ * must still produce a payload, not be dropped as "nothing pending". If either is pending, builds
+ * the exact `{lead_id, responses}` payload that would be POSTed to Kantar's /api/ai-lead-responses —
+ * without touching `syncToPanelSmart`/the OAuth token, so callers that only need the payload (e.g.
+ * an admin preview) never come near the secret.
  */
 async function computePendingSync(leadId: string, opts?: { force?: boolean }): Promise<PendingSyncResult> {
   if (!isPanelSmartSyncEnabled()) return { status: 'disabled' }
@@ -184,11 +192,16 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
   // with a value comes back as "pending" — same computePendingFields logic, just fed a
   // blank baseline.
   const pending = computePendingFields(profile, fichaHogar, opts?.force ? null : lead.panelSmartSyncedAnswersJson)
-  if (pending.length === 0) return { status: 'nothing_pending' }
+  // Tracked independently of the answers-snapshot diff above: a status transition that
+  // carries no changed survey/ficha-hogar field (e.g. link_sent -> waiting_for_code) must
+  // still sync, or lead_status silently falls out of step with TDM.
+  const statusChanged = Boolean(opts?.force) || lead.leadStatus !== lead.panelSmartSyncedLeadStatus
+  if (pending.length === 0 && !statusChanged) return { status: 'nothing_pending' }
 
   const responses: PanelSmartResponseItem[] = pending.map(({ field, value }) => buildResponseItem(field, value))
 
-  // Add lead_status as a response
+  // Add lead_status as a response — always included whenever we're syncing at all, whether
+  // triggered by a changed field or by the status itself changing.
   responses.push({
     codigo_pregunta: 'lead_status',
     pregunta: 'Estado del Lead',
@@ -264,7 +277,7 @@ export async function syncPendingPanelSmartAnswers(
 
     const snapshot = { ...(lead.panelSmartSyncedAnswersJson ?? {}) }
     for (const { field, value } of pending) snapshot[field] = value
-    await markSynced(leadId, snapshot)
+    await markSynced(leadId, snapshot, lead.leadStatus)
 
     await logCall({ leadId, callType: 'panel_smart_sync', latencyMs: Date.now() - start, correlationId })
     await recordSyncAttempt(runId, leadId, 'synced', fieldNames, null).catch(() => {})

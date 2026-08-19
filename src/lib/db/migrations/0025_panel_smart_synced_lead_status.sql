@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "panel_smart_synced_lead_status" "lead_status";
