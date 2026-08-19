@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendText, sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
+import { sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
 import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
 import type { Lead } from '@/types/lead'
@@ -39,14 +39,14 @@ export async function deliverRegistrationCode(
     .where(eq(leads.id, lead.id))
 
   const label = opts.mock ? ' (mock)' : ''
-  await sendText(lead, ONBOARDING_INSTRUCTIONS_TEXT)
   if (ONBOARDING_VIDEO) {
-    await sendVideo(lead, ONBOARDING_VIDEO, `🎬 Código${label}: ${code}`)
+    await sendVideo(lead, ONBOARDING_VIDEO, '🎬 Video con los pasos para registrarte')
   }
 
   await sendInlineKeyboard(
     lead,
     `✅ Tu código de registro${label} es: ${code}\n\n` +
+      `${ONBOARDING_INSTRUCTIONS_TEXT}\n\n` +
       `Cuando hayas “activado” la app con ese código, confirma aquí:`,
     [
       [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
