@@ -1,6 +1,7 @@
 import { transitionLead } from '@/lib/state-machine'
 import { handlePhase3Success, handlePhase3Failure } from '@/lib/conversation/phases/phase-3'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
+import { cancelPendingRecontact } from '@/lib/scheduler/re-engagement'
 import type { Lead } from '@/types/lead'
 
 export const REGISTER_CALLBACK_YES = 'register:yes'
@@ -40,6 +41,12 @@ export async function handleRegistrationChoice(
     return
   }
 
+  // A recontact job may already be armed from when the lead was still in link_sent/
+  // waiting_for_code (scheduleRecontact) — code_delivered_not_registered isn't a
+  // terminal status (a mistaken tap can still be reversed, see the transition above),
+  // so that stale job wouldn't otherwise get cancelled and would fire a re-engagement
+  // pitch at someone who just explicitly declined.
+  await cancelPendingRecontact(lead.id).catch(() => {})
   await transitionLead(lead.id, 'code_delivered_not_registered', 'registration_user_decline', correlationId)
   await handlePhase3Failure(lead)
 }

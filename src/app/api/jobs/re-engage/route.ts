@@ -145,6 +145,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'skipped_terminal' })
     }
 
+    // code_delivered_not_registered isn't terminal (a mistaken decline can still be
+    // reversed — see registration-choice.ts), but it must never receive an automated
+    // recontact: the lead just explicitly declined the registration step, and
+    // resolveMessagePool would otherwise fall back to the phase1_reengage pool's
+    // incentive/urgency copy for it. registration-choice.ts already cancels any pending
+    // job at decline time — this is defense-in-depth against a job that fires in the
+    // race window before that cancellation lands.
+    if (lead.leadStatus === 'code_delivered_not_registered') {
+      await db
+        .update(reEngagementSchedules)
+        .set({ deliveredAt: new Date(), outcome: 'skipped_declined' })
+        .where(eq(reEngagementSchedules.leadId, lead.id))
+      return NextResponse.json({ outcome: 'skipped_declined' })
+    }
+
     // Check if lead has consented to re-engagement contact
     if (lead.reEngagementConsentAccepted !== true) {
       await db
@@ -158,6 +173,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     if (lastActivity > fiveMinutesAgo) {
       return NextResponse.json({ outcome: 'skipped_already_active' })
+    }
+
+    // WhatsApp's customer-service window only allows free-form (non-template) messages
+    // within 24h of the user's last inbound message. This codebase never sends Meta
+    // template messages, so a send past the window would be a policy violation with no
+    // fallback — the 75min/7h/12h cadence (scheduler/constants.ts) is designed to stay
+    // under 24h, but nothing enforced that at send time if a job ran late. A 1h safety
+    // margin covers scheduling jitter/retries without cutting the real cadence short.
+    const hoursSinceActivity = (Date.now() - lastActivity) / (60 * 60 * 1000)
+    if (hoursSinceActivity >= 23) {
+      await db
+        .update(reEngagementSchedules)
+        .set({ deliveredAt: new Date(), outcome: 'skipped_24h_window' })
+        .where(eq(reEngagementSchedules.leadId, lead.id))
+      return NextResponse.json({ outcome: 'skipped_24h_window' })
     }
 
     const attempt = payload.attemptNumber as 1 | 2 | 3

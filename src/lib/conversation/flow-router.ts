@@ -39,6 +39,28 @@ function isRestartRequest(text: string): boolean {
   return false
 }
 
+/** Free-text opt-out ("ya no me escriban", "STOP", etc.) — deliberately multi-word/
+ *  specific phrases, never bare "no" (a legitimate answer to several yes/no survey
+ *  questions), so a real survey answer is never misread as an opt-out. */
+function isOptOutRequest(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (!t) return false
+  if (/^(stop|unsubscribe|baja)$/.test(t)) return true
+  if (/no\s+me\s+(vuelvan?\s+a\s+)?escrib/.test(t)) return true
+  if (/no\s+quiero\s+que\s+me\s+(contact|escrib|mensaje)/.test(t)) return true
+  if (/ya\s+no\s+(me\s+)?(escriban|contacten|mensajeen)/.test(t)) return true
+  if (/dej(a|en)\s+de\s+(escribirme|contactarme|mensajearme)/.test(t)) return true
+  if (/no\s+molest(en|es)\s*(m[aá]s)?/.test(t)) return true
+  return false
+}
+
+/** code_delivered_no_response can't transition straight to abandono (transitions.ts) —
+ *  its only valid exits are code_delivered_registered/code_delivered_not_registered, so
+ *  an opt-out from that state maps onto "declined", the closest equivalent. */
+function optOutTargetStatus(status: LeadStatus): LeadStatus {
+  return status === 'code_delivered_no_response' ? 'code_delivered_not_registered' : 'abandono'
+}
+
 /** Exact ask, no typo — the common case, handled without an AI call. */
 function isExactAgentHandoffRequest(text: string): boolean {
   const t = text.trim().toLowerCase()
@@ -89,6 +111,22 @@ export async function routeMessage(
     await cancelPendingRecontact(lead.id).catch(() => {})
     await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
     await handlePhase1(fresh, '', undefined, correlationId)
+    return
+  }
+
+  // Free-text opt-out from any non-terminal state — the only previously-honored opt-outs
+  // were structured (opt-in/D1/re-engagement-consent button declines); a user typing
+  // "ya no me escriban" instead of tapping a button had no dedicated handler and fell
+  // through to FAQ/AI interpretation, so nothing guaranteed the bot would actually stop
+  // messaging them. Checked ahead of every other branch below, same reasoning as restart.
+  if (messageText && isOptOutRequest(messageText) && !isTerminal(status)) {
+    await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+    await cancelPendingRecontact(lead.id).catch(() => {})
+    await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
+    await sendText(
+      lead,
+      'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
+    )
     return
   }
 

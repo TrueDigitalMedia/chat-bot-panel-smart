@@ -264,3 +264,49 @@ describe('routeMessage — declined registration (code_delivered_not_registered)
     expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
   })
 })
+
+describe('routeMessage — free-text opt-out', () => {
+  it('cancels pending jobs, transitions to abandono, and confirms — without dispatching to any phase handler', async () => {
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'Ya no me escriban más por favor' }), 'corr-1')
+
+    expect(cancelPendingJobs).toHaveBeenCalledWith('lead-1', 1)
+    expect(cancelPendingRecontact).toHaveBeenCalledWith('lead-1')
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'user_freetext_opt_out', 'corr-1')
+    expect(sendText).toHaveBeenCalledWith(lead, expect.stringContaining('No te seguiremos contactando'))
+    expect(handlePhase1).not.toHaveBeenCalled()
+    expect(scheduleRecontact).not.toHaveBeenCalled()
+  })
+
+  it('maps code_delivered_no_response to code_delivered_not_registered instead of abandono (invalid transition otherwise)', async () => {
+    const lead = makeLead({ leadStatus: 'code_delivered_no_response', currentPhase: 2 })
+
+    await routeMessage(lead, makeInbound({ text: 'no quiero que me contacten más' }), 'corr-1')
+
+    expect(transitionLead).toHaveBeenCalledWith(
+      'lead-1',
+      'code_delivered_not_registered',
+      'user_freetext_opt_out',
+      'corr-1',
+    )
+  })
+
+  it('does not misfire on a bare "no" — a legitimate yes/no survey answer', async () => {
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'no' }), 'corr-1')
+
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(handlePhase1).toHaveBeenCalledWith(lead, 'no', undefined, 'corr-1')
+  })
+
+  it('is not re-triggered from an already-terminal state (falls through to the generic support redirect)', async () => {
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'ya no me escriban' }), 'corr-1')
+
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+  })
+})

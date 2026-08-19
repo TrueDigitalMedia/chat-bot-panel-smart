@@ -130,6 +130,29 @@ describe('POST /api/jobs/re-engage', () => {
     expect(sendText).not.toHaveBeenCalled()
   })
 
+  it('re-engage: skips with skipped_declined and does not send when the lead already declined registration', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'code_delivered_not_registered' }]))
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_declined')
+    expect(sendText).not.toHaveBeenCalled()
+    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+  })
+
+  it('re-engage: skips with skipped_24h_window when the lead has been idle past the WhatsApp session window', async () => {
+    dbMock.select.mockReturnValue(
+      selectChain([{ ...BASE_LEAD, lastActivityAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }]),
+    )
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_24h_window')
+    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+  })
+
   it('re-engage: skips without consent', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, reEngagementConsentAccepted: false }]))
 
