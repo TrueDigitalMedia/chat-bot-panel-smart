@@ -1,0 +1,2 @@
+ALTER TABLE "conversation_messages" ADD COLUMN "provider_message_id" varchar(128);--> statement-breakpoint
+CREATE UNIQUE INDEX "conversation_messages_provider_msg_idx" ON "conversation_messages" USING btree ("channel","provider_message_id");

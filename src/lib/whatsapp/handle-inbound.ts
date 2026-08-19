@@ -1,6 +1,6 @@
 import type { ChannelInbound } from '@/types/channel'
 import { upsertLead } from '@/lib/db/leads'
-import { logConversationMessage } from '@/lib/db/conversation-messages'
+import { logConversationMessage, wasProviderMessageAlreadyProcessed } from '@/lib/db/conversation-messages'
 import { routeMessage } from '@/lib/conversation/flow-router'
 import { generateCorrelationId } from '@/lib/correlation'
 import {
@@ -16,6 +16,17 @@ export async function processWhatsAppInbound(
   logMeta?: Record<string, unknown>,
 ): Promise<void> {
   const correlationId = generateCorrelationId()
+
+  // WhatsApp/Twilio can redeliver the same webhook call (slow ack, transient error,
+  // network blip) — without this check a redelivery re-runs routing/AI/send from
+  // scratch, producing a duplicate reply to the user. See wasProviderMessageAlreadyProcessed.
+  const providerMessageId =
+    (logMeta?.messageId as string | undefined) ?? (logMeta?.messageSid as string | undefined)
+  if (providerMessageId && (await wasProviderMessageAlreadyProcessed('whatsapp', providerMessageId))) {
+    console.info('[whatsapp:in] duplicate delivery skipped', { correlationId, providerMessageId, ...logMeta })
+    return
+  }
+
   const lead = await upsertLead('whatsapp', inbound.channelUserId)
 
   const pending = await getPendingWaChoices(lead.id)
@@ -52,6 +63,7 @@ export async function processWhatsAppInbound(
       contentType: 'callback',
       body: resolved.callbackData,
       meta: logMeta,
+      providerMessageId,
     })
   } else if (resolved.location) {
     await logConversationMessage({
@@ -61,6 +73,7 @@ export async function processWhatsAppInbound(
       contentType: 'system',
       body: 'location_shared',
       meta: { ...logMeta, hasLocation: true },
+      providerMessageId,
     })
   } else if (resolved.text) {
     await logConversationMessage({
@@ -70,6 +83,7 @@ export async function processWhatsAppInbound(
       contentType: 'text',
       body: resolved.text,
       meta: logMeta,
+      providerMessageId,
     })
   }
 

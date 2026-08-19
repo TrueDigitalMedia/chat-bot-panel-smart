@@ -319,9 +319,18 @@ export const conversationMessages = pgTable(
     contentType: messageContentTypeEnum('content_type').notNull().default('text'),
     body: text('body').notNull(),
     meta: jsonb('meta').$type<Record<string, unknown>>(),
+    // WhatsApp/Twilio's message id (message.id / MessageSid) for inbound messages only —
+    // lets us detect a webhook redelivery of the same message before re-running routing/
+    // AI/send logic. Null for outbound messages and channels without a provider id
+    // (web); Postgres unique indexes treat NULL as distinct from NULL, so those rows
+    // never collide with each other.
+    providerMessageId: varchar('provider_message_id', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('conversation_messages_lead_created_idx').on(t.leadId, t.createdAt)],
+  (t) => [
+    index('conversation_messages_lead_created_idx').on(t.leadId, t.createdAt),
+    uniqueIndex('conversation_messages_provider_msg_idx').on(t.channel, t.providerMessageId),
+  ],
 )
 
 /** Golden scenarios for qualification / quota QA (seeded examples). */

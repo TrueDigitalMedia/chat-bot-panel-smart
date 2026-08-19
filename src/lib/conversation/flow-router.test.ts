@@ -17,11 +17,12 @@ const {
   tryHandleFichaHogarCorrectionRequest,
   handleFichaHogar,
   hasSentOutboundMessage,
+  getLastOutboundMessage,
   sendRegistrationConfirmReminder,
   transitionLead,
   detectRegistrationRetryIntent,
   detectOptOutIntent,
-  generateDeclineFollowupReply,
+  generateFreeTextReply,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -39,11 +40,12 @@ const {
   tryHandleFichaHogarCorrectionRequest: vi.fn(),
   handleFichaHogar: vi.fn(),
   hasSentOutboundMessage: vi.fn(),
+  getLastOutboundMessage: vi.fn(),
   sendRegistrationConfirmReminder: vi.fn(),
   transitionLead: vi.fn(),
   detectRegistrationRetryIntent: vi.fn(),
   detectOptOutIntent: vi.fn(),
-  generateDeclineFollowupReply: vi.fn(),
+  generateFreeTextReply: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -57,7 +59,7 @@ vi.mock('@/lib/onboarding/registration-choice', () => ({
 vi.mock('@/lib/state-machine', () => ({ transitionLead }))
 vi.mock('./detect-registration-retry', () => ({ detectRegistrationRetryIntent }))
 vi.mock('./detect-opt-out', () => ({ detectOptOutIntent }))
-vi.mock('./decline-followup', () => ({ generateDeclineFollowupReply }))
+vi.mock('./free-text-reply', () => ({ generateFreeTextReply }))
 vi.mock('@/lib/onboarding/app-downloaded', () => ({ handleAppDownloaded, isAppDownloadedCallback }))
 vi.mock('./reengage-choice', () => ({
   handleReengageChoice: vi.fn(),
@@ -67,7 +69,7 @@ vi.mock('./reengage-choice', () => ({
 }))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
 vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn() }))
-vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage }))
+vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
 vi.mock('./ficha-hogar-correction', () => ({
@@ -107,7 +109,8 @@ beforeEach(() => {
   hasSentOutboundMessage.mockResolvedValue(true)
   detectRegistrationRetryIntent.mockResolvedValue(false)
   detectOptOutIntent.mockResolvedValue(false)
-  generateDeclineFollowupReply.mockResolvedValue('support redirect')
+  generateFreeTextReply.mockResolvedValue({ intent: 'needs_reply', reply: 'support redirect' })
+  getLastOutboundMessage.mockResolvedValue(null)
   transitionLead.mockResolvedValue(undefined)
 })
 
@@ -255,7 +258,7 @@ describe('routeMessage — declined registration (code_delivered_not_registered)
 
     expect(detectRegistrationRetryIntent).toHaveBeenCalled()
     expect(transitionLead).not.toHaveBeenCalled()
-    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect', { closing: true })
     expect(handleOutOfFlow).not.toHaveBeenCalled()
   })
 
@@ -269,7 +272,7 @@ describe('routeMessage — declined registration (code_delivered_not_registered)
 
     expect(detectRegistrationRetryIntent).not.toHaveBeenCalled()
     expect(transitionLead).not.toHaveBeenCalled()
-    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect', { closing: true })
   })
 })
 
@@ -315,7 +318,7 @@ describe('routeMessage — free-text opt-out', () => {
     await routeMessage(lead, makeInbound({ text: 'ya no me escriban' }), 'corr-1')
 
     expect(transitionLead).not.toHaveBeenCalled()
-    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect', { closing: true })
   })
 
   it('atypical phrasing that the regex misses but the AI check confirms still opts the lead out', async () => {
@@ -356,7 +359,10 @@ describe('routeMessage — free-text opt-out', () => {
 
 describe('routeMessage — declined lead follow-up replies (AI, not the static canned message)', () => {
   it('code_delivered_not_registered: sends the AI-generated reply instead of the static supportRedirect() text', async () => {
-    generateDeclineFollowupReply.mockResolvedValue('Gracias por contarme — igual no podemos continuar con tu registro esta vez 🙏')
+    generateFreeTextReply.mockResolvedValue({
+      intent: 'needs_reply',
+      reply: 'Gracias por contarme — igual no podemos continuar con tu registro esta vez 🙏',
+    })
     const lead = makeLead({
       leadStatus: 'code_delivered_not_registered',
       statusReason: 'registration_mock_webhook_failure',
@@ -364,21 +370,28 @@ describe('routeMessage — declined lead follow-up replies (AI, not the static c
 
     await routeMessage(lead, makeInbound({ text: '¿por qué ya no puedo seguir?' }), 'corr-1')
 
-    expect(generateDeclineFollowupReply).toHaveBeenCalledWith('lead-1', '¿por qué ya no puedo seguir?', 'corr-1')
+    expect(generateFreeTextReply).toHaveBeenCalledWith('lead-1', '¿por qué ya no puedo seguir?', 'corr-1', {
+      leadStatus: 'code_delivered_not_registered',
+      isDeclined: true,
+    })
     expect(sendText).toHaveBeenCalledWith(
       lead,
       'Gracias por contarme — igual no podemos continuar con tu registro esta vez 🙏',
+      { closing: true },
     )
   })
 
   it('generic terminal fallback (e.g. ficha_hogar_descartado): also uses the AI-generated reply', async () => {
-    generateDeclineFollowupReply.mockResolvedValue('Entendido, gracias por avisarme 🙏')
+    generateFreeTextReply.mockResolvedValue({ intent: 'needs_reply', reply: 'Entendido, gracias por avisarme 🙏' })
     const lead = makeLead({ leadStatus: 'ficha_hogar_descartado' })
 
-    await routeMessage(lead, makeInbound({ text: 'ok gracias' }), 'corr-1')
+    await routeMessage(lead, makeInbound({ text: 'algo distinto que no calza con nada' }), 'corr-1')
 
-    expect(generateDeclineFollowupReply).toHaveBeenCalledWith('lead-1', 'ok gracias', 'corr-1')
-    expect(sendText).toHaveBeenCalledWith(lead, 'Entendido, gracias por avisarme 🙏')
+    expect(generateFreeTextReply).toHaveBeenCalledWith('lead-1', 'algo distinto que no calza con nada', 'corr-1', {
+      leadStatus: 'ficha_hogar_descartado',
+      isDeclined: true,
+    })
+    expect(sendText).toHaveBeenCalledWith(lead, 'Entendido, gracias por avisarme 🙏', { closing: true })
   })
 
   it('a bare button tap with no text still falls back to the static supportRedirect() — nothing for the AI to react to', async () => {
@@ -389,7 +402,46 @@ describe('routeMessage — declined lead follow-up replies (AI, not the static c
 
     await routeMessage(lead, makeInbound({ text: '', callbackData: 'some:unhandled' }), 'corr-1')
 
-    expect(generateDeclineFollowupReply).not.toHaveBeenCalled()
+    expect(generateFreeTextReply).not.toHaveBeenCalled()
     expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+  })
+
+  it('a plain "ok" right after a closing reply gets no response at all — cheap regex fast path, no AI call', async () => {
+    getLastOutboundMessage.mockResolvedValue({ body: 'Entendido, gracias 🙏', meta: { closing: true } })
+    const lead = makeLead({ leadStatus: 'ficha_hogar_descartado' })
+
+    await routeMessage(lead, makeInbound({ text: 'ok' }), 'corr-1')
+
+    expect(generateFreeTextReply).not.toHaveBeenCalled()
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('the AI itself can recognize a closed-out exchange (no meta flag involved) and stays silent', async () => {
+    generateFreeTextReply.mockResolvedValue({ intent: 'acknowledgment', reply: null })
+    const lead = makeLead({ leadStatus: 'ficha_hogar_descartado' })
+
+    await routeMessage(lead, makeInbound({ text: 'listo, entendido' }), 'corr-1')
+
+    expect(generateFreeTextReply).toHaveBeenCalled()
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('registration_status_check closes the conversation: sends the reply, does not schedule recontact, and blocks future re-engagement via the existing mechanism', async () => {
+    generateFreeTextReply.mockResolvedValue({
+      intent: 'registration_status_check',
+      reply: 'Gracias por tu tiempo, seguimos en contacto 🙏',
+    })
+    const lead = makeLead({ leadStatus: 'code_delivered_not_registered', statusReason: 'registration_user_decline' })
+
+    await routeMessage(lead, makeInbound({ text: '¿ya quedé registrado?' }), 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(lead, 'Gracias por tu tiempo, seguimos en contacto 🙏', { closing: true })
+    expect(transitionLead).toHaveBeenCalledWith(
+      'lead-1',
+      'abandono',
+      'user_confirmed_registration_closed',
+      'corr-1',
+    )
+    expect(scheduleRecontact).not.toHaveBeenCalled()
   })
 })

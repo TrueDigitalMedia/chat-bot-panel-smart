@@ -24,9 +24,18 @@ function leadIdOf(to: ChannelRecipient): string | undefined {
 // consecutive times the same message has gone out, capped at the last entry.
 const REPEAT_NUDGES = ['', '\n\n(Sigo por aquí 👋)', '\n\n(Aquí sigo, cuando quieras 🙂)', '\n\n(Seguimos en contacto 🙏)']
 
+// Deterministic circuit breaker: once the exact same text would go out this many times
+// in a row to the same lead, stop sending it entirely — regardless of which caller or AI
+// decision produced it. Backstop for cases where the upstream "should I even reply"
+// logic misjudges or a duplicate webhook delivery slips through (see
+// wasProviderMessageAlreadyProcessed) — a real conversation loop was observed in
+// production sending the same canned message dozens of times over ~2h.
+const MAX_CONSECUTIVE_REPEATS = 3
+
 interface DedupeResult {
   text: string
   meta: { dedupeBase: string; dedupeIndex: number }
+  suppress: boolean
 }
 
 /**
@@ -37,18 +46,23 @@ interface DedupeResult {
  *
  * Tracks the repeat run via `meta.dedupeBase`/`dedupeIndex` on the previous message
  * rather than comparing raw bodies directly, so appending a nudge doesn't itself break
- * the chain (an already-nudged message's dedupeBase is still the original text).
+ * the chain (an already-nudged message's dedupeBase is still the original text). Once
+ * the run hits MAX_CONSECUTIVE_REPEATS, `suppress: true` tells the caller to send
+ * nothing at all rather than nudge again.
  */
 async function dedupeRepeat(leadId: string | undefined, text: string): Promise<DedupeResult> {
-  if (!leadId) return { text, meta: { dedupeBase: text, dedupeIndex: 0 } }
+  if (!leadId) return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: false }
   const last = await getLastOutboundMessage(leadId)
   const lastBase = (last?.meta?.dedupeBase as string | undefined) ?? last?.body
   if (!last || lastBase !== text) {
-    return { text, meta: { dedupeBase: text, dedupeIndex: 0 } }
+    return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: false }
   }
   const dedupeIndex = ((last.meta?.dedupeIndex as number | undefined) ?? 0) + 1
+  if (dedupeIndex >= MAX_CONSECUTIVE_REPEATS) {
+    return { text, meta: { dedupeBase: text, dedupeIndex }, suppress: true }
+  }
   const nudge = REPEAT_NUDGES[Math.min(dedupeIndex, REPEAT_NUDGES.length - 1)]
-  return { text: text + nudge, meta: { dedupeBase: text, dedupeIndex } }
+  return { text: text + nudge, meta: { dedupeBase: text, dedupeIndex }, suppress: false }
 }
 
 async function logOut(
@@ -69,8 +83,16 @@ async function logOut(
   })
 }
 
-export async function sendText(to: ChannelRecipient, text: string): Promise<void> {
-  const { text: outText, meta } = await dedupeRepeat(leadIdOf(to), text)
+export async function sendText(
+  to: ChannelRecipient,
+  text: string,
+  extraMeta?: Record<string, unknown>,
+): Promise<void> {
+  const { text: outText, meta, suppress } = await dedupeRepeat(leadIdOf(to), text)
+  if (suppress) {
+    console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: meta.dedupeIndex })
+    return
+  }
   switch (to.channel) {
     case 'telegram':
       await telegram.sendText(BigInt(to.channelUserId), outText)
@@ -87,7 +109,7 @@ export async function sendText(to: ChannelRecipient, text: string): Promise<void
       throw new Error(`Unknown channel: ${_exhaustive}`)
     }
   }
-  await logOut(to, 'text', outText, meta)
+  await logOut(to, 'text', outText, { ...extraMeta, ...meta })
 }
 
 export async function sendVideo(
@@ -118,7 +140,14 @@ export async function sendInlineKeyboard(
   text: string,
   buttons: InlineKeyboardButton[][],
 ): Promise<void> {
-  const { text: outText, meta: dedupeMeta } = await dedupeRepeat(leadIdOf(to), text)
+  const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
+  if (suppress) {
+    console.warn('[messaging] repeat circuit breaker: suppressing send', {
+      leadId: leadIdOf(to),
+      dedupeIndex: dedupeMeta.dedupeIndex,
+    })
+    return
+  }
   switch (to.channel) {
     case 'telegram':
       await telegram.sendInlineKeyboard(BigInt(to.channelUserId), outText, buttons)

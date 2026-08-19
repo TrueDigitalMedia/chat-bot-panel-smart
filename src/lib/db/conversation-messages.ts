@@ -20,6 +20,7 @@ export interface LogMessageInput {
   contentType?: MessageContentType
   body: string
   meta?: Record<string, unknown>
+  providerMessageId?: string
 }
 
 /** Fire-and-forget safe logger — never breaks the chat flow. */
@@ -32,10 +33,38 @@ export async function logConversationMessage(input: LogMessageInput): Promise<vo
       contentType: input.contentType ?? 'text',
       body: input.body.slice(0, 8000),
       meta: input.meta ?? null,
+      providerMessageId: input.providerMessageId,
     })
   } catch (err) {
     console.error('[conversation_messages] log failed', err)
   }
+}
+
+/**
+ * True once an inbound message with this provider id (WhatsApp/Twilio's message.id /
+ * MessageSid) has already been logged for this channel — WhatsApp/Twilio can redeliver
+ * the same webhook (slow ack, transient 5xx, network blip), and without this check each
+ * redelivery re-ran the full routing/AI/send pipeline as if it were a brand-new user
+ * message, producing duplicate replies. Checked before any processing, not just before
+ * the final log write — a check-then-insert race is possible under truly concurrent
+ * redeliveries, but real providers don't fire those sub-second, and the deterministic
+ * repeat-send cap (messaging/send.ts) is the backstop either way.
+ */
+export async function wasProviderMessageAlreadyProcessed(
+  channel: Channel,
+  providerMessageId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: conversationMessages.id })
+    .from(conversationMessages)
+    .where(
+      and(
+        eq(conversationMessages.channel, channel),
+        eq(conversationMessages.providerMessageId, providerMessageId),
+      ),
+    )
+    .limit(1)
+  return Boolean(row)
 }
 
 export interface RecentMessage {

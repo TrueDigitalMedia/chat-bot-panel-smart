@@ -99,6 +99,19 @@ describe('sendText — never repeats the same message verbatim', () => {
     )
   })
 
+  it('circuit breaker: stops sending entirely once the same text would repeat a 4th consecutive time', async () => {
+    getLastOutboundMessage.mockResolvedValue({
+      body: expect.anything(),
+      meta: { dedupeBase: 'msg', dedupeIndex: 2 },
+    })
+    const to = makeRecipient()
+
+    await sendText(to, 'msg')
+
+    expect(telegramSendText).not.toHaveBeenCalled()
+    expect(logConversationMessage).not.toHaveBeenCalled()
+  })
+
   it('skips the dedupe lookup entirely when the recipient has no lead id', async () => {
     const to = { channel: 'telegram', channelUserId: '123' } as unknown as ChannelRecipient
 

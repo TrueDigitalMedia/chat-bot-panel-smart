@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { PHASE1_EVAL_REASONS } from '@/lib/eval/qualification-eval'
-import { validateTransition } from './transitions'
+import { validateTransition, isTerminal, NEVER_REENGAGE_STATUSES } from './transitions'
+import { cancelAllPendingJobsForLead } from '@/lib/scheduler/re-engagement'
 import type { LeadStatus } from '@/types/lead'
 
 interface TransitionResult {
@@ -42,6 +43,22 @@ export async function transitionLead(
       timestamp: new Date().toISOString(),
     }),
   )
+
+  // Cancel any pending re-engagement/functional jobs the instant a lead lands somewhere
+  // that should never receive automated recontact — centralized here (rather than at
+  // each of the ~24 transitionLead call sites) for the same reason as the Panel Smart
+  // sync and eval below: "no current or future transition can be missed". Previously
+  // only 3 call sites (registration-choice.ts, the opt-out branch in flow-router.ts,
+  // reengage-choice.ts's "stop") remembered to cancel — every other transition into a
+  // terminal or NEVER_REENGAGE status (e.g. phase-1's not_qualified/quota_exhausted
+  // declines) left a stale job to fire later, relying solely on the job route's own
+  // defense-in-depth status check at send time, which itself was observed failing to
+  // stop a re-engagement nudge for an already-declined lead.
+  if (isTerminal(newStatus) || NEVER_REENGAGE_STATUSES.has(newStatus)) {
+    await cancelAllPendingJobsForLead(leadId).catch((err) => {
+      console.error('[scheduler] cancelAllPendingJobsForLead failed', { leadId, newStatus, err: String(err) })
+    })
+  }
 
   // Fire-and-forget Phase-1 qualification/quota eval (never blocks the chat)
   if (PHASE1_EVAL_REASONS.has(reason)) {

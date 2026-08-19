@@ -13,7 +13,7 @@ import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import { resetLeadConversation } from '@/lib/db/leads'
-import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
+import { hasSentOutboundMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
 import { mightBeAgenteTypo } from './agent-typo'
@@ -80,21 +80,83 @@ function isExpectedAnswer(
   return messageText.trim().length > 0
 }
 
+// Matches a bare thanks/farewell/acknowledgment ("ok", "gracias", "igualmente!", "cuídate")
+// and nothing that reads like an actual question — used to stop the closing-reply loop
+// below rather than to detect opt-outs or intents.
+const CLOSING_ACK_KEYWORDS =
+  /\b(ok(?:ay|ey)?|listo|vale|dale|perfecto|gracias|thanks?|thank\s*you|chau|chao|adi[oó]s|bye|cu[ií]date|igualmente|tu?\s+igual|buen[ao]?\s+d[ií]a|excelente\s+d[ií]a|hasta\s+luego|nos\s+vemos)\b/i
+const QUESTION_INDICATORS = /[?¿]|por\s+qu[eé]|qu[eé]\s|c[oó]mo\s|cu[aá]ndo\s|d[oó]nde\s|qui[eé]n\s/i
+
+/** True for a short closing pleasantry with nothing substantive to react to (see
+ *  declineFollowupOrSupportRedirect below) — false for anything that might be a real
+ *  question or comment, so those still get an actual reply. */
+function isClosingAcknowledgment(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length > 160) return false
+  if (QUESTION_INDICATORS.test(t)) return false
+  return CLOSING_ACK_KEYWORDS.test(t)
+}
+
+/**
+ * Sends the closing reply for a "¿ya me registré?"-style question and actually ends the
+ * conversation: cancels every pending job for the lead (recontact + any functional job)
+ * and, unless already terminal, moves the lead to a status that's permanently excluded
+ * from automated re-engagement — reusing the existing blocking mechanism
+ * (NEVER_REENGAGE_STATUSES/isTerminal) instead of inventing a new status. Job
+ * cancellation itself is now centralized in transitionLead (state-machine/index.ts), so
+ * this only needs to trigger the transition.
+ */
+export async function closeConversationForRegistrationStatusCheck(
+  lead: Lead,
+  reply: string,
+  correlationId: string,
+): Promise<void> {
+  await sendText(lead, reply, { closing: true })
+  const status = lead.leadStatus as LeadStatus
+  if (!isTerminal(status)) {
+    const target: LeadStatus = status === 'code_delivered_no_response' ? 'code_delivered_not_registered' : 'abandono'
+    await transitionLead(lead.id, target, 'user_confirmed_registration_closed', correlationId).catch(() => {})
+  }
+}
+
 /**
  * Replaces the static supportRedirect() text with an AI-generated, context-aware reply
- * (./decline-followup) whenever there's an actual message to react to — without this,
- * a declined lead who keeps writing gets the identical canned message every time (see
- * the 8d6d9907 case). Falls back to the plain supportRedirect() for a bare button tap
- * with no text, where there's nothing for the AI to react to.
+ * (./free-text-reply) whenever there's an actual message to react to — without this, a
+ * declined lead who keeps writing gets the identical canned message every time (see the
+ * 8d6d9907 case). Sends the plain supportRedirect() for a bare button tap with no text,
+ * where there's nothing for the AI to react to.
+ *
+ * The cheap isClosingAcknowledgment + last-outbound-closing-tag check short-circuits the
+ * obvious "gracias" right after a closing reply without spending an AI call — but it's
+ * no longer the only thing standing between a bare acknowledgment and a fresh reply:
+ * generateFreeTextReply looks at the actual recent conversation history and can return
+ * "acknowledgment" (no reply) even when this fast path doesn't fire, e.g. after a
+ * duplicate webhook delivery or a missed tag.
  */
 async function declineFollowupOrSupportRedirect(
-  leadId: string,
+  lead: Lead,
   messageText: string,
   correlationId: string,
-): Promise<string> {
-  if (!messageText.trim()) return supportRedirect()
-  const { generateDeclineFollowupReply } = await import('./decline-followup')
-  return generateDeclineFollowupReply(leadId, messageText, correlationId)
+): Promise<void> {
+  if (!messageText.trim()) {
+    await sendText(lead, supportRedirect())
+    return
+  }
+  if (isClosingAcknowledgment(messageText)) {
+    const last = await getLastOutboundMessage(lead.id)
+    if (last?.meta?.closing === true) return
+  }
+  const { generateFreeTextReply } = await import('./free-text-reply')
+  const result = await generateFreeTextReply(lead.id, messageText, correlationId, {
+    leadStatus: lead.leadStatus as LeadStatus,
+    isDeclined: true,
+  })
+  if (result.intent === 'acknowledgment') return
+  if (result.intent === 'registration_status_check' && result.reply) {
+    await closeConversationForRegistrationStatusCheck(lead, result.reply, correlationId)
+    return
+  }
+  await sendText(lead, result.reply ?? supportRedirect(), { closing: true })
 }
 
 export async function routeMessage(
@@ -229,7 +291,7 @@ export async function routeMessage(
         return
       }
     }
-    await sendText(lead, await declineFollowupOrSupportRedirect(lead.id, messageText, correlationId))
+    await declineFollowupOrSupportRedirect(lead, messageText, correlationId)
     return
   }
 
@@ -364,7 +426,7 @@ export async function routeMessage(
         }
       }
     }
-    await sendText(lead, await declineFollowupOrSupportRedirect(lead.id, messageText, correlationId))
+    await declineFollowupOrSupportRedirect(lead, messageText, correlationId)
     return
   }
 

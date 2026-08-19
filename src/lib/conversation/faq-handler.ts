@@ -61,10 +61,31 @@ export async function handleOutOfFlow(
       } else {
         await sendText(to, SAFE_FALLBACK)
       }
+    } else {
+      // No FAQ match for a substantive message — ground a reply in the actual
+      // conversation instead of staying silent and just re-asking the pending question.
+      // Also the only place (besides the terminal/declined path in flow-router.ts) that
+      // can catch "¿ya me registré?" while the lead is still active — e.g. mid-survey or
+      // mid-Ficha Hogar — and actually close the conversation instead of looping the
+      // pending step forever.
+      const { generateFreeTextReply } = await import('./free-text-reply')
+      const result = await generateFreeTextReply(lead.id, query, correlationId, {
+        leadStatus: status,
+        isDeclined: false,
+      })
+      if (result.intent === 'registration_status_check' && result.reply) {
+        const { closeConversationForRegistrationStatusCheck } = await import('./flow-router')
+        await closeConversationForRegistrationStatusCheck(lead, result.reply, correlationId)
+        return
+      }
+      if (result.intent === 'needs_reply' && result.reply) {
+        await sendText(to, result.reply)
+      }
     }
   }
 
-  // Always re-send the pending question (FAQ match or not)
+  // Always re-send the pending question (FAQ match or not) — unless the conversation was
+  // just closed above (registration_status_check returns before reaching here).
   await resendPendingQuestion(lead, pendingIdx, to)
 }
 

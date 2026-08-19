@@ -4,7 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { isTerminal } from '@/lib/state-machine/transitions'
+import { isTerminal, NEVER_REENGAGE_STATUSES } from '@/lib/state-machine/transitions'
 import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registration-code'
 import { sendInlineKeyboard } from '@/lib/messaging/send'
 import { REENGAGE_CALLBACK_CONTINUE, REENGAGE_CALLBACK_STOP } from '@/lib/conversation/reengage-choice'
@@ -20,18 +20,6 @@ const receiver = new Receiver({
   currentSigningKey: env.QSTASH_CURRENT_SIGNING_KEY,
   nextSigningKey: env.QSTASH_NEXT_SIGNING_KEY,
 })
-
-// Neither status is terminal (both have real transitions out — a mistaken decline can
-// be reversed, a late registration tap after the freeze can still be honored — see
-// transitions.ts), so isTerminal() alone won't stop an automated recontact here. But
-// resolveMessagePool has no dedicated pool for either: it falls back to phase1_reengage,
-// whose incentive/urgency copy ("¡gana premios!") is wrong for both — one already
-// explicitly declined, the other is mid-registration-confirmation, not mid-signup. The
-// only way a job reaches this state at all is a stale one scheduled earlier (e.g. during
-// link_sent) that outlives the status change — no phase-1/2/4 handler calls
-// scheduleRecontact while a lead is waiting_for_code, and registration-choice.ts already
-// cancels the job at decline time, so this is defense-in-depth against that race window.
-const NEVER_REENGAGE_STATUSES = new Set<LeadStatus>(['code_delivered_not_registered', 'code_delivered_no_response'])
 
 /**
  * Atomically claims this (leadId, phase, attemptNumber) delivery by flipping outcome

@@ -33,3 +33,14 @@ export function validateTransition(from: LeadStatus, to: LeadStatus): boolean {
 export function isTerminal(status: LeadStatus): boolean {
   return ALLOWED_TRANSITIONS[status].size === 0
 }
+
+// Non-terminal statuses (real transitions out still exist — a mistaken decline can be
+// reversed, a late registration tap after the freeze can still be honored) that should
+// nonetheless never receive automated re-engagement. Shared by transitionLead (which
+// cancels pending jobs the moment a lead lands here) and the re-engage job route (which
+// self-guards at send time as defense-in-depth against a job that outlives the status
+// change).
+export const NEVER_REENGAGE_STATUSES = new Set<LeadStatus>([
+  'code_delivered_not_registered',
+  'code_delivered_no_response',
+])
