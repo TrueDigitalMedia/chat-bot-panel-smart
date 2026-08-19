@@ -20,6 +20,7 @@ const {
   sendRegistrationConfirmReminder,
   transitionLead,
   detectRegistrationRetryIntent,
+  detectOptOutIntent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -40,6 +41,7 @@ const {
   sendRegistrationConfirmReminder: vi.fn(),
   transitionLead: vi.fn(),
   detectRegistrationRetryIntent: vi.fn(),
+  detectOptOutIntent: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -52,6 +54,7 @@ vi.mock('@/lib/onboarding/registration-choice', () => ({
 }))
 vi.mock('@/lib/state-machine', () => ({ transitionLead }))
 vi.mock('./detect-registration-retry', () => ({ detectRegistrationRetryIntent }))
+vi.mock('./detect-opt-out', () => ({ detectOptOutIntent }))
 vi.mock('@/lib/onboarding/app-downloaded', () => ({ handleAppDownloaded, isAppDownloadedCallback }))
 vi.mock('./reengage-choice', () => ({
   handleReengageChoice: vi.fn(),
@@ -100,6 +103,7 @@ beforeEach(() => {
   isAppDownloadedCallback.mockReturnValue(false)
   hasSentOutboundMessage.mockResolvedValue(true)
   detectRegistrationRetryIntent.mockResolvedValue(false)
+  detectOptOutIntent.mockResolvedValue(false)
   transitionLead.mockResolvedValue(undefined)
 })
 
@@ -308,5 +312,40 @@ describe('routeMessage — free-text opt-out', () => {
 
     expect(transitionLead).not.toHaveBeenCalled()
     expect(sendText).toHaveBeenCalledWith(lead, 'support redirect')
+  })
+
+  it('atypical phrasing that the regex misses but the AI check confirms still opts the lead out', async () => {
+    detectOptOutIntent.mockResolvedValue(true)
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'me tienen asfixiada con tantos mensajes, ya paren' }), 'corr-1')
+
+    expect(detectOptOutIntent).toHaveBeenCalledWith(
+      'me tienen asfixiada con tantos mensajes, ya paren',
+      { leadId: 'lead-1', correlationId: 'corr-1' },
+    )
+    expect(cancelPendingJobs).toHaveBeenCalledWith('lead-1', 1)
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'user_freetext_opt_out', 'corr-1')
+    expect(handlePhase1).not.toHaveBeenCalled()
+  })
+
+  it('a message that only coincidentally matches the AI pre-filter keywords is not opted out when the AI says no', async () => {
+    detectOptOutIntent.mockResolvedValue(false)
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'mi email es contacto@empresa.com' }), 'corr-1')
+
+    expect(detectOptOutIntent).toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(handlePhase1).toHaveBeenCalledWith(lead, 'mi email es contacto@empresa.com', undefined, 'corr-1')
+  })
+
+  it('never spends an AI call on ordinary text with no opt-out-adjacent keywords', async () => {
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'Guatemala' }), 'corr-1')
+
+    expect(detectOptOutIntent).not.toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
   })
 })

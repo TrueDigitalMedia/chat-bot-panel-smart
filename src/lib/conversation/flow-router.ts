@@ -17,6 +17,7 @@ import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
 import { mightBeAgenteTypo } from './agent-typo'
+import { mightBeOptOutIntent } from './opt-out-heuristic'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -119,15 +120,27 @@ export async function routeMessage(
   // "ya no me escriban" instead of tapping a button had no dedicated handler and fell
   // through to FAQ/AI interpretation, so nothing guaranteed the bot would actually stop
   // messaging them. Checked ahead of every other branch below, same reasoning as restart.
-  if (messageText && isOptOutRequest(messageText) && !isTerminal(status)) {
-    await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
-    await cancelPendingRecontact(lead.id).catch(() => {})
-    await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
-    await sendText(
-      lead,
-      'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
-    )
-    return
+  // Two-tier detection, same shape as the agent-handoff typo check below: isOptOutRequest
+  // is free (regex, common phrasings only); mightBeOptOutIntent is a broader but still
+  // cheap keyword pre-filter, and only messages that pass it spend an AI call
+  // (detectOptOutIntent) confirming genuine intent — covers atypical phrasing/typos the
+  // regex alone would miss, without running an AI check on every ordinary survey answer.
+  if (messageText && !isTerminal(status)) {
+    let isOptOut = isOptOutRequest(messageText)
+    if (!isOptOut && mightBeOptOutIntent(messageText)) {
+      const { detectOptOutIntent } = await import('./detect-opt-out')
+      isOptOut = await detectOptOutIntent(messageText, { leadId: lead.id, correlationId })
+    }
+    if (isOptOut) {
+      await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+      await cancelPendingRecontact(lead.id).catch(() => {})
+      await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
+      await sendText(
+        lead,
+        'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
+      )
+      return
+    }
   }
 
   // Allow agent handoff from any state — purely informational, doesn't change lead status/phase.
