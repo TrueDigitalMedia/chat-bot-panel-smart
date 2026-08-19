@@ -98,6 +98,22 @@ function isClosingAcknowledgment(text: string): boolean {
 }
 
 /**
+ * True when the previous outbound message already delivered one of the static "still
+ * waiting"/status reminders below (tagged `meta.closing` by the caller) and the user's
+ * reply is just a bare acknowledgment ("ok", "gracias") — the caller should send nothing
+ * at all instead of repeating the same reminder on every turn. These are plain status
+ * notices, not conversational replies, so a full AI call isn't warranted here — same
+ * suppression pattern as declineFollowupOrSupportRedirect below, without the AI cost.
+ * A real log showed "Aún no hemos podido confirmar tu código..." repeating on every
+ * "Ok" for 10+ minutes because this branch had never been wired into any closing logic.
+ */
+async function alreadyAcknowledgedReminder(leadId: string, messageText: string): Promise<boolean> {
+  if (!messageText || !isClosingAcknowledgment(messageText)) return false
+  const last = await getLastOutboundMessage(leadId)
+  return last?.meta?.closing === true
+}
+
+/**
  * Sends the closing reply for a "¿ya me registré?"-style question and actually ends the
  * conversation: cancels every pending job for the lead (recontact + any functional job)
  * and, unless already terminal, moves the lead to a status that's permanently excluded
@@ -263,13 +279,17 @@ export async function routeMessage(
   // support message isTerminal() would have given (code_delivered_no_response has a
   // real transition out now, so it no longer routes through that branch below).
   if (status === 'code_delivered_no_response') {
-    await sendText(lead, supportRedirect())
+    if (!(await alreadyAcknowledgedReminder(lead.id, messageText))) {
+      await sendText(lead, supportRedirect(), { closing: true })
+    }
     return
   }
 
   // Waiting for mock registration confirmation — remind buttons, don't dump to support FAQ
   if (status === 'waiting_for_code') {
-    await sendRegistrationConfirmReminder(lead)
+    if (!(await alreadyAcknowledgedReminder(lead.id, messageText))) {
+      await sendRegistrationConfirmReminder(lead, { closing: true })
+    }
     return
   }
 
@@ -325,10 +345,13 @@ export async function routeMessage(
       await handleAppDownloaded(lead, correlationId)
       return
     }
-    await sendText(
-      lead,
-      `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo en un plazo de 24 a 72 horas.`,
-    )
+    if (!(await alreadyAcknowledgedReminder(lead.id, messageText))) {
+      await sendText(
+        lead,
+        `Aún no hemos podido confirmar tu código de registro — puede tardar unos minutos después de descargar la app. Te lo enviaremos apenas esté listo.\n\nSi ya pasó un rato largo y no llega, nuestro equipo se pondrá en contacto contigo en un plazo de 24 a 72 horas.`,
+        { closing: true },
+      )
+    }
     await scheduleRecontact(lead.id, correlationId).catch(() => {})
     return
   }

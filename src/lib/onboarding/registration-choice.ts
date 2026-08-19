@@ -12,11 +12,19 @@ export function isRegistrationCallback(callbackData: string | undefined): boolea
 }
 
 /** Shared by the waiting_for_code reminder and the registration-decline reversal path. */
-export async function sendRegistrationConfirmReminder(lead: Lead): Promise<void> {
-  await sendInlineKeyboard(lead, 'Aún estamos en el paso de registro. Confirma con un botón:', [
-    [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
-    [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
-  ])
+export async function sendRegistrationConfirmReminder(
+  lead: Lead,
+  extraMeta?: Record<string, unknown>,
+): Promise<void> {
+  await sendInlineKeyboard(
+    lead,
+    'Aún estamos en el paso de registro. Confirma con un botón:',
+    [
+      [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
+      [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
+    ],
+    extraMeta,
+  )
 }
 
 /**

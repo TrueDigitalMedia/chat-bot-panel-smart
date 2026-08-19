@@ -139,6 +139,7 @@ export async function sendInlineKeyboard(
   to: ChannelRecipient,
   text: string,
   buttons: InlineKeyboardButton[][],
+  extraMeta?: Record<string, unknown>,
 ): Promise<void> {
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
@@ -174,6 +175,7 @@ export async function sendInlineKeyboard(
   }
   await logOut(to, 'keyboard', outText, {
     buttons: buttons.flat().map((b) => ({ text: b.text, callback_data: b.callback_data })),
+    ...extraMeta,
     ...dedupeMeta,
   })
 }

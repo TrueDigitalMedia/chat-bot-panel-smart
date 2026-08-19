@@ -175,6 +175,31 @@ describe('routeMessage — recontact scheduling', () => {
     expect(scheduleRecontact).not.toHaveBeenCalled()
   })
 
+  it('link_sent branch: a plain "Ok" right after the reminder was already sent gets no reply at all (the reported loop)', async () => {
+    getLastOutboundMessage.mockResolvedValue({
+      body: 'Aún no hemos podido confirmar tu código de registro...',
+      meta: { closing: true },
+    })
+    const lead = makeLead({ leadStatus: 'link_sent', currentPhase: 2 })
+
+    await routeMessage(lead, makeInbound({ text: 'Ok' }), 'corr-1')
+
+    expect(sendText).not.toHaveBeenCalled()
+    // Still re-arms the recontact timer — silence here isn't the same as ending the flow.
+    expect(scheduleRecontact).toHaveBeenCalledWith('lead-1', 'corr-1')
+  })
+
+  it('link_sent branch: the first reminder still goes out tagged closing, so a follow-up "Ok" can be suppressed', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'link_sent', currentPhase: 2 })
+
+    await routeMessage(lead, makeInbound({ text: 'aún no la he descargado' }), 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(lead, expect.stringContaining('Aún no hemos podido confirmar'), {
+      closing: true,
+    })
+  })
+
   it('code_delivered_registered branch (normal Ficha Hogar turn): schedules recontact after handleFichaHogar', async () => {
     handleFichaHogarCorrectionFlow.mockResolvedValue(false)
     tryHandleFichaHogarCorrectionRequest.mockResolvedValue(false)
@@ -219,6 +244,44 @@ describe('routeMessage — recontact scheduling', () => {
     expect(resetLeadConversation).not.toHaveBeenCalled()
     expect(sendText).not.toHaveBeenCalled()
     expect(handlePhase1).toHaveBeenCalledWith(lead, 'hola', undefined, 'corr-1')
+  })
+})
+
+describe('routeMessage — static status reminders stop repeating once acknowledged', () => {
+  it('waiting_for_code: a plain "Ok" after the reminder was already sent gets no reply', async () => {
+    getLastOutboundMessage.mockResolvedValue({ body: 'reminder', meta: { closing: true } })
+    const lead = makeLead({ leadStatus: 'waiting_for_code' })
+
+    await routeMessage(lead, makeInbound({ text: 'ok' }), 'corr-1')
+
+    expect(sendRegistrationConfirmReminder).not.toHaveBeenCalled()
+  })
+
+  it('waiting_for_code: the reminder is tagged closing so a later "Ok" can be suppressed', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'waiting_for_code' })
+
+    await routeMessage(lead, makeInbound({ text: 'algo' }), 'corr-1')
+
+    expect(sendRegistrationConfirmReminder).toHaveBeenCalledWith(lead, { closing: true })
+  })
+
+  it('code_delivered_no_response: a plain "Ok" after the support redirect was already sent gets no reply', async () => {
+    getLastOutboundMessage.mockResolvedValue({ body: 'support redirect', meta: { closing: true } })
+    const lead = makeLead({ leadStatus: 'code_delivered_no_response' })
+
+    await routeMessage(lead, makeInbound({ text: 'gracias' }), 'corr-1')
+
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('code_delivered_no_response: the support redirect is tagged closing', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'code_delivered_no_response' })
+
+    await routeMessage(lead, makeInbound({ text: 'algo' }), 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(lead, 'support redirect', { closing: true })
   })
 })
 
