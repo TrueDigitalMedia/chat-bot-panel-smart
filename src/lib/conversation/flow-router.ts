@@ -80,6 +80,23 @@ function isExpectedAnswer(
   return messageText.trim().length > 0
 }
 
+/**
+ * Replaces the static supportRedirect() text with an AI-generated, context-aware reply
+ * (./decline-followup) whenever there's an actual message to react to — without this,
+ * a declined lead who keeps writing gets the identical canned message every time (see
+ * the 8d6d9907 case). Falls back to the plain supportRedirect() for a bare button tap
+ * with no text, where there's nothing for the AI to react to.
+ */
+async function declineFollowupOrSupportRedirect(
+  leadId: string,
+  messageText: string,
+  correlationId: string,
+): Promise<string> {
+  if (!messageText.trim()) return supportRedirect()
+  const { generateDeclineFollowupReply } = await import('./decline-followup')
+  return generateDeclineFollowupReply(leadId, messageText, correlationId)
+}
+
 export async function routeMessage(
   lead: Lead,
   inbound: ChannelInbound,
@@ -212,7 +229,7 @@ export async function routeMessage(
         return
       }
     }
-    await sendText(lead, supportRedirect())
+    await sendText(lead, await declineFollowupOrSupportRedirect(lead.id, messageText, correlationId))
     return
   }
 
@@ -347,7 +364,7 @@ export async function routeMessage(
         }
       }
     }
-    await sendText(lead, supportRedirect())
+    await sendText(lead, await declineFollowupOrSupportRedirect(lead.id, messageText, correlationId))
     return
   }
 
