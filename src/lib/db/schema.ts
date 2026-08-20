@@ -444,6 +444,28 @@ export const messageVariants = pgTable(
   ],
 )
 
+/**
+ * Persisted lookup for Twilio `twilio/quick-reply` / `twilio/list-picker` Content
+ * resources, keyed by a hash of (kind, body, buttons). The bot creates these on the
+ * fly for in-session messages (survey questions, decision-gate buttons) — without a
+ * durable cache, every serverless cold start forgot what it had already created and
+ * re-created an identical Content resource in Twilio, flooding the account with
+ * duplicate templates. This table is the cache that actually survives cold starts and
+ * is shared across every instance.
+ */
+export const twilioContentCache = pgTable(
+  'twilio_content_cache',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    contentHash: varchar('content_hash', { length: 64 }).notNull(),
+    /** 'qr' (quick-reply) | 'lp2' (list-picker) */
+    kind: varchar('kind', { length: 10 }).notNull(),
+    contentSid: varchar('content_sid', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('twilio_content_cache_hash_idx').on(t.contentHash)],
+)
+
 export const leadMessageVariantUsage = pgTable(
   'lead_message_variant_usage',
   {
