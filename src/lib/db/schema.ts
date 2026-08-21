@@ -466,6 +466,35 @@ export const twilioContentCache = pgTable(
   (t) => [uniqueIndex('twilio_content_cache_hash_idx').on(t.contentHash)],
 )
 
+/**
+ * Approved WhatsApp templates, keyed by a stable logical id — e.g.
+ * `phase1_reengage_a1_v1` (derived from message_variants' pool/attemptNumber/
+ * variantOrder) or a fixed constant like `registration_code_delivered`. Only messages
+ * genuinely business-initiated (a cron job or an external webhook, not a reply to a
+ * fresh inbound message) need a row here. `contentSid` is Twilio's Content resource id
+ * — known as soon as it's created — while `approvalStatus` tracks Meta's separate,
+ * slower review of that content; sending code only uses a row once it's 'approved',
+ * which is what makes the rollout gradual without any extra flag.
+ */
+export const whatsappTemplates = pgTable(
+  'whatsapp_templates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    logicalId: varchar('logical_id', { length: 100 }).notNull(),
+    provider: varchar('provider', { length: 10 }).notNull(), // 'twilio' | 'meta' (future)
+    contentSid: varchar('content_sid', { length: 64 }),
+    /** Meta template name — unused until direct-Meta template sending exists. */
+    templateName: varchar('template_name', { length: 512 }),
+    language: varchar('language', { length: 10 }).notNull().default('es'),
+    approvalStatus: varchar('approval_status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('whatsapp_templates_logical_provider_lang_idx').on(t.logicalId, t.provider, t.language),
+  ],
+)
+
 export const leadMessageVariantUsage = pgTable(
   'lead_message_variant_usage',
   {

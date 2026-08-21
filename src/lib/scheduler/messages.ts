@@ -47,11 +47,16 @@ export function getFallbackMessage(pool: MessagePool, attemptNumber: 1 | 2 | 3):
  * filters. Pools rotate independently — the same (leadId, attemptNumber) pair in two
  * different pools tracks separate rotation state.
  */
+export interface MessageVariantResult {
+  text: string
+  variantOrder: number
+}
+
 export async function getNextMessageVariant(
   leadId: string,
   attemptNumber: 1 | 2 | 3,
   pool: MessagePool,
-): Promise<string> {
+): Promise<MessageVariantResult> {
   // Fetch all variants for this pool+attempt
   const variants = await db
     .select()
@@ -60,8 +65,11 @@ export async function getNextMessageVariant(
     .orderBy(messageVariants.variantOrder)
 
   if (!variants.length) {
-    // Fallback to the hardcoded message if no variants seeded yet for this pool
-    return getFallbackMessage(pool, attemptNumber)
+    // Fallback to the hardcoded message if no variants seeded yet for this pool.
+    // variantOrder is a stand-in (there's no real row to draw it from) — its only use
+    // downstream is building a template logicalId, and a template registered for a
+    // pool with no seeded variants simply won't match, which is the correct fallback.
+    return { text: getFallbackMessage(pool, attemptNumber), variantOrder: attemptNumber }
   }
 
   // Get last variant used for this lead & pool & attempt
@@ -106,5 +114,5 @@ export async function getNextMessageVariant(
     })
   }
 
-  return selectedVariant.templateText
+  return { text: selectedVariant.templateText, variantOrder: selectedVariant.variantOrder }
 }

@@ -2,9 +2,15 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendVideo, sendInlineKeyboard } from '@/lib/messaging/send'
+import { sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText } from '@/lib/messaging/send'
 import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
+import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
+import { getApprovedTemplate } from '@/lib/whatsapp/providers/twilio/templates'
+import {
+  REGISTRATION_CODE_OTP_TEMPLATE,
+  REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE,
+} from '@/lib/whatsapp/providers/twilio/template-ids'
 import type { Lead } from '@/types/lead'
 
 const ONBOARDING_VIDEO = process.env.ONBOARDING_VIDEO_URL ?? ''
@@ -43,16 +49,46 @@ export async function deliverRegistrationCode(
     await sendVideo(lead, ONBOARDING_VIDEO, '🎬 Video con los pasos para registrarte')
   }
 
-  await sendInlineKeyboard(
-    lead,
+  const text =
     `✅ Tu código de registro${label} es: ${code}\n\n` +
-      `${ONBOARDING_INSTRUCTIONS_TEXT}\n\n` +
-      `Cuando hayas “activado” la app con ese código, confirma aquí:`,
-    [
-      [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
-      [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
-    ],
-  )
+    `${ONBOARDING_INSTRUCTIONS_TEXT}\n\n` +
+    `Cuando hayas “activado” la app con ese código, confirma aquí:`
+  const buttons = [
+    [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
+    [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
+  ]
+  // Mock codes (REGISTRATION_CODE_MOCK_ENABLED, test-only) always go out as a single
+  // free-text message — never through an approved template, since the "(mock)" label
+  // wouldn't render cleanly inside the OTP template's variable and mock traffic should
+  // never reach production credentials anyway.
+  //
+  // Meta rejects a single template mixing an OTP-shaped variable with password-reset/
+  // verification instructions (phishing-pattern detection) — the approved templates are
+  // split into a bare Authentication OTP template and a separate Utility template for
+  // the instructions + confirm buttons. Only switch to that two-message send once BOTH
+  // are confirmed approved; otherwise send the exact same single combined message as
+  // before, which also keeps Telegram/web/Meta-direct WhatsApp and the mid-rollout
+  // "not approved yet" case behaving exactly like today.
+  const useSplitTemplates =
+    !opts.mock &&
+    lead.channel === 'whatsapp' &&
+    getWhatsAppProvider() === 'twilio' &&
+    (await getApprovedTemplate(REGISTRATION_CODE_OTP_TEMPLATE)) &&
+    (await getApprovedTemplate(REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE))
+
+  if (useSplitTemplates) {
+    await sendTemplateOrText(lead, REGISTRATION_CODE_OTP_TEMPLATE, `✅ Tu código de registro es: ${code}`, {
+      contentVariables: { '1': code },
+    })
+    await sendTemplateOrKeyboard(
+      lead,
+      REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE,
+      `${ONBOARDING_INSTRUCTIONS_TEXT}\n\nCuando hayas “activado” la app con ese código, confirma aquí:`,
+      buttons,
+    )
+  } else {
+    await sendInlineKeyboard(lead, text, buttons)
+  }
 
   await scheduleFreezeRegistration(lead.id, opts.phase)
 }

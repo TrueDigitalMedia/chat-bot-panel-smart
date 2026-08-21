@@ -10,10 +10,11 @@
  * unrelated request handling breaks.
  */
 import type { InlineKeyboardButton } from '@/types/telegram'
-import type { WaChoiceMap } from '@/lib/whatsapp/buttons'
+import { buildNumberedChoices, type WaChoiceMap } from '@/lib/whatsapp/buttons'
 import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
 import * as meta from '@/lib/whatsapp/providers/meta/send'
 import * as twilio from '@/lib/whatsapp/providers/twilio/send'
+import { getApprovedTemplate } from '@/lib/whatsapp/providers/twilio/templates'
 
 function logSendFailure(fn: string, channelUserId: string, err: unknown): void {
   console.error(`[whatsapp:send] ${fn} failed`, {
@@ -64,4 +65,52 @@ export async function sendWhatsAppKeyboard(
     logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
     return { sid: undefined, choices: {} }
   }
+}
+
+/** Sends by pre-approved Twilio Content template when one is registered for
+ *  `logicalId`; otherwise (no template yet, Meta-direct provider, or the template
+ *  send itself fails) falls back to the existing free-text/dynamic-content keyboard
+ *  send — same shape/behavior as sendWhatsAppKeyboard for every other case. */
+export async function sendWhatsAppTemplateOrKeyboard(
+  channelUserId: string,
+  logicalId: string,
+  fallbackText: string,
+  buttons: InlineKeyboardButton[][],
+  contentVariables?: Record<string, string>,
+): Promise<{ sid?: string; choices: WaChoiceMap }> {
+  if (getWhatsAppProvider() === 'twilio') {
+    const template = await getApprovedTemplate(logicalId).catch(() => undefined)
+    if (template) {
+      try {
+        const { choices } = buildNumberedChoices(buttons)
+        const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+        return { sid, choices }
+      } catch (err) {
+        logSendFailure('sendWhatsAppTemplateOrKeyboard', channelUserId, err)
+        // Fall through to the free-text/dynamic-content path below.
+      }
+    }
+  }
+  return sendWhatsAppKeyboard(channelUserId, fallbackText, buttons)
+}
+
+/** Text-only counterpart of sendWhatsAppTemplateOrKeyboard, for templates with no buttons. */
+export async function sendWhatsAppTemplateOrText(
+  channelUserId: string,
+  logicalId: string,
+  fallbackText: string,
+  contentVariables?: Record<string, string>,
+): Promise<string | undefined> {
+  if (getWhatsAppProvider() === 'twilio') {
+    const template = await getApprovedTemplate(logicalId).catch(() => undefined)
+    if (template) {
+      try {
+        return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+      } catch (err) {
+        logSendFailure('sendWhatsAppTemplateOrText', channelUserId, err)
+        // Fall through to the free-text path below.
+      }
+    }
+  }
+  return sendWhatsAppText(channelUserId, fallbackText)
 }

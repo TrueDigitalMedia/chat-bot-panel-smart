@@ -180,6 +180,87 @@ export async function sendInlineKeyboard(
   })
 }
 
+/** Same as sendInlineKeyboard, but on WhatsApp/Twilio prefers a pre-approved Content
+ *  template (by `logicalId`) when one is registered — falling back to the same
+ *  dynamic/free-text keyboard send otherwise. Telegram and web ignore `logicalId`
+ *  entirely and behave exactly like sendInlineKeyboard. */
+export async function sendTemplateOrKeyboard(
+  to: ChannelRecipient,
+  logicalId: string,
+  text: string,
+  buttons: InlineKeyboardButton[][],
+  opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
+): Promise<void> {
+  const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
+  if (suppress) {
+    console.warn('[messaging] repeat circuit breaker: suppressing send', {
+      leadId: leadIdOf(to),
+      dedupeIndex: dedupeMeta.dedupeIndex,
+    })
+    return
+  }
+  switch (to.channel) {
+    case 'telegram':
+      await telegram.sendInlineKeyboard(BigInt(to.channelUserId), outText, buttons)
+      break
+    case 'whatsapp': {
+      const { choices } = await whatsapp.sendWhatsAppTemplateOrKeyboard(
+        to.channelUserId,
+        logicalId,
+        outText,
+        buttons,
+        opts?.contentVariables,
+      )
+      const leadId = leadIdOf(to)
+      if (leadId) await setPendingWaChoices(leadId, choices)
+      break
+    }
+    case 'web':
+      break
+    default: {
+      const _exhaustive: never = to.channel
+      throw new Error(`Unknown channel: ${_exhaustive}`)
+    }
+  }
+  await logOut(to, 'keyboard', outText, {
+    buttons: buttons.flat().map((b) => ({ text: b.text, callback_data: b.callback_data })),
+    templateLogicalId: logicalId,
+    ...opts?.extraMeta,
+    ...dedupeMeta,
+  })
+}
+
+/** Same as sendText, but on WhatsApp/Twilio prefers a pre-approved Content template
+ *  (by `logicalId`, no buttons) when one is registered — falling back to plain
+ *  sendText otherwise. Telegram and web ignore `logicalId` entirely. */
+export async function sendTemplateOrText(
+  to: ChannelRecipient,
+  logicalId: string,
+  text: string,
+  opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
+): Promise<void> {
+  const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
+  if (suppress) {
+    console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: dedupeMeta.dedupeIndex })
+    return
+  }
+  switch (to.channel) {
+    case 'telegram':
+      await telegram.sendText(BigInt(to.channelUserId), outText)
+      break
+    case 'whatsapp':
+      await whatsapp.sendWhatsAppTemplateOrText(to.channelUserId, logicalId, outText, opts?.contentVariables)
+      break
+    case 'web':
+      break
+    default: {
+      const _exhaustive: never = to.channel
+      throw new Error(`Unknown channel: ${_exhaustive}`)
+    }
+  }
+  await logOut(to, 'text', outText, { templateLogicalId: logicalId, ...opts?.extraMeta, ...dedupeMeta })
+}
+
 /** Ask user for phone — Telegram uses native contact share; WhatsApp skips (id = phone). */
 export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
   const prompt =

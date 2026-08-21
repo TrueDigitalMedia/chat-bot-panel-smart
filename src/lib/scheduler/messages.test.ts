@@ -53,9 +53,9 @@ describe('getNextMessageVariant', () => {
   it('falls back to the hardcoded pool copy when no variants are seeded', async () => {
     dbMock.select.mockReturnValue(selectChain([]))
 
-    const message = await getNextMessageVariant('lead-1', 1, 'phase4_ficha_hogar')
+    const result = await getNextMessageVariant('lead-1', 1, 'phase4_ficha_hogar')
 
-    expect(message).toBe(getFallbackMessage('phase4_ficha_hogar', 1))
+    expect(result).toEqual({ text: getFallbackMessage('phase4_ficha_hogar', 1), variantOrder: 1 })
     expect(dbMock.insert).not.toHaveBeenCalled()
   })
 
@@ -72,7 +72,7 @@ describe('getNextMessageVariant', () => {
       .mockReturnValueOnce(selectChain(variants)) // variants lookup
       .mockReturnValueOnce(selectChain([])) // no lastUsage
     const first = await getNextMessageVariant('lead-1', 1, 'phase1_reengage')
-    expect(first).toBe('A')
+    expect(first).toEqual({ text: 'A', variantOrder: 1 })
     expect(insertCaptured[0]).toMatchObject({ leadId: 'lead-1', pool: 'phase1_reengage', attemptNumber: 1, variantOrder: 1 })
 
     // Second send: lastUsage now shows variantOrder 1 was used → rotates to 2.
@@ -82,7 +82,7 @@ describe('getNextMessageVariant', () => {
       .mockReturnValueOnce(selectChain(variants))
       .mockReturnValueOnce(selectChain([{ leadId: 'lead-1', pool: 'phase1_reengage', attemptNumber: 1, variantOrder: 1 }]))
     const second = await getNextMessageVariant('lead-1', 1, 'phase1_reengage')
-    expect(second).toBe('B')
+    expect(second).toEqual({ text: 'B', variantOrder: 2 })
     expect(updateCaptured[0]).toMatchObject({ variantOrder: 2 })
   })
 
@@ -102,7 +102,7 @@ describe('getNextMessageVariant', () => {
       .mockReturnValueOnce(selectChain([])) // phase2 lastUsage — independent of phase1's usage
     const phase2Message = await getNextMessageVariant('lead-1', 1, 'phase2_link_reminder')
 
-    expect(phase2Message).toBe('P2-A')
+    expect(phase2Message).toEqual({ text: 'P2-A', variantOrder: 1 })
     expect(insertCaptured[0]).toMatchObject({ pool: 'phase2_link_reminder', variantOrder: 1 })
   })
 })

@@ -79,6 +79,27 @@ export async function sendTwilioVideo(
   }
 }
 
+/** Sends a pre-approved Content template by fixed SID — no dynamic Content creation.
+ *  Throws on failure (unlike the other Twilio send functions) so the caller
+ *  (whatsapp/send.ts) can decide whether to retry with the free-text/dynamic path. */
+export async function sendTwilioTemplate(
+  channelUserId: string,
+  contentSid: string,
+  contentVariables?: Record<string, string>,
+): Promise<string | undefined> {
+  requireTwilio()
+  const to = toWhatsAppAddress(channelUserId)
+  console.info('[whatsapp:twilio:out]', { to, type: 'template', contentSid })
+  const msg = await client().messages.create({
+    contentSid,
+    contentVariables: contentVariables ? JSON.stringify(contentVariables) : undefined,
+    from: env.TWILIO_WHATSAPP_FROM!,
+    to,
+  })
+  console.info('[whatsapp:twilio:out] ok', { to, sid: msg.sid, contentSid, template: true })
+  return msg.sid
+}
+
 export async function sendTwilioKeyboard(
   channelUserId: string,
   text: string,

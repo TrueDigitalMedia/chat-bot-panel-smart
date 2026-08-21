@@ -7,7 +7,7 @@ const {
   transitionLead,
   requestRegistrationCodeForLead,
   sendText,
-  sendInlineKeyboard,
+  sendTemplateOrKeyboard,
   scheduleJob,
   getNextMessageVariant,
 } = vi.hoisted(() => ({
@@ -16,7 +16,7 @@ const {
   transitionLead: vi.fn(),
   requestRegistrationCodeForLead: vi.fn(),
   sendText: vi.fn(),
-  sendInlineKeyboard: vi.fn(),
+  sendTemplateOrKeyboard: vi.fn(),
   scheduleJob: vi.fn(),
   getNextMessageVariant: vi.fn(),
 }))
@@ -34,7 +34,7 @@ vi.mock('@/lib/onboarding/request-registration-code', () => ({
 }))
 vi.mock('@/lib/messaging/send', () => ({
   sendText: (...args: unknown[]) => sendText(...args),
-  sendInlineKeyboard: (...args: unknown[]) => sendInlineKeyboard(...args),
+  sendTemplateOrKeyboard: (...args: unknown[]) => sendTemplateOrKeyboard(...args),
 }))
 vi.mock('@/lib/conversation/reengage-choice', () => ({
   REENGAGE_CALLBACK_CONTINUE: 'reengage:continue',
@@ -138,7 +138,7 @@ describe('POST /api/jobs/re-engage', () => {
 
     expect(body.outcome).toBe('skipped_declined')
     expect(sendText).not.toHaveBeenCalled()
-    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+    expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
   })
 
   it('re-engage: skips with skipped_declined and does not send when a stale job outlives the inactivity freeze', async () => {
@@ -149,7 +149,7 @@ describe('POST /api/jobs/re-engage', () => {
 
     expect(body.outcome).toBe('skipped_declined')
     expect(sendText).not.toHaveBeenCalled()
-    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+    expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
   })
 
   it('re-engage: skips with skipped_24h_window when the lead has been idle past the WhatsApp session window', async () => {
@@ -161,7 +161,7 @@ describe('POST /api/jobs/re-engage', () => {
     const body = await res.json()
 
     expect(body.outcome).toBe('skipped_24h_window')
-    expect(sendInlineKeyboard).not.toHaveBeenCalled()
+    expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
   })
 
   it('re-engage: skips without consent', async () => {
@@ -186,14 +186,15 @@ describe('POST /api/jobs/re-engage', () => {
 
   it('re-engage: resolves the message pool from the lead\'s current status (link_sent → phase2 pool) and escalates under the fresh currentPhase', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'link_sent', currentPhase: 2 }]))
-    getNextMessageVariant.mockResolvedValue('¿Ya descargaste la app?')
+    getNextMessageVariant.mockResolvedValue({ text: '¿Ya descargaste la app?', variantOrder: 1 })
 
     const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
     expect(getNextMessageVariant).toHaveBeenCalledWith('lead-1', 1, 'phase2_link_reminder')
-    expect(sendInlineKeyboard).toHaveBeenCalledWith(
+    expect(sendTemplateOrKeyboard).toHaveBeenCalledWith(
       expect.anything(),
+      'phase2_link_reminder_a1_v1',
       '¿Ya descargaste la app?',
       [
         [
@@ -209,7 +210,7 @@ describe('POST /api/jobs/re-engage', () => {
 
   it('re-engage: marks the lead abandono after the final attempt instead of escalating further', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1 }]))
-    getNextMessageVariant.mockResolvedValue('mensaje')
+    getNextMessageVariant.mockResolvedValue({ text: 'mensaje', variantOrder: 1 })
 
     const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 3, action: 're-engage' }))
     const body = await res.json()

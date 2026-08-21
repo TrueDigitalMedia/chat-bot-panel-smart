@@ -10,8 +10,9 @@ import { logCall } from '@/lib/db/call-log'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
 import { REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER } from '@/lib/scheduler/constants'
 import { env, isTdmRegistrationRequestConfigured } from '@/lib/env'
-import { sendText } from '@/lib/messaging/send'
+import { sendTemplateOrText } from '@/lib/messaging/send'
 import { registrationCodeDelayedRedirect } from '@/lib/conversation/exit-messages'
+import { REGISTRATION_CODE_DELAYED_TEMPLATE } from '@/lib/whatsapp/providers/twilio/template-ids'
 import type { Lead, SurveyProfile } from '@/types/lead'
 
 /** Deterministic per-lead placeholder — only used while REGISTRATION_CODE_MOCK_ENABLED=true. */
@@ -44,14 +45,14 @@ export async function requestRegistrationCodeForLead(
     // waiting out a timeout that can only fail (mirrors the old MySQL-sync-disabled check).
     // Tell the user before going terminal — previously this abandoned silently, so the
     // user got no signal and every later message just looped the generic support redirect.
-    await sendText(lead, registrationCodeDelayedRedirect())
+    await sendTemplateOrText(lead, REGISTRATION_CODE_DELAYED_TEMPLATE, registrationCodeDelayedRedirect())
     await transitionLead(lead.id, 'abandono', 'code_request_not_configured', correlationId)
     return 'not_configured'
   }
 
   const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id)).limit(1)
   if (!profile) {
-    await sendText(lead, registrationCodeDelayedRedirect())
+    await sendTemplateOrText(lead, REGISTRATION_CODE_DELAYED_TEMPLATE, registrationCodeDelayedRedirect())
     await transitionLead(lead.id, 'abandono', 'code_request_missing_profile', correlationId)
     return 'missing_profile'
   }
