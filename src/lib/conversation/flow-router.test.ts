@@ -23,6 +23,7 @@ const {
   detectRegistrationRetryIntent,
   detectOptOutIntent,
   generateFreeTextReply,
+  recordConsentEvent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -46,6 +47,7 @@ const {
   detectRegistrationRetryIntent: vi.fn(),
   detectOptOutIntent: vi.fn(),
   generateFreeTextReply: vi.fn(),
+  recordConsentEvent: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -68,7 +70,7 @@ vi.mock('./reengage-choice', () => ({
   REENGAGE_CALLBACK_STOP: 'reengage:stop',
 }))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
-vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn() }))
+vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn(), recordConsentEvent }))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))

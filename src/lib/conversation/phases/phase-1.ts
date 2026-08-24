@@ -7,6 +7,7 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
+import { recordConsentEvent } from '@/lib/db/leads'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
@@ -26,11 +27,11 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 const TNC_LINK = 'https://www.panelsmart-cenam.com/terminos-y-condiciones'
 
 const GREETING_TEXT =
-  '¡Hola! Soy el asistente virtual de PanelSmart 🙂. Te voy a hacer algunas preguntas para ver si calificás como panelista. Empecemos: ¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
-const OPT_IN_TEXT = '¿Te gustaría inscribirte en PanelSmart y comenzar a ganar premios?'
-const D1_TEXT = `✅ Confirma que has leído y aceptas los Términos y Condiciones del programa 📄. Por favor, revísalos antes de continuar 🚀 en este link ${TNC_LINK}`
+  '¡Hola! Soy el asistente virtual de PanelSmart 🙂\n\nTe invitamos a unirte a nuestro panel de encuestas y ganar premios por compartir tu opinión.\n\nAl responder SÍ, aceptás recibir encuestas y notificaciones de PanelSmart por este canal. Podés darte de baja en cualquier momento respondiendo STOP.\n\n¿Querés inscribirte?'
+const OPT_IN_TEXT = '¿Querés inscribirte?'
+const D1_TEXT = `✅ Antes de continuar, revisá nuestros Términos y Condiciones del programa:\n\n${TNC_LINK}\n\n¿Confirmás que los leíste y aceptás participar?`
 const REENGAGEMENT_CONSENT_TEXT =
-  '📋 Para mejorarte la experiencia, nos gustaría hacer seguimiento de tu conversación y ponernos en contacto si abandonas el registro.\n¿Autorizas que te contactemos en caso de que dejes el proceso a mitad?'
+  '📋 Para mejorar tu experiencia, nos gustaría poder contactarte si dejás el registro a mitad del proceso.\n\n¿Autorizás que te contactemos en ese caso?\n\nPodés revocar este permiso en cualquier momento respondiendo STOP.'
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
 
 // Decision-gate button layouts — shared between the send* helpers below and
@@ -142,8 +143,10 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ optInAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await recordConsentEvent(lead.id, 'opt_in', lead.channel, true, GREETING_TEXT)
       await sendD1(to)
     } else if (decision === 'decline') {
+      await recordConsentEvent(lead.id, 'opt_in', lead.channel, false, GREETING_TEXT)
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
     } else if (!(await hasSentOutboundMessage(lead.id))) {
@@ -174,8 +177,10 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ d1Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await recordConsentEvent(lead.id, 'terms', lead.channel, true, D1_TEXT)
       await sendReEngagementConsent(to)
     } else if (decision === 'decline') {
+      await recordConsentEvent(lead.id, 'terms', lead.channel, false, D1_TEXT)
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
@@ -200,9 +205,11 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ reEngagementConsentAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await recordConsentEvent(lead.id, 're_engagement', lead.channel, true, REENGAGEMENT_CONSENT_TEXT)
       await sendD3(to)
     } else if (decision === 'decline') {
       await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      await recordConsentEvent(lead.id, 're_engagement', lead.channel, false, REENGAGEMENT_CONSENT_TEXT)
       await sendD3(to)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)

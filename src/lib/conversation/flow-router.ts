@@ -12,7 +12,7 @@ import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/a
 import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
-import { resetLeadConversation } from '@/lib/db/leads'
+import { resetLeadConversation, recordConsentEvent } from '@/lib/db/leads'
 import { hasSentOutboundMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply } from './exit-messages'
@@ -227,13 +227,13 @@ export async function routeMessage(
       isOptOut = await detectOptOutIntent(messageText, { leadId: lead.id, correlationId })
     }
     if (isOptOut) {
+      const optOutConfirmation =
+        'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.'
       await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
       await cancelPendingRecontact(lead.id).catch(() => {})
       await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
-      await sendText(
-        lead,
-        'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
-      )
+      await recordConsentEvent(lead.id, 'opt_out', lead.channel, false, optOutConfirmation)
+      await sendText(lead, optOutConfirmation)
       return
     }
   }

@@ -333,6 +333,24 @@ export const conversationMessages = pgTable(
   ],
 )
 
+export const consentTypeEnum = pgEnum('consent_type', ['opt_in', 'terms', 're_engagement', 'opt_out'])
+
+export const consentEvents = pgTable(
+  'consent_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadId: uuid('lead_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    consentType: consentTypeEnum('consent_type').notNull(),
+    channel: channelEnum('channel').notNull(),
+    decision: boolean('decision').notNull(),
+    consentTextShown: text('consent_text_shown').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('consent_events_lead_created_idx').on(t.leadId, t.createdAt)],
+)
+
 /** Golden scenarios for qualification / quota QA (seeded examples). */
 export const evalFixtures = pgTable(
   'eval_fixtures',

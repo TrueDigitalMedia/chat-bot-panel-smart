@@ -9,9 +9,27 @@ import {
   systemCallLogs,
   treintaPanelistRecords,
   treintaPanelistEmbeddings,
+  consentEvents,
 } from './schema'
 import type { Channel } from '@/types/channel'
 import type { Lead } from '@/types/lead'
+
+type ConsentType = 'opt_in' | 'terms' | 're_engagement' | 'opt_out'
+
+/**
+ * Immutable audit record of a consent decision (date/time, channel, exact text
+ * shown, and the decision) — kept separate from the leads.*Accepted booleans,
+ * which drive flow gating and get overwritten on retries/resets.
+ */
+export async function recordConsentEvent(
+  leadId: string,
+  consentType: ConsentType,
+  channel: Channel,
+  decision: boolean,
+  consentTextShown: string,
+): Promise<void> {
+  await db.insert(consentEvents).values({ leadId, consentType, channel, decision, consentTextShown })
+}
 
 export async function upsertLead(
   channel: Channel,
