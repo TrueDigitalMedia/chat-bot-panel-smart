@@ -346,6 +346,7 @@ export const consentEvents = pgTable(
     channel: channelEnum('channel').notNull(),
     decision: boolean('decision').notNull(),
     consentTextShown: text('consent_text_shown').notNull(),
+    userMessageText: text('user_message_text'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('consent_events_lead_created_idx').on(t.leadId, t.createdAt)],

@@ -143,10 +143,10 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ optInAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await recordConsentEvent(lead.id, 'opt_in', lead.channel, true, GREETING_TEXT)
+      await recordConsentEvent(lead.id, 'opt_in', lead.channel, true, GREETING_TEXT, messageText)
       await sendD1(to)
     } else if (decision === 'decline') {
-      await recordConsentEvent(lead.id, 'opt_in', lead.channel, false, GREETING_TEXT)
+      await recordConsentEvent(lead.id, 'opt_in', lead.channel, false, GREETING_TEXT, messageText)
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
     } else if (!(await hasSentOutboundMessage(lead.id))) {
@@ -177,10 +177,10 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ d1Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await recordConsentEvent(lead.id, 'terms', lead.channel, true, D1_TEXT)
+      await recordConsentEvent(lead.id, 'terms', lead.channel, true, D1_TEXT, messageText)
       await sendReEngagementConsent(to)
     } else if (decision === 'decline') {
-      await recordConsentEvent(lead.id, 'terms', lead.channel, false, D1_TEXT)
+      await recordConsentEvent(lead.id, 'terms', lead.channel, false, D1_TEXT, messageText)
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
@@ -205,11 +205,11 @@ export async function handlePhase1(
     )
     if (decision === 'accept') {
       await db.update(leads).set({ reEngagementConsentAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await recordConsentEvent(lead.id, 're_engagement', lead.channel, true, REENGAGEMENT_CONSENT_TEXT)
+      await recordConsentEvent(lead.id, 're_engagement', lead.channel, true, REENGAGEMENT_CONSENT_TEXT, messageText)
       await sendD3(to)
     } else if (decision === 'decline') {
       await db.update(leads).set({ reEngagementConsentAccepted: false, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await recordConsentEvent(lead.id, 're_engagement', lead.channel, false, REENGAGEMENT_CONSENT_TEXT)
+      await recordConsentEvent(lead.id, 're_engagement', lead.channel, false, REENGAGEMENT_CONSENT_TEXT, messageText)
       await sendD3(to)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)

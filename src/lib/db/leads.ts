@@ -27,8 +27,11 @@ export async function recordConsentEvent(
   channel: Channel,
   decision: boolean,
   consentTextShown: string,
+  userMessageText?: string,
 ): Promise<void> {
-  await db.insert(consentEvents).values({ leadId, consentType, channel, decision, consentTextShown })
+  await db
+    .insert(consentEvents)
+    .values({ leadId, consentType, channel, decision, consentTextShown, userMessageText: userMessageText || null })
 }
 
 export async function upsertLead(

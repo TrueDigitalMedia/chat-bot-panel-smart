@@ -232,7 +232,7 @@ export async function routeMessage(
       await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
       await cancelPendingRecontact(lead.id).catch(() => {})
       await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
-      await recordConsentEvent(lead.id, 'opt_out', lead.channel, false, optOutConfirmation)
+      await recordConsentEvent(lead.id, 'opt_out', lead.channel, false, optOutConfirmation, messageText)
       await sendText(lead, optOutConfirmation)
       return
     }
