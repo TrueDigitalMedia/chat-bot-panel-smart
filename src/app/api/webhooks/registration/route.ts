@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transitionLead } from '@/lib/state-machine'
+import { isTerminal, NEVER_REENGAGE_STATUSES } from '@/lib/state-machine/transitions'
 import { generateCorrelationId } from '@/lib/correlation'
 import { getLeadById } from '@/lib/db/leads'
 import { handlePhase3Success, handlePhase3Failure } from '@/lib/conversation/phases/phase-3'
@@ -32,6 +33,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const lead = await getLeadById(body.lead_id)
   if (!lead) {
     return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+  }
+
+  // Explicit defense-in-depth: today this is also implicitly enforced by transitionLead
+  // rejecting the transition once a lead is abandono/code_delivered_not_registered, but
+  // that's a side effect of the FSM graph rather than an intentional opt-out guard — make
+  // it explicit so a future loosening of ALLOWED_TRANSITIONS can't silently reopen this.
+  if (isTerminal(lead.leadStatus) || NEVER_REENGAGE_STATUSES.has(lead.leadStatus)) {
+    return NextResponse.json({ ok: true, skipped: 'lead_opted_out_or_terminal' })
   }
 
   if (body.event === 'registration_success') {
