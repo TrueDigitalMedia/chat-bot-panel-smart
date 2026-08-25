@@ -131,6 +131,15 @@ export async function handlePhase1(
 
   // Opt-in: initial enrollment gate, before D1 (spec 007)
   if (!lead.optInAccepted) {
+    if (!(await hasSentOutboundMessage(lead.id))) {
+      // Very first turn ever for this lead — always show the greeting/consent message
+      // before interpreting anything, even if the opening text itself reads like
+      // consent ("quiero participar"). The whole point of this gate is that the user
+      // explicitly agrees to the specific consent copy shown, not that the bot infers
+      // agreement from an unrelated opening message and skips showing it entirely.
+      await sendInlineKeyboard(to, GREETING_TEXT, OPT_IN_BUTTONS)
+      return
+    }
     const decision = await resolveGateDecision(
       OPT_IN_BUTTONS,
       messageText,
@@ -149,10 +158,6 @@ export async function handlePhase1(
       await recordConsentEvent(lead.id, 'opt_in', lead.channel, false, GREETING_TEXT, messageText)
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
       await sendText(to, EXIT_A)
-    } else if (!(await hasSentOutboundMessage(lead.id))) {
-      // Conversation opener goes out once, before anything else the bot ever sends —
-      // combines the greeting and the opt-in question into a single message with buttons.
-      await sendInlineKeyboard(to, GREETING_TEXT, OPT_IN_BUTTONS)
     } else {
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
