@@ -42,6 +42,12 @@ for (const file of ['.env', '.env.local']) {
 
 const BSUID_PATTERN = /^[A-Z]{2}\.\d+$/
 
+// Mirrors jobs/re-engage/route.ts's own safety margin exactly (see its comment: WhatsApp's
+// customer-service window only allows free-form messages within 24h of the user's last
+// inbound message; this codebase never sends Meta template messages, so a send past the
+// window is a policy violation with no fallback — stay under it with the same 1h margin).
+const REENGAGEMENT_WINDOW_HOURS = 23
+
 interface LeadRow {
   id: string
   leadStatus: string
@@ -54,6 +60,11 @@ interface LeadRow {
   fullName: string | null
   createdAt: Date
   lastActivityAt: Date
+  reEngagementConsentAccepted: boolean | null
+}
+
+function hoursSince(date: Date): number {
+  return (Date.now() - date.getTime()) / (60 * 60 * 1000)
 }
 
 function digitsOf(s: string): string {
@@ -81,6 +92,7 @@ async function main(): Promise<void> {
       fullName: surveyProfiles.fullName,
       createdAt: leads.createdAt,
       lastActivityAt: leads.lastActivityAt,
+      reEngagementConsentAccepted: leads.reEngagementConsentAccepted,
     })
     .from(leads)
     .leftJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
@@ -94,6 +106,18 @@ async function main(): Promise<void> {
       LINK_SENT_TIMEOUT_REASONS.has(r.statusReason ?? '') &&
       !r.phoneNumber,
   )
+
+  // Same two gates jobs/re-engage/route.ts already applies before any business-initiated
+  // send: explicit consent, and still inside WhatsApp's 24h free-form messaging window.
+  // A lead failing either of these is reported but never messaged automatically — outside
+  // the window the send would either be rejected outright (no approved template wired up
+  // for this message) or, even with consent on record, risk landing as an unexpected
+  // message the recipient reports as spam, which can hurt the WhatsApp Business Account's
+  // quality rating for everyone, not just this one send.
+  const categoryAReady = categoryA.filter(
+    (r) => r.reEngagementConsentAccepted === true && hoursSince(r.lastActivityAt) < REENGAGEMENT_WINDOW_HOURS,
+  )
+  const categoryABlocked = categoryA.filter((r) => !categoryAReady.includes(r))
 
   const categoryB = bsuidLeads.filter(
     (r) => r.leadStatus === 'incomplete' && r.d3IsShopper === true && r.surveyQuestionIndex > 0 && !r.phoneNumber,
@@ -111,9 +135,20 @@ async function main(): Promise<void> {
   console.log(`Found ${bsuidLeads.length} WhatsApp lead(s) with a BSUID channel_user_id.\n`)
 
   console.log(`Category A — stuck in abandono, no phone, survey already done (${categoryA.length}):`)
-  console.log('  Auto-remediable with --send: ask for phone, retry TDM registration once provided.')
-  for (const r of categoryA) {
-    console.log(`  - ${r.id}  ${r.fullName ?? '(sin nombre)'}  channel_user_id=${r.channelUserId}  last_activity=${r.lastActivityAt.toISOString()}`)
+  console.log(`  Ready to message with --send (consented + within the 24h window) (${categoryAReady.length}):`)
+  for (const r of categoryAReady) {
+    console.log(
+      `  - ${r.id}  ${r.fullName ?? '(sin nombre)'}  channel_user_id=${r.channelUserId}  ` +
+        `${hoursSince(r.lastActivityAt).toFixed(1)}h since last activity`,
+    )
+  }
+  console.log(`  Blocked — needs a human call, --send will NOT touch these (${categoryABlocked.length}):`)
+  for (const r of categoryABlocked) {
+    const reason =
+      r.reEngagementConsentAccepted !== true
+        ? 'no re-engagement consent on record'
+        : `outside the ${REENGAGEMENT_WINDOW_HOURS}h window (${hoursSince(r.lastActivityAt).toFixed(1)}h since last activity — a free-form message would likely be rejected; would need an approved template instead)`
+    console.log(`  - ${r.id}  ${r.fullName ?? '(sin nombre)'}  channel_user_id=${r.channelUserId}  reason: ${reason}`)
   }
 
   console.log(`\nCategory B — mid-survey, already past the phone gate, no phone yet (${categoryB.length}):`)
@@ -138,17 +173,21 @@ async function main(): Promise<void> {
     return
   }
 
-  if (categoryA.length === 0) {
-    console.log('\n--send passed, but there is nothing in Category A to remediate.')
+  if (categoryABlocked.length > 0) {
+    console.log(`\n${categoryABlocked.length} Category A lead(s) are blocked (no consent or outside the 24h window) — skipping them.`)
+  }
+
+  if (categoryAReady.length === 0) {
+    console.log('\n--send passed, but there is nothing ready to remediate in Category A.')
     return
   }
 
-  console.log(`\n--send passed — messaging and marking ${categoryA.length} Category A lead(s)...`)
+  console.log(`\n--send passed — messaging and marking ${categoryAReady.length} Category A lead(s)...`)
   const prompt =
     'Hola 👋 Notamos un problema técnico al procesar tu registro: nos falta tu número de teléfono. ' +
     '¿Nos lo compartes con código de país? (ej. +18095551234)'
 
-  for (const r of categoryA) {
+  for (const r of categoryAReady) {
     const recipient: ChannelRecipient & { id: string } = {
       id: r.id,
       channel: 'whatsapp',
