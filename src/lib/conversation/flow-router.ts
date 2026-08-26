@@ -345,28 +345,16 @@ export async function routeMessage(
     return
   }
 
-  // One-off remediation for leads stuck in `abandono` from before phone.ts's
-  // channelRequiresPhonePrompt fix — scripts/remediate-bsuid-phone-leads.ts marks them
-  // with PHONE_REMEDIATION_PENDING_REASON and asks for their phone directly, so their
-  // next reply here is a phone number, not free text. Validates and saves it, then
-  // retries the registration code request that originally failed for lack of it
-  // ("Campos requeridos faltantes: telefono"). Re-prompts on anything unparseable.
-  if (status === 'abandono') {
-    const { PHONE_REMEDIATION_PENDING_REASON } = await import('@/lib/db/leads')
-    if (lead.statusReason === PHONE_REMEDIATION_PENDING_REASON) {
-      const { normalizePhone } = await import('@/lib/phone')
-      const phone = messageText.trim() ? normalizePhone(messageText) : null
-      if (phone) {
-        const { applyPhoneRemediation } = await import('@/lib/db/leads')
-        const updated = await applyPhoneRemediation(lead.id, phone)
-        await sendText(updated, `✅ Número guardado: ${phone}. Estamos generando tu código de registro…`)
-        const { requestRegistrationCodeForLead } = await import('@/lib/onboarding/request-registration-code')
-        await requestRegistrationCodeForLead(updated, 2, correlationId)
-      } else {
-        await sendText(lead, 'No pude validar ese número. Escríbelo con código de país (ej. +18095551234).')
-      }
-      return
-    }
+  // A WhatsApp lead stuck at link_sent/abandono purely because it never had a real phone
+  // number for TDM (the BSUID case — see missing-phone-recovery.ts) needs to be asked for
+  // it directly, not given the generic "still processing" reminder or a decline-flavored
+  // reply. Checked ahead of both the app-downloaded-tap revival and the plain link_sent
+  // reminder below, so any turn from one of these leads — a tap, "¿cuál es mi código?",
+  // anything — leads with the actual fix instead of a message that can't help them.
+  const { isMissingPhoneForRegistration, handleMissingPhoneRecovery } = await import('./missing-phone-recovery')
+  if (isMissingPhoneForRegistration(lead)) {
+    await handleMissingPhoneRecovery(lead, messageText, correlationId)
+    return
   }
 
   // A late "Ya la descargué" tap can arrive after request-registration-code.ts's own
