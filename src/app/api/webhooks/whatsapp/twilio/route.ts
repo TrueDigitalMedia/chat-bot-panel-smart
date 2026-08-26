@@ -42,6 +42,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await processWhatsAppInbound(inbound, {
         messageSid: params.MessageSid,
         provider: 'twilio',
+        // Twilio's Business-Scoped User ID for this sender, present on every inbound
+        // WhatsApp webhook since ~April 2026 regardless of whether the user has a
+        // resolvable phone number (channelUserId already IS the BSUID when there's no
+        // phone — see phone.ts's isBsuidChannelUserId; this field is what lets us learn
+        // it even when a real phone is present, e.g. a user on WhatsApp's newer
+        // username/privacy feature who nonetheless already shared their number with us).
+        ...(params.ExternalUserId ? { externalUserId: params.ExternalUserId } : {}),
       })
     } catch (err) {
       console.error('[webhook/whatsapp/twilio] Processing error:', err)
