@@ -7,6 +7,7 @@ import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
 import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
 import { getApprovedTemplate } from '@/lib/whatsapp/providers/twilio/templates'
+import { isBsuidChannelUserId } from '@/lib/whatsapp/phone'
 import {
   REGISTRATION_CODE_OTP_TEMPLATE,
   REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE,
@@ -69,9 +70,17 @@ export async function deliverRegistrationCode(
   // are confirmed approved; otherwise send the exact same single combined message as
   // before, which also keeps Telegram/web/Meta-direct WhatsApp and the mid-rollout
   // "not approved yet" case behaving exactly like today.
+  //
+  // Meta also rejects the OTP template specifically (not the Utility one, not plain
+  // text/keyboard sends) when the recipient is a Business-Scoped User ID rather than a
+  // real phone number — confirmed via Twilio's delivery logs on a real failure: every
+  // other message in the conversation delivered ("read"), only the OTP-template send
+  // failed (error 63005, "Channel rejected content"). Fall back to the single combined
+  // message for those leads, which we've directly observed routes to a BSUID fine.
   const useSplitTemplates =
     !opts.mock &&
     lead.channel === 'whatsapp' &&
+    !isBsuidChannelUserId(lead.channelUserId) &&
     getWhatsAppProvider() === 'twilio' &&
     (await getApprovedTemplate(REGISTRATION_CODE_OTP_TEMPLATE)) &&
     (await getApprovedTemplate(REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE))
