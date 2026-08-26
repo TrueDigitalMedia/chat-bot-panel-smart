@@ -77,7 +77,21 @@ export async function deliverRegistrationCode(
     (await getApprovedTemplate(REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE))
 
   if (useSplitTemplates) {
-    await sendTemplateOrText(lead, REGISTRATION_CODE_OTP_TEMPLATE, `✅ Tu código de registro es: ${code}`, {
+    // Meta's own docs: "Business-scoped user IDs (BSUIDs) can be used to send any type
+    // of message except for one-tap, zero-tap, and copy code authentication templates,
+    // which require user phone numbers." Our OTP template is a copy-code Authentication
+    // template, so it must be addressed by phoneNumber, not the lead's normal
+    // channelUserId (which is the BSUID for a user on WhatsApp's username/privacy
+    // feature) — confirmed by a real failure (Twilio error 63005, "Channel rejected
+    // content") sending this exact template to a BSUID "To", and by a controlled retest.
+    // Every other send below (video, the Utility instructions template, the plain
+    // combined fallback) keeps routing via `lead`/channelUserId as normal — Meta allows
+    // BSUID addressing for those, and it's what already works for BSUID leads today.
+    // phoneNumber should always be set by the time a WhatsApp lead reaches link_sent
+    // (phone.ts's channelRequiresPhonePrompt / missing-phone-recovery.ts) — this falls
+    // back to `lead` itself only as a defensive no-op for a pre-fix straggler.
+    const otpRecipient = lead.channel === 'whatsapp' && lead.phoneNumber ? { ...lead, channelUserId: lead.phoneNumber } : lead
+    await sendTemplateOrText(otpRecipient, REGISTRATION_CODE_OTP_TEMPLATE, `✅ Tu código de registro es: ${code}`, {
       contentVariables: { '1': code },
     })
     await sendTemplateOrKeyboard(
