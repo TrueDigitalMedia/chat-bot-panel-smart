@@ -8,14 +8,22 @@ const SCHEMA = z.object({
   wantsToContinue: z
     .boolean()
     .describe(
-      'true solo si el mensaje expresa arrepentimiento por haber rechazado/dicho que no, y que en realidad quiere continuar la inscripción (ej. "me equivoqué", "sí quiero inscribirme", "perdón, sí quiero").',
+      'true si el mensaje indica que el usuario quiere continuar/retomar la inscripción — ya sea porque se ' +
+        'arrepiente explícitamente de haber dicho que no (ej. "me equivoqué", "perdón, sí quiero") o porque ' +
+        'reafirma directamente su interés en participar/inscribirse, incluso sin mencionar el rechazo previo ' +
+        '(ej. "quiero participar y ganar premios", "sí quiero inscribirme", "me interesa", "cómo me registro"). ' +
+        'false para un saludo genérico sin más, una pregunta que no expresa interés en inscribirse, ruido, o ' +
+        'cualquier otra cosa no relacionada con querer participar.',
     ),
 })
 
 /**
  * Free text after a decline (opt-in/D1/D2/D3 "No") can be a change of heart rather than
  * noise — phrasings vary too much ("Si perdon si quiero inscribirme", "Me equivoque al
- * responder") for a fixed regex list, so this asks an LLM to judge intent directly.
+ * responder", or a plain restated "Quiero participar y ganar premios" from someone who
+ * doesn't even remember declining) for a fixed regex list, so this asks an LLM to judge
+ * intent directly. Deliberately broader than just "regret" language — a user re-stating
+ * interest in participating counts the same as one apologizing for the earlier "no".
  * Only ever called from a terminal not_qualified/quota_exhausted state reached via a
  * decline, so the cost is negligible in practice.
  */
@@ -29,13 +37,13 @@ export async function detectDeclineReversalIntent(
   try {
     const sanitized = await sanitizeInput(query, { leadId: opts?.leadId, correlationId })
 
-    const prompt = `Un usuario había respondido "No" a una pregunta de inscripción de un bot (por ejemplo: rechazar términos y condiciones, decir que no quiere ganar premios, o decir que no es quien hace las compras del hogar), y el bot le dio por terminada la conversación.
+    const prompt = `Un usuario había respondido "No" a una pregunta de inscripción de un bot (por ejemplo: rechazar términos y condiciones, decir que no quiere ganar premios, o decir que no es quien hace las compras del hogar), y el bot le dio por terminada la conversación. Puede que el usuario ya no recuerde ese "no", o que escriba tiempo después como si fuera una conversación nueva.
 
 Después, el usuario escribió este mensaje:
 
 "${sanitized}"
 
-¿Este mensaje indica que el usuario se arrepiente de haber dicho que no, y en realidad quiere continuar con la inscripción? Responde wantsToContinue: false si el mensaje es otra cosa (una pregunta, un saludo, ruido, o simplemente no relacionado con retomar la inscripción).`
+¿Este mensaje indica que el usuario quiere continuar o retomar la inscripción? Cuenta tanto si se arrepiente explícitamente de haber dicho que no, como si simplemente reafirma su interés en participar/inscribirse/ganar premios sin mencionar el rechazo previo. Responde wantsToContinue: false si el mensaje es un saludo genérico sin más, una pregunta o comentario que no expresa interés en inscribirse, ruido, o algo no relacionado con querer participar.`
 
     const result = await generateObject({ model: chatModelPrecise(), schema: SCHEMA, prompt })
 

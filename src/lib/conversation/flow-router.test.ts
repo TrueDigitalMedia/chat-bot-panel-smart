@@ -24,6 +24,8 @@ const {
   detectOptOutIntent,
   generateFreeTextReply,
   recordConsentEvent,
+  reviveDeclinedLead,
+  detectDeclineReversalIntent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -48,6 +50,8 @@ const {
   detectOptOutIntent: vi.fn(),
   generateFreeTextReply: vi.fn(),
   recordConsentEvent: vi.fn(),
+  reviveDeclinedLead: vi.fn(),
+  detectDeclineReversalIntent: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -70,7 +74,7 @@ vi.mock('./reengage-choice', () => ({
   REENGAGE_CALLBACK_STOP: 'reengage:stop',
 }))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
-vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead: vi.fn(), recordConsentEvent }))
+vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead, recordConsentEvent }))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
@@ -79,7 +83,7 @@ vi.mock('./ficha-hogar-correction', () => ({
   tryHandleFichaHogarCorrectionRequest,
 }))
 vi.mock('./phases/phase-4', () => ({ handleFichaHogar }))
-vi.mock('./detect-decline-reversal', () => ({ detectDeclineReversalIntent: vi.fn().mockResolvedValue(false) }))
+vi.mock('./detect-decline-reversal', () => ({ detectDeclineReversalIntent }))
 
 import { routeMessage } from './flow-router'
 import type { Lead } from '@/types/lead'
@@ -246,6 +250,40 @@ describe('routeMessage — recontact scheduling', () => {
     expect(resetLeadConversation).not.toHaveBeenCalled()
     expect(sendText).not.toHaveBeenCalled()
     expect(handlePhase1).toHaveBeenCalledWith(lead, 'hola', undefined, 'corr-1')
+  })
+})
+
+describe('routeMessage — mistaken decline followed by an accept tap', () => {
+  it('d1:accept right after a d1 decline revives the lead and replays the tap, without the AI reversal check', async () => {
+    const lead = makeLead({ leadStatus: 'not_qualified', currentPhase: 1, d1Accepted: false })
+    const revived = { ...lead, leadStatus: 'incomplete' }
+    reviveDeclinedLead.mockResolvedValue(revived)
+
+    await routeMessage(lead, makeInbound({ callbackData: 'd1:accept' }), 'corr-1')
+
+    expect(detectDeclineReversalIntent).not.toHaveBeenCalled()
+    expect(reviveDeclinedLead).toHaveBeenCalledWith(lead)
+    expect(handlePhase1).toHaveBeenCalledWith(revived, '', 'd1:accept', 'corr-1')
+  })
+
+  it('d3:yes right after a d3 decline (quota_exhausted) also revives and replays the tap', async () => {
+    const lead = makeLead({ leadStatus: 'quota_exhausted', currentPhase: 1, d3IsShopper: false })
+    const revived = { ...lead, leadStatus: 'incomplete', d3IsShopper: null }
+    reviveDeclinedLead.mockResolvedValue(revived)
+
+    await routeMessage(lead, makeInbound({ callbackData: 'd3:yes' }), 'corr-1')
+
+    expect(reviveDeclinedLead).toHaveBeenCalledWith(lead)
+    expect(handlePhase1).toHaveBeenCalledWith(revived, '', 'd3:yes', 'corr-1')
+  })
+
+  it('an unrelated callback after a decline does not revive — falls through to the support/AI redirect', async () => {
+    const lead = makeLead({ leadStatus: 'not_qualified', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ callbackData: 'correct:age' }), 'corr-1')
+
+    expect(reviveDeclinedLead).not.toHaveBeenCalled()
+    expect(handlePhase1).not.toHaveBeenCalled()
   })
 })
 

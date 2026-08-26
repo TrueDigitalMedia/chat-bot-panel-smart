@@ -28,6 +28,11 @@ const BUTTON_PREFIXES = [
   'correct:',
 ]
 
+// The accept side of every decision gate whose decline can land a lead in
+// not_qualified/quota_exhausted (opt-in, D1 T&C, D3 shopper) — see the terminal-state
+// branch in routeMessage below.
+const ACCEPT_CALLBACKS = new Set(['optin:accept', 'd1:accept', 'd3:yes'])
+
 /** WhatsApp-friendly: /start, hola, reiniciar, empezar de nuevo, reiniciar flujo, etc. */
 function isRestartRequest(text: string): boolean {
   const t = text.trim().toLowerCase()
@@ -438,14 +443,29 @@ export async function routeMessage(
     // not_qualified/quota_exhausted reached via an opt-in/D1/D2/D3 decline aren't
     // necessarily final — "me equivoqué", "sí quiero inscribirme" etc. mean the user
     // regrets saying no. Resume right at the declined gate instead of dead-ending them.
-    if ((status === 'not_qualified' || status === 'quota_exhausted') && messageText.trim()) {
-      const { detectDeclineReversalIntent } = await import('./detect-decline-reversal')
-      if (await detectDeclineReversalIntent(messageText, { leadId: lead.id, correlationId })) {
+    if (status === 'not_qualified' || status === 'quota_exhausted') {
+      // A same-gate accept tap right after the decline (e.g. tapped "No, gracias" by
+      // mistake, then immediately tapped "Confirmo y acepto") is an unambiguous signal —
+      // no need for the AI reversal check below. Revive and replay the tap itself
+      // (messageText/callbackData, not blank) so handlePhase1 processes the accept in
+      // this same turn instead of just re-showing the gate for a second tap.
+      const isExplicitAcceptTap = !!callbackData && ACCEPT_CALLBACKS.has(callbackData)
+      if (isExplicitAcceptTap) {
         const { reviveDeclinedLead } = await import('@/lib/db/leads')
         const revived = await reviveDeclinedLead(lead)
         if (revived) {
-          await handlePhase1(revived, '', undefined, correlationId)
+          await handlePhase1(revived, messageText, callbackData, correlationId)
           return
+        }
+      } else if (messageText.trim()) {
+        const { detectDeclineReversalIntent } = await import('./detect-decline-reversal')
+        if (await detectDeclineReversalIntent(messageText, { leadId: lead.id, correlationId })) {
+          const { reviveDeclinedLead } = await import('@/lib/db/leads')
+          const revived = await reviveDeclinedLead(lead)
+          if (revived) {
+            await handlePhase1(revived, '', undefined, correlationId)
+            return
+          }
         }
       }
     }
