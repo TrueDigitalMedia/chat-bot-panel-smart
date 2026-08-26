@@ -9,7 +9,12 @@ import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registr
 import { sendTemplateOrKeyboard } from '@/lib/messaging/send'
 import { REENGAGE_CALLBACK_CONTINUE, REENGAGE_CALLBACK_STOP } from '@/lib/conversation/reengage-choice'
 import { scheduleJob } from '@/lib/scheduler/re-engagement'
-import { MAX_REENGAGEMENT_ATTEMPTS, reengagementDelaySeconds } from '@/lib/scheduler/constants'
+import {
+  MAX_REENGAGEMENT_ATTEMPTS,
+  reengagementDelaySeconds,
+  RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER,
+  RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS,
+} from '@/lib/scheduler/constants'
 import { getNextMessageVariant, resolveMessagePool } from '@/lib/scheduler/messages'
 import { reengageTemplateLogicalId } from '@/lib/whatsapp/providers/twilio/template-ids'
 import { generateCorrelationId } from '@/lib/correlation'
@@ -130,6 +135,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'freeze_applied' })
   }
 
+  // --- Re-engagement timeout — the final (3rd) nudge's Continue/Stop buttons went
+  // unanswered long enough that we give up. Only abandons if the lead genuinely never
+  // responded: isTerminal already covers an explicit "No, gracias" tap (handled
+  // synchronously in reengage-choice.ts, which sets a different, more specific status
+  // reason), and comparing lastActivityAt against when the final nudge was delivered
+  // covers "Sí, quiero continuar" (upsertLead bumps lastActivityAt on every inbound
+  // message, before routing) — either way, something happened since, so this backs off.
+  if (payload.action === 're_engagement_timeout') {
+    if (isTerminal(lead.leadStatus as LeadStatus)) {
+      return NextResponse.json({ outcome: 'already_terminal' })
+    }
+    const [finalNudge] = await db
+      .select({ deliveredAt: reEngagementSchedules.deliveredAt })
+      .from(reEngagementSchedules)
+      .where(
+        and(
+          eq(reEngagementSchedules.leadId, lead.id),
+          eq(reEngagementSchedules.phase, payload.phase),
+          eq(reEngagementSchedules.attemptNumber, MAX_REENGAGEMENT_ATTEMPTS),
+        ),
+      )
+    const respondedSince =
+      finalNudge?.deliveredAt && lead.lastActivityAt && lead.lastActivityAt > finalNudge.deliveredAt
+    if (respondedSince) {
+      return NextResponse.json({ outcome: 'skipped_already_responded' })
+    }
+    await transitionLead(lead.id, 'abandono', 're_engagement_exhausted', correlationId)
+    return NextResponse.json({ outcome: 'marked_abandono' })
+  }
+
   // --- Re-engagement notifications (unified recontact — covers phase 1, phase 2's
   // "download the app" nudge, and phase 4's Ficha Hogar nudge, all through the same
   // consent+idle-gated cadence; message content is picked by resolveMessagePool from
@@ -214,8 +249,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .where(eq(leads.id, lead.id))
 
     if (attempt >= MAX_REENGAGEMENT_ATTEMPTS) {
-      await transitionLead(lead.id, 'abandono', 're_engagement_exhausted', correlationId)
-      return NextResponse.json({ outcome: 'marked_abandono' })
+      // Don't abandon synchronously here — the message we just sent carries its own
+      // Continue/Stop buttons, and marking the lead abandono in this same request means
+      // any tap on either button (routed through handleReengageChoice's isTerminal
+      // check) would already be too late, landing on the generic "can't continue"
+      // message no matter what the user chose. Give them a real window to respond
+      // instead; re_engagement_timeout below only abandons if they still haven't by then.
+      await scheduleJob(
+        lead.id,
+        lead.currentPhase,
+        RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER,
+        RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS,
+        're_engagement_timeout',
+      )
+      return NextResponse.json({ outcome: 'sent_final_awaiting_response' })
     }
 
     const nextAttempt = (attempt + 1) as 2 | 3

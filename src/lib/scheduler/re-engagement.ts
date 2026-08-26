@@ -17,6 +17,7 @@ export interface JobPayload {
     | 'request_registration_code'
     | 'registration_code_timeout'
     | 're-engage'
+    | 're_engagement_timeout'
     | 'freeze_registration'
 }
 

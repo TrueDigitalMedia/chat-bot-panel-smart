@@ -208,16 +208,61 @@ describe('POST /api/jobs/re-engage', () => {
     expect(body.outcome).toBe('sent')
   })
 
-  it('re-engage: marks the lead abandono after the final attempt instead of escalating further', async () => {
+  it('re-engage: schedules a re_engagement_timeout instead of abandoning synchronously after the final attempt', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1 }]))
     getNextMessageVariant.mockResolvedValue({ text: 'mensaje', variantOrder: 1 })
 
     const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 3, action: 're-engage' }))
     const body = await res.json()
 
+    // Abandoning here, in the same request that just sent the final nudge's own
+    // Continue/Stop buttons, would make those buttons impossible to ever act on —
+    // see the re_engagement_timeout tests below for the delayed give-up instead.
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(scheduleJob).toHaveBeenCalledWith('lead-1', 1, 96, expect.any(Number), 're_engagement_timeout')
+    expect(body.outcome).toBe('sent_final_awaiting_response')
+  })
+
+  it('re_engagement_timeout: abandons the lead when it never responded to the final nudge', async () => {
+    const deliveredAt = new Date(Date.now() - 60 * 60 * 1000) // 1h ago
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...BASE_LEAD, lastActivityAt: new Date(Date.now() - 2 * 60 * 60 * 1000) }]))
+      .mockReturnValueOnce(selectChain([{ deliveredAt }]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 96, action: 're_engagement_timeout' }),
+    )
+    const body = await res.json()
+
     expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 're_engagement_exhausted', 'corr-1')
-    expect(scheduleJob).not.toHaveBeenCalled()
     expect(body.outcome).toBe('marked_abandono')
+  })
+
+  it('re_engagement_timeout: skips a lead already terminal (e.g. explicitly declined the final nudge)', async () => {
+    dbMock.select.mockReturnValueOnce(selectChain([{ ...BASE_LEAD, leadStatus: 'abandono' }]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 96, action: 're_engagement_timeout' }),
+    )
+    const body = await res.json()
+
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(body.outcome).toBe('already_terminal')
+  })
+
+  it('re_engagement_timeout: skips a lead that has interacted since the final nudge was delivered (e.g. tapped "Sí, quiero continuar")', async () => {
+    const deliveredAt = new Date(Date.now() - 60 * 60 * 1000) // 1h ago
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...BASE_LEAD, lastActivityAt: new Date() }]))
+      .mockReturnValueOnce(selectChain([{ deliveredAt }]))
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 96, action: 're_engagement_timeout' }),
+    )
+    const body = await res.json()
+
+    expect(transitionLead).not.toHaveBeenCalled()
+    expect(body.outcome).toBe('skipped_already_responded')
   })
 
   it('treats link_sent_reminder as an unrecognized action now that it has been retired', async () => {

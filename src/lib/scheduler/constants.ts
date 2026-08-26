@@ -14,6 +14,19 @@ export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
 
 export const MAX_REENGAGEMENT_ATTEMPTS = 3
 
+// Sentinel attemptNumber for the re_engagement_timeout job scheduled after the final
+// (3rd) nudge — distinct from the 1-3 attempt numbers themselves, so its
+// re_engagement_schedules row never collides with attempt 3's own row.
+export const RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER = 96
+
+// How long to wait, after sending the final re-engagement nudge (with its own
+// Continue/Stop buttons), before giving up on a lead who never taps either one. Must
+// NOT be shorter than the time it takes a real person to notice and tap a WhatsApp
+// message — see jobs/re-engage/route.ts's re_engagement_timeout handler, which used to
+// mark the lead abandono synchronously in the same request that sent this exact
+// message, making its own buttons impossible to ever act on.
+export const RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS = 43200 // 12 hours
+
 /**
  * REENGAGEMENT_DELAY_SECONDS[attempt], overridable via RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
  * (comma-separated, 1-indexed — e.g. "30,60,90" for local testing). Centralizes the
