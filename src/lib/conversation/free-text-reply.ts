@@ -16,11 +16,19 @@ const SCHEMA = z.object({
         '"registration_status_check": el usuario pregunta por el estado de su registro/inscripción (¿ya quedé registrado?, ¿ya se procesó?). ' +
         '"needs_reply": cualquier otra cosa que sí amerita una respuesta (pregunta, comentario, corrección).',
     ),
+  // nullable, not optional — OpenAI's structured-output mode (ai-sdk's generateObject)
+  // requires every schema property to appear in the JSON Schema's `required` array, which
+  // z.optional() doesn't do (the property is just dropped from `required` entirely). That
+  // makes the API reject the schema outright on every single call: "Invalid schema for
+  // response_format 'response': ... Missing 'reply'." — a request-time failure, not a
+  // model mistake, so it silently fell back to supportRedirect() on 100% of calls.
   reply: z
     .string()
     .max(400)
-    .optional()
-    .describe('Requerido si intent !== "acknowledgment". Respuesta breve (1-3 frases), en español, tono cercano.'),
+    .nullable()
+    .describe(
+      'La respuesta si intent !== "acknowledgment" (1-3 frases, en español, tono cercano). null si intent === "acknowledgment".',
+    ),
 })
 
 export interface FreeTextReplyResult {
@@ -73,7 +81,7 @@ El usuario acaba de escribir (texto libre que no calzó con ningún botón esper
 "${sanitized}"
 
 Decide la intención real usando el historial completo, no solo el mensaje suelto:
-- Si es solo una confirmación/despedida sin nada nuevo que decir (ok, vale, gracias, está bien, entiendo, 👍) Y el bot ya le respondió algo parecido antes en esta conversación, marca "acknowledgment" y no generes "reply" — no hace falta cerrar la conversación otra vez.
+- Si es solo una confirmación/despedida sin nada nuevo que decir (ok, vale, gracias, está bien, entiendo, 👍) Y el bot ya le respondió algo parecido antes en esta conversación, marca "acknowledgment" y deja "reply" en null — no hace falta cerrar la conversación otra vez.
 - Si pregunta por el estado de su registro/inscripción (¿ya quedé registrado?, ¿ya se procesó mi inscripción?, ¿cuándo me confirman?), marca "registration_status_check" y en "reply" pon un mensaje breve de agradecimiento y cierre — no prometas nada, no invites a que responda de nuevo.
 - Cualquier otra cosa (pregunta puntual, comentario, corrección), marca "needs_reply" y respóndela en "reply" de forma breve y coherente con lo que dijo.
 ${context.isDeclined ? 'No prometas que puede retomar el registro ni le des instrucciones para continuar.' : ''}
