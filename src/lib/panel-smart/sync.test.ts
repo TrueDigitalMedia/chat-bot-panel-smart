@@ -234,4 +234,32 @@ describe('previewPanelSmartSync', () => {
 
     expect(preview.status).toBe('nothing_pending')
   })
+
+  it('includes nse_region in the synced answers when the GPS lookup found a catalog match', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([{ ...PROFILE_ROW, nseRegion: 'NSE-3' }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'nse_region',
+      pregunta: 'Región NSE',
+      respuesta: 'NSE-3',
+    })
+  })
+
+  it('omits nse_region when the GPS lookup had no catalog match (an "allowlist miss", nseRegion stays null)', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([{ ...PROFILE_ROW, nseRegion: null }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'nse_region')).toBe(false)
+  })
 })

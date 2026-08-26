@@ -215,6 +215,21 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
   })
 
+  // Add NSE region — not one of SURVEY_FIELDS since it's not a question we ask the user,
+  // it's computed during GPS capture (gps-capture.ts's lookupNseRegion) from their
+  // department/municipality against the NSE catalog. Also sent to TDM's registration-code
+  // request (tdm-registration/build-request.ts) as `region`, but that's a separate
+  // integration — this is what puts it in the general answers sync too. Can be null (no
+  // catalog match for that municipality — an "allowlist miss"), so only sent once present,
+  // same as score/quota_segment below.
+  if (hasValue(profile?.nseRegion)) {
+    responses.push({
+      codigo_pregunta: 'nse_region',
+      pregunta: 'Región NSE',
+      respuesta: profile!.nseRegion as string,
+    })
+  }
+
   // Add socioeconomic score + quota segment — only once the survey has actually
   // scored the lead (checkQuotaAvailability in phase-1.ts), so leads still mid-survey
   // don't sync a meaningless null.
