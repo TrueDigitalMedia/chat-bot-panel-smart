@@ -8,11 +8,13 @@ import type { Lead } from '@/types/lead'
 
 /**
  * True when we still need the user to provide a phone before the survey.
- * WhatsApp: auto from channel_user_id. Telegram/web: must ask.
+ * WhatsApp normally auto-resolves from channel_user_id (resolveWhatsAppPhone, called
+ * right before this in proceedAfterShopperYes) — but that can fail (BSUID instead of a
+ * real phone, see channelRequiresPhonePrompt's comment), in which case phoneNumber is
+ * still unset here and this correctly falls through to asking, same as telegram/web.
  */
 export function needsPhoneCapture(lead: Lead): boolean {
   if (lead.phoneNumber) return false
-  if (lead.channel === 'whatsapp') return false
   return channelRequiresPhonePrompt(lead.channel)
 }
 

@@ -1,18 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { telegramSendText, whatsappSendText, getLastOutboundMessage, logConversationMessage } = vi.hoisted(() => ({
+const {
+  telegramSendText,
+  telegramSendContactRequest,
+  whatsappSendText,
+  getLastOutboundMessage,
+  logConversationMessage,
+} = vi.hoisted(() => ({
   telegramSendText: vi.fn(),
+  telegramSendContactRequest: vi.fn(),
   whatsappSendText: vi.fn(),
   getLastOutboundMessage: vi.fn(),
   logConversationMessage: vi.fn(),
 }))
 
-vi.mock('@/lib/telegram/send', () => ({ sendText: telegramSendText }))
+vi.mock('@/lib/telegram/send', () => ({ sendText: telegramSendText, sendContactRequest: telegramSendContactRequest }))
 vi.mock('@/lib/whatsapp/send', () => ({ sendWhatsAppText: whatsappSendText }))
 vi.mock('@/lib/whatsapp/pending-choices', () => ({ setPendingWaChoices: vi.fn() }))
 vi.mock('@/lib/db/conversation-messages', () => ({ getLastOutboundMessage, logConversationMessage }))
 
-import { sendText } from './send'
+import { sendText, sendPhoneRequest } from './send'
 import type { ChannelRecipient } from '@/types/channel'
 
 function makeRecipient(overrides: Partial<ChannelRecipient> = {}): ChannelRecipient & { id: string } {
@@ -27,6 +34,7 @@ function makeRecipient(overrides: Partial<ChannelRecipient> = {}): ChannelRecipi
 beforeEach(() => {
   vi.resetAllMocks()
   telegramSendText.mockResolvedValue(undefined)
+  telegramSendContactRequest.mockResolvedValue(undefined)
   whatsappSendText.mockResolvedValue(undefined)
   logConversationMessage.mockResolvedValue(undefined)
 })
@@ -119,5 +127,29 @@ describe('sendText — never repeats the same message verbatim', () => {
 
     expect(getLastOutboundMessage).not.toHaveBeenCalled()
     expect(telegramSendText).toHaveBeenCalledWith(BigInt(123), 'hola')
+  })
+})
+
+describe('sendPhoneRequest', () => {
+  it('actually sends the WhatsApp user a text prompt — regression test: this used to silently return with no message at all', async () => {
+    const to = makeRecipient({ channel: 'whatsapp', channelUserId: 'DO.1393047009463368' })
+
+    await sendPhoneRequest(to)
+
+    expect(whatsappSendText).toHaveBeenCalledWith(
+      'DO.1393047009463368',
+      expect.stringContaining('número de teléfono'),
+    )
+    expect(logConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: 'keyboard', meta: expect.objectContaining({ type: 'contact_request' }) }),
+    )
+  })
+
+  it('uses the native contact-share prompt for telegram', async () => {
+    const to = makeRecipient({ channel: 'telegram' })
+
+    await sendPhoneRequest(to)
+
+    expect(telegramSendContactRequest).toHaveBeenCalledWith(BigInt(123), expect.stringContaining('Compartir mi número'))
   })
 })

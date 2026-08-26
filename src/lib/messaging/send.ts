@@ -261,7 +261,13 @@ export async function sendTemplateOrText(
   await logOut(to, 'text', outText, { templateLogicalId: logicalId, ...opts?.extraMeta, ...dedupeMeta })
 }
 
-/** Ask user for phone — Telegram uses native contact share; WhatsApp skips (id = phone). */
+/**
+ * Ask user for phone — Telegram uses native contact share; WhatsApp/web get a plain
+ * text prompt. WhatsApp normally never reaches here at all (id = phone, resolved
+ * automatically before phone-capture.ts's needsPhoneCapture would ever say yes) — this
+ * only fires for the BSUID edge case (see phone.ts's channelRequiresPhonePrompt), where
+ * there's genuinely no phone to fall back on and the user has to type one.
+ */
 export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
   const prompt =
     'Para continuar necesitamos tu número de teléfono.\n\n' +
@@ -277,7 +283,8 @@ export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
       // Same "type it" prompt as the non-Telegram branch above — no native contact-share UI.
       break
     case 'whatsapp':
-      return
+      await whatsapp.sendWhatsAppText(to.channelUserId, prompt)
+      break
     default: {
       const _exhaustive: never = to.channel
       throw new Error(`Unknown channel: ${_exhaustive}`)
