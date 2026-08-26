@@ -27,6 +27,9 @@ const {
   reviveDeclinedLead,
   detectDeclineReversalIntent,
   reviveAbandonedLinkSent,
+  applyPhoneRemediation,
+  normalizePhone,
+  requestRegistrationCodeForLead,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -54,6 +57,9 @@ const {
   reviveDeclinedLead: vi.fn(),
   detectDeclineReversalIntent: vi.fn().mockResolvedValue(false),
   reviveAbandonedLinkSent: vi.fn(),
+  applyPhoneRemediation: vi.fn(),
+  normalizePhone: vi.fn(),
+  requestRegistrationCodeForLead: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -81,7 +87,11 @@ vi.mock('@/lib/db/leads', () => ({
   reviveDeclinedLead,
   recordConsentEvent,
   reviveAbandonedLinkSent,
+  applyPhoneRemediation,
+  PHONE_REMEDIATION_PENDING_REASON: 'phone_remediation_pending',
 }))
+vi.mock('@/lib/phone', () => ({ normalizePhone }))
+vi.mock('@/lib/onboarding/request-registration-code', () => ({ requestRegistrationCodeForLead }))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
@@ -291,6 +301,42 @@ describe('routeMessage — mistaken decline followed by an accept tap', () => {
 
     expect(reviveDeclinedLead).not.toHaveBeenCalled()
     expect(handlePhase1).not.toHaveBeenCalled()
+  })
+})
+
+describe('routeMessage — phone remediation for leads stuck on a missing WhatsApp phone', () => {
+  it('a valid typed phone is saved, the lead moves to link_sent, and the registration code request is retried', async () => {
+    normalizePhone.mockReturnValue('+18095551234')
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 2, statusReason: 'phone_remediation_pending' })
+    const updated = { ...lead, leadStatus: 'link_sent', phoneNumber: '+18095551234' }
+    applyPhoneRemediation.mockResolvedValue(updated)
+
+    await routeMessage(lead, makeInbound({ text: '+1 809 555 1234' }), 'corr-1')
+
+    expect(normalizePhone).toHaveBeenCalledWith('+1 809 555 1234')
+    expect(applyPhoneRemediation).toHaveBeenCalledWith('lead-1', '+18095551234')
+    expect(sendText).toHaveBeenCalledWith(updated, expect.stringContaining('+18095551234'))
+    expect(requestRegistrationCodeForLead).toHaveBeenCalledWith(updated, 2, 'corr-1')
+  })
+
+  it('an unparseable reply re-prompts instead of applying anything', async () => {
+    normalizePhone.mockReturnValue(null)
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 2, statusReason: 'phone_remediation_pending' })
+
+    await routeMessage(lead, makeInbound({ text: 'no tengo' }), 'corr-1')
+
+    expect(applyPhoneRemediation).not.toHaveBeenCalled()
+    expect(requestRegistrationCodeForLead).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, expect.stringContaining('No pude validar'))
+  })
+
+  it('an abandono lead NOT marked for phone remediation is unaffected by this branch', async () => {
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 2, statusReason: 'tdm_registration_request_timeout' })
+
+    await routeMessage(lead, makeInbound({ text: '+18095551234' }), 'corr-1')
+
+    expect(applyPhoneRemediation).not.toHaveBeenCalled()
+    expect(normalizePhone).not.toHaveBeenCalled()
   })
 })
 

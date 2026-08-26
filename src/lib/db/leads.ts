@@ -194,6 +194,44 @@ export async function reviveAbandonedLinkSent(lead: Lead): Promise<Lead | null> 
 }
 
 /**
+ * statusReason marker used only by scripts/remediate-bsuid-phone-leads.ts (one-off
+ * cleanup for leads stuck in `abandono` from before phone.ts's channelRequiresPhonePrompt
+ * fix started asking WhatsApp users for their phone when Twilio sends a BSUID instead of
+ * a real number — see that fix's commit for the full explanation). Never set anywhere
+ * else, so flow-router.ts's phone-remediation branch only ever fires for leads the
+ * script explicitly marked.
+ */
+export const PHONE_REMEDIATION_PENDING_REASON = 'phone_remediation_pending'
+
+/**
+ * Marks a stuck-on-missing-phone lead so its next reply is treated as a phone number
+ * rather than falling into the generic terminal/abandono message. leadStatus stays
+ * `abandono` (no valid state-machine transition fits "waiting on ad-hoc remediation
+ * input") — flow-router.ts keys off statusReason instead. Bypasses the state machine
+ * deliberately, same as reviveDeclinedLead/reviveAbandonedLinkSent.
+ */
+export async function markLeadForPhoneRemediation(leadId: string): Promise<void> {
+  await db
+    .update(leads)
+    .set({ statusReason: PHONE_REMEDIATION_PENDING_REASON, updatedAt: new Date() })
+    .where(eq(leads.id, leadId))
+}
+
+/**
+ * Applies a phone number recovered through the remediation flow above and puts the lead
+ * back at `link_sent` so the registration code request gets retried with a real phone
+ * this time. Caller (flow-router.ts) is responsible for actually retrying the request.
+ */
+export async function applyPhoneRemediation(leadId: string, phone: string): Promise<Lead> {
+  const [updated] = await db
+    .update(leads)
+    .set({ phoneNumber: phone, leadStatus: 'link_sent', statusReason: 'phone_remediation_applied', updatedAt: new Date() })
+    .where(eq(leads.id, leadId))
+    .returning()
+  return updated as Lead
+}
+
+/**
  * Hard-reset a lead so they can start the recruitment flow again (/start).
  * Clears survey answers and flow/correction state.
  */
