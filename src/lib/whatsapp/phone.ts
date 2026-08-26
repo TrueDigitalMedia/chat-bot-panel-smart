@@ -20,18 +20,3 @@ export function stripWhatsAppAddress(from: string): string {
 export function toMetaRecipient(channelUserId: string): string {
   return toE164(channelUserId).replace(/^\+/, '')
 }
-
-/**
- * True for a WhatsApp Business-Scoped User ID ("CC.digits", e.g. "DO.1393047009463368") —
- * what Twilio sends instead of a phone number in `From`/`channel_user_id` once a user has
- * adopted WhatsApp's newer username/privacy feature (BSUIDs appearing in webhooks since
- * ~April 2026). Regular text/utility-template sends route to a BSUID fine (confirmed via
- * Twilio's own delivery logs), but Meta rejects an Authentication-category template (used
- * for OTP/verification codes) addressed to one — error 63005 "Channel rejected content",
- * status "failed", with every other message in the same conversation delivering
- * successfully. See deliver-registration-code.ts's useSplitTemplates for where this
- * matters.
- */
-export function isBsuidChannelUserId(channelUserId: string): boolean {
-  return /^[A-Z]{2}\.\d+$/.test(channelUserId)
-}
