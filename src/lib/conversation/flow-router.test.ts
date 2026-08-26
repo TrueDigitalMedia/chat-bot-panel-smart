@@ -26,6 +26,7 @@ const {
   recordConsentEvent,
   reviveDeclinedLead,
   detectDeclineReversalIntent,
+  reviveAbandonedLinkSent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -52,6 +53,7 @@ const {
   recordConsentEvent: vi.fn(),
   reviveDeclinedLead: vi.fn(),
   detectDeclineReversalIntent: vi.fn().mockResolvedValue(false),
+  reviveAbandonedLinkSent: vi.fn(),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -74,7 +76,12 @@ vi.mock('./reengage-choice', () => ({
   REENGAGE_CALLBACK_STOP: 'reengage:stop',
 }))
 vi.mock('./correction', () => ({ handleCorrectionFlow, tryHandleCorrectionRequest }))
-vi.mock('@/lib/db/leads', () => ({ resetLeadConversation, reviveDeclinedLead, recordConsentEvent }))
+vi.mock('@/lib/db/leads', () => ({
+  resetLeadConversation,
+  reviveDeclinedLead,
+  recordConsentEvent,
+  reviveAbandonedLinkSent,
+}))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
@@ -284,6 +291,31 @@ describe('routeMessage — mistaken decline followed by an accept tap', () => {
 
     expect(reviveDeclinedLead).not.toHaveBeenCalled()
     expect(handlePhase1).not.toHaveBeenCalled()
+  })
+})
+
+describe('routeMessage — late "Ya la descargué" tap after a link_sent -> abandono TDM timeout', () => {
+  it('revives to link_sent and retries the registration code request instead of the generic abandono message', async () => {
+    isAppDownloadedCallback.mockReturnValue(true)
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 2, statusReason: 'tdm_registration_request_timeout' })
+    const revived = { ...lead, leadStatus: 'link_sent' }
+    reviveAbandonedLinkSent.mockResolvedValue(revived)
+
+    await routeMessage(lead, makeInbound({ callbackData: 'app_downloaded' }), 'corr-1')
+
+    expect(reviveAbandonedLinkSent).toHaveBeenCalledWith(lead)
+    expect(handleAppDownloaded).toHaveBeenCalledWith(revived, 'corr-1')
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('an abandono not caused by the TDM timeout (e.g. a real opt-out) is not revived by an app-downloaded tap', async () => {
+    isAppDownloadedCallback.mockReturnValue(true)
+    const lead = makeLead({ leadStatus: 'abandono', currentPhase: 2, statusReason: 'user_freetext_opt_out' })
+    reviveAbandonedLinkSent.mockResolvedValue(null)
+
+    await routeMessage(lead, makeInbound({ callbackData: 'app_downloaded' }), 'corr-1')
+
+    expect(handleAppDownloaded).not.toHaveBeenCalled()
   })
 })
 

@@ -164,6 +164,36 @@ export async function reviveDeclinedLead(lead: Lead): Promise<Lead | null> {
 }
 
 /**
+ * The reasons request-registration-code.ts / jobs/re-engage's registration_code_timeout
+ * can move a lead from `link_sent` to `abandono` on their own, with no user decline
+ * involved — TDM never got requested/configured, or never answered in time.
+ */
+export const LINK_SENT_TIMEOUT_REASONS = new Set([
+  'tdm_registration_request_timeout',
+  'code_request_not_configured',
+  'code_request_missing_profile',
+])
+
+/**
+ * Un-abandons a lead whose `link_sent` -> `abandono` move was one of the TDM timeout
+ * reasons above, not a user decline — a late "Ya la descargué" tap here means the
+ * registration code request is still worth retrying rather than telling a qualified
+ * lead their registration can't continue. Bypasses the state machine deliberately,
+ * same as reviveDeclinedLead/resetLeadConversation.
+ */
+export async function reviveAbandonedLinkSent(lead: Lead): Promise<Lead | null> {
+  if (lead.leadStatus !== 'abandono' || !LINK_SENT_TIMEOUT_REASONS.has(lead.statusReason ?? '')) {
+    return null
+  }
+  const [revived] = await db
+    .update(leads)
+    .set({ leadStatus: 'link_sent', updatedAt: new Date() })
+    .where(eq(leads.id, lead.id))
+    .returning()
+  return revived as Lead
+}
+
+/**
  * Hard-reset a lead so they can start the recruitment flow again (/start).
  * Clears survey answers and flow/correction state.
  */

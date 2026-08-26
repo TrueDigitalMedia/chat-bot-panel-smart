@@ -345,6 +345,19 @@ export async function routeMessage(
     return
   }
 
+  // A late "Ya la descargué" tap can arrive after request-registration-code.ts's own
+  // timeout already gave up and moved the lead to abandono (TDM never configured/
+  // responded) — that's a backend delay, not a user decline, so retry the code request
+  // instead of leaving a qualified lead with the generic "can't continue" message.
+  if (status === 'abandono' && isAppDownloadedCallback(callbackData)) {
+    const { reviveAbandonedLinkSent } = await import('@/lib/db/leads')
+    const revived = await reviveAbandonedLinkSent(lead)
+    if (revived) {
+      await handleAppDownloaded(revived, correlationId)
+      return
+    }
+  }
+
   if (status === 'link_sent') {
     if (isAppDownloadedCallback(callbackData)) {
       await handleAppDownloaded(lead, correlationId)
