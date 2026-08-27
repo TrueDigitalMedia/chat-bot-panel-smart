@@ -3,6 +3,7 @@ import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
 import type { Channel } from '@/types/channel'
+import type { LeadStatus } from '@/types/lead'
 
 export type MessageDirection = 'in' | 'out'
 export type MessageContentType =
@@ -120,7 +121,7 @@ export type ConversationListItem = {
   channelUserId: string
   channelUsername: string | null
   phoneNumber: string | null
-  leadStatus: string
+  leadStatus: LeadStatus
   statusReason: string | null
   currentPhase: number
   surveyQuestionIndex: number
@@ -136,7 +137,23 @@ export type ConversationListItem = {
   evalReason: string | null
 }
 
-export async function listConversations(limit = 50): Promise<ConversationListItem[]> {
+export interface ListConversationsOptions {
+  status?: LeadStatus
+  limit?: number
+  offset?: number
+}
+
+export async function listConversations(
+  opts: ListConversationsOptions = {},
+): Promise<{ items: ConversationListItem[]; hasMore: boolean }> {
+  const limit = opts.limit ?? 25
+
+  const conditions = []
+  if (opts.status) conditions.push(eq(leads.leadStatus, opts.status))
+
+  // Fetch one extra row to detect whether a next page exists, without a separate
+  // COUNT(*) query — sliced back down to `limit` before any of the per-lead lookups
+  // below (message stats, evals) run, so that lookahead row never leaks into them.
   const rows = await db
     .select({
       id: leads.id,
@@ -155,14 +172,19 @@ export async function listConversations(limit = 50): Promise<ConversationListIte
     })
     .from(leads)
     .leftJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(leads.lastActivityAt))
-    .limit(limit)
+    .limit(limit + 1)
+    .offset(opts.offset ?? 0)
 
-  if (rows.length === 0) {
-    return []
+  const hasMore = rows.length > limit
+  const pageRows = hasMore ? rows.slice(0, limit) : rows
+
+  if (pageRows.length === 0) {
+    return { items: [], hasMore: false }
   }
 
-  const ids = rows.map((r) => r.id)
+  const ids = pageRows.map((r) => r.id)
   const msgs = await db
     .select({
       leadId: conversationMessages.leadId,
@@ -192,7 +214,7 @@ export async function listConversations(limit = 50): Promise<ConversationListIte
 
   const evals = await getLatestEvalsForLeads(ids)
 
-  return rows.map((r) => {
+  const items = pageRows.map((r) => {
     const s = stats.get(r.id)
     const ev = evals.get(r.id)
     return {
@@ -205,6 +227,8 @@ export async function listConversations(limit = 50): Promise<ConversationListIte
       evalReason: ev?.reason ?? null,
     }
   })
+
+  return { items, hasMore }
 }
 
 export async function getConversationDetail(leadId: string) {

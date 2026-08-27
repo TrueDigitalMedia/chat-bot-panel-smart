@@ -3,6 +3,7 @@ import { listConversations } from '@/lib/db/conversation-messages'
 import { BackfillEvalsButton } from './backfill-button'
 import { DeleteConversationButton } from './delete-conversation-button'
 import styles from './conversations.module.css'
+import type { LeadStatus } from '@/types/lead'
 
 // This Server Component queries the DB directly with no dynamic API usage (no
 // searchParams, unlike quotas/dashboard), so Next's Full Route Cache would otherwise
@@ -11,6 +12,34 @@ import styles from './conversations.module.css'
 // still works, since it's client-fetched with cache: 'no-store'). Force per-request
 // rendering so the list always reflects current data.
 export const dynamic = 'force-dynamic'
+
+// Duplicated from types/lead.ts's LeadStatus union rather than importing a runtime
+// array from there (which doesn't exist today) — keeps this page's filter dropdown
+// self-contained; if LeadStatus ever gains/drops a value, update both.
+const ALL_STATUSES: LeadStatus[] = [
+  'incomplete',
+  'not_qualified',
+  'quota_exhausted',
+  'link_sent',
+  'waiting_for_code',
+  'code_delivered_registered',
+  'code_delivered_not_registered',
+  'code_delivered_no_response',
+  'ficha_hogar_completada',
+  'ficha_hogar_descartado',
+  'abandono',
+]
+
+const PAGE_SIZE = 25
+
+interface SearchParams {
+  status?: string
+  page?: string
+}
+
+function isValidStatus(v: string | undefined): v is LeadStatus {
+  return !!v && (ALL_STATUSES as string[]).includes(v)
+}
 
 function formatWhen(d: Date | string | null | undefined): string {
   if (!d) return '—'
@@ -31,8 +60,30 @@ function statusClass(status: string): string {
   return styles.stIncomplete
 }
 
-export default async function ConversationsPage() {
-  const conversations = await listConversations(100)
+export default async function ConversationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
+  const status = isValidStatus(params.status) ? params.status : undefined
+  const page = Math.max(1, Number(params.page) || 1)
+  const offset = (page - 1) * PAGE_SIZE
+
+  const { items: conversations, hasMore } = await listConversations({
+    status,
+    limit: PAGE_SIZE,
+    offset,
+  })
+
+  function filterHref(next: Partial<SearchParams>): string {
+    const merged = { status: params.status, page: params.page, ...next }
+    const qs = new URLSearchParams()
+    if (merged.status) qs.set('status', merged.status)
+    if (merged.page) qs.set('page', merged.page)
+    const s = qs.toString()
+    return s ? `/admin/conversations?${s}` : '/admin/conversations'
+  }
 
   return (
     <div className={styles.page}>
@@ -46,6 +97,20 @@ export default async function ConversationsPage() {
           <BackfillEvalsButton />
         </div>
       </header>
+
+      <form className={styles.filters} method="get">
+        <select name="status" defaultValue={status ?? ''} className={styles.filterSelect}>
+          <option value="">Todos los estados</option>
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className={styles.filterSubmit}>
+          Filtrar
+        </button>
+      </form>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
@@ -123,6 +188,24 @@ export default async function ConversationsPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className={styles.pagination}>
+        {page > 1 ? (
+          <Link href={filterHref({ page: String(page - 1) })} className={styles.pageBtn}>
+            ← Anterior
+          </Link>
+        ) : (
+          <span className={styles.pageBtnDisabled}>← Anterior</span>
+        )}
+        <span className={styles.pageIndicator}>Página {page}</span>
+        {hasMore ? (
+          <Link href={filterHref({ page: String(page + 1) })} className={styles.pageBtn}>
+            Siguiente →
+          </Link>
+        ) : (
+          <span className={styles.pageBtnDisabled}>Siguiente →</span>
+        )}
       </div>
     </div>
   )
