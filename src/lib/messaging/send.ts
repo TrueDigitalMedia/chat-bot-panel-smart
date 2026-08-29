@@ -7,7 +7,11 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 import * as telegram from '@/lib/telegram/send'
 import * as whatsapp from '@/lib/whatsapp/send'
 import { setPendingWaChoices } from '@/lib/whatsapp/pending-choices'
-import { logConversationMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
+import {
+  logConversationMessage,
+  getLastOutboundMessage,
+  countOutboundSinceLastInbound,
+} from '@/lib/db/conversation-messages'
 
 // Shared literal with gps-capture.ts's own GPS_MANUAL_CALLBACK (not imported — this
 // module is transport-only and shouldn't depend on conversation-domain modules, which
@@ -31,6 +35,29 @@ const REPEAT_NUDGES = ['', '\n\n(Sigo por aquí 👋)', '\n\n(Aquí sigo, cuando
 // wasProviderMessageAlreadyProcessed) — a real conversation loop was observed in
 // production sending the same canned message dozens of times over ~2h.
 const MAX_CONSECUTIVE_REPEATS = 3
+
+// Text-agnostic circuit breaker (unlike dedupeRepeat, which only catches byte-identical
+// consecutive text): once this many outbound messages have piled up without a single
+// inbound reply from the lead, send nothing more. This is the last-resort backstop for
+// the "spaced burst" pattern — 4–7 different business messages over hours with no reply —
+// that drops Meta's quality rating. The orderly path (marking the lead terminal) is the
+// re-engage job's `skipped_outbound_ceiling` branch; this only stops the bleeding if that
+// never runs. Calibrated above the largest legitimate no-reply burst: a code delivery is
+// code + video + instructions = 3 messages.
+const MAX_OUTBOUND_WITHOUT_REPLY = 7
+
+/** True when the lead has already received MAX_OUTBOUND_WITHOUT_REPLY outbound messages
+ *  since their last inbound — see the constant above. Transport-only: callers just skip
+ *  the send; lead-status changes happen in the domain layer (jobs/re-engage). */
+async function exceededOutboundCeiling(leadId: string | undefined): Promise<boolean> {
+  if (!leadId) return false
+  const n = await countOutboundSinceLastInbound(leadId)
+  if (n >= MAX_OUTBOUND_WITHOUT_REPLY) {
+    console.warn('[messaging] outbound-without-reply ceiling: suppressing send', { leadId, count: n })
+    return true
+  }
+  return false
+}
 
 interface DedupeResult {
   text: string
@@ -88,6 +115,7 @@ export async function sendText(
   text: string,
   extraMeta?: Record<string, unknown>,
 ): Promise<void> {
+  if (await exceededOutboundCeiling(leadIdOf(to))) return
   const { text: outText, meta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: meta.dedupeIndex })
@@ -117,6 +145,7 @@ export async function sendVideo(
   video: string,
   caption?: string,
 ): Promise<void> {
+  if (await exceededOutboundCeiling(leadIdOf(to))) return
   switch (to.channel) {
     case 'telegram':
       await telegram.sendVideo(BigInt(to.channelUserId), video, caption)
@@ -141,6 +170,7 @@ export async function sendInlineKeyboard(
   buttons: InlineKeyboardButton[][],
   extraMeta?: Record<string, unknown>,
 ): Promise<void> {
+  if (await exceededOutboundCeiling(leadIdOf(to))) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', {
@@ -191,6 +221,7 @@ export async function sendTemplateOrKeyboard(
   buttons: InlineKeyboardButton[][],
   opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
 ): Promise<void> {
+  if (await exceededOutboundCeiling(leadIdOf(to))) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', {
@@ -239,6 +270,7 @@ export async function sendTemplateOrText(
   text: string,
   opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
 ): Promise<void> {
+  if (await exceededOutboundCeiling(leadIdOf(to))) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: dedupeMeta.dedupeIndex })

@@ -10,6 +10,7 @@ const {
   sendTemplateOrKeyboard,
   scheduleJob,
   getNextMessageVariant,
+  countOutboundSinceLastInbound,
 } = vi.hoisted(() => ({
   dbMock: { select: vi.fn(), update: vi.fn() },
   verify: vi.fn(),
@@ -19,6 +20,7 @@ const {
   sendTemplateOrKeyboard: vi.fn(),
   scheduleJob: vi.fn(),
   getNextMessageVariant: vi.fn(),
+  countOutboundSinceLastInbound: vi.fn(),
 }))
 
 vi.mock('@/lib/db/client', () => ({ db: dbMock }))
@@ -45,6 +47,9 @@ vi.mock('@/lib/scheduler/messages', async () => {
   const actual = await vi.importActual<typeof import('@/lib/scheduler/messages')>('@/lib/scheduler/messages')
   return { ...actual, getNextMessageVariant: (...args: unknown[]) => getNextMessageVariant(...args) }
 })
+vi.mock('@/lib/db/conversation-messages', () => ({
+  countOutboundSinceLastInbound: (...args: unknown[]) => countOutboundSinceLastInbound(...args),
+}))
 vi.mock('@/lib/correlation', () => ({ generateCorrelationId: () => 'corr-1' }))
 
 import { POST } from './route'
@@ -92,6 +97,7 @@ const BASE_LEAD = {
 beforeEach(() => {
   vi.resetAllMocks()
   verify.mockResolvedValue(true)
+  countOutboundSinceLastInbound.mockResolvedValue(0)
   claimResult = [{ id: 'sched-1' }]
   const updateCaptured: Record<string, unknown>[] = []
   dbMock.update.mockReturnValue(updateChain(updateCaptured))
@@ -299,5 +305,29 @@ describe('POST /api/jobs/re-engage', () => {
 
     expect(transitionLead).toHaveBeenCalledWith('lead-1', 'code_delivered_no_response', 'inactivity_freeze', 'corr-1')
     expect(body.outcome).toBe('freeze_applied')
+  })
+
+  it('re-engage: stops the cadence and abandons the lead when too many outbound messages have piled up without a reply', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'link_sent', currentPhase: 2 }]))
+    countOutboundSinceLastInbound.mockResolvedValue(5)
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_outbound_ceiling')
+    expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
+    expect(scheduleJob).not.toHaveBeenCalled()
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'outbound_ceiling_reached', 'corr-1')
+  })
+
+  it('re-engage: the outbound-ceiling stop marks a waiting_for_code lead code_delivered_no_response, not abandono', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code', currentPhase: 2 }]))
+    countOutboundSinceLastInbound.mockResolvedValue(9)
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 2, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_outbound_ceiling')
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'code_delivered_no_response', 'outbound_ceiling_reached', 'corr-1')
   })
 })

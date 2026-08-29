@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const {
   dbUpdate,
   transitionLead,
+  sendText,
   sendVideo,
   sendInlineKeyboard,
   sendTemplateOrKeyboard,
@@ -13,6 +14,7 @@ const {
 } = vi.hoisted(() => ({
   dbUpdate: vi.fn(),
   transitionLead: vi.fn(),
+  sendText: vi.fn(),
   sendVideo: vi.fn(),
   sendInlineKeyboard: vi.fn(),
   sendTemplateOrKeyboard: vi.fn(),
@@ -26,7 +28,7 @@ vi.mock('@/lib/db/client', () => ({
   db: { update: dbUpdate },
 }))
 vi.mock('@/lib/state-machine', () => ({ transitionLead }))
-vi.mock('@/lib/messaging/send', () => ({ sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText }))
+vi.mock('@/lib/messaging/send', () => ({ sendText, sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText }))
 vi.mock('@/lib/scheduler/registration-freeze', () => ({ scheduleFreezeRegistration }))
 vi.mock('@/lib/whatsapp/provider', () => ({ getWhatsAppProvider }))
 vi.mock('@/lib/whatsapp/providers/twilio/templates', () => ({ getApprovedTemplate }))
@@ -107,12 +109,39 @@ describe('deliverRegistrationCode — OTP template addressing', () => {
     )
   })
 
-  it('mock codes always use the plain combined send, unaffected by phone/BSUID addressing', async () => {
+  it('mock codes always use the plain send, unaffected by phone/BSUID addressing', async () => {
     const lead = makeLead({ channelUserId: '18095551234' })
 
     await deliverRegistrationCode(lead, 'MOCK-ABCD1234', { reason: 'test', phase: 2, mock: true }, 'corr-1')
 
     expect(sendTemplateOrText).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('MOCK-ABCD1234'))
     expect(sendInlineKeyboard).toHaveBeenCalled()
+  })
+})
+
+describe('deliverRegistrationCode — message sequence', () => {
+  it('plain path: code on its own first, then instructions + buttons (never combined in one bubble)', async () => {
+    getApprovedTemplate.mockResolvedValue(null) // templates not approved → plain path
+    const lead = makeLead({ channel: 'telegram', channelUserId: '123', phoneNumber: null })
+
+    await deliverRegistrationCode(lead, '1234567890', { reason: 'test', phase: 2 }, 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(expect.anything(), '✅ Tu código de registro es: 1234567890')
+    const instrCall = sendInlineKeyboard.mock.calls[0]
+    expect(instrCall[1]).not.toContain('1234567890')
+    expect(instrCall[1]).toContain('Pasos para registrarte')
+    expect(sendTemplateOrText).not.toHaveBeenCalled()
+  })
+
+  it('split-template path: OTP code first, then instructions template with buttons', async () => {
+    const lead = makeLead({ channelUserId: '18095551234', phoneNumber: '18095551234' })
+
+    await deliverRegistrationCode(lead, '1234567890', { reason: 'test', phase: 2 }, 'corr-1')
+
+    const otpOrder = sendTemplateOrText.mock.invocationCallOrder[0]
+    const instrOrder = sendTemplateOrKeyboard.mock.invocationCallOrder[0]
+    expect(otpOrder).toBeLessThan(instrOrder)
+    expect(sendText).not.toHaveBeenCalled()
   })
 })

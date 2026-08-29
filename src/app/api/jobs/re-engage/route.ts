@@ -14,8 +14,10 @@ import {
   reengagementDelaySeconds,
   RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER,
   RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS,
+  REENGAGE_OUTBOUND_CEILING,
 } from '@/lib/scheduler/constants'
 import { getNextMessageVariant, resolveMessagePool } from '@/lib/scheduler/messages'
+import { countOutboundSinceLastInbound } from '@/lib/db/conversation-messages'
 import { reengageTemplateLogicalId } from '@/lib/whatsapp/providers/twilio/template-ids'
 import { generateCorrelationId } from '@/lib/correlation'
 import { env } from '@/lib/env'
@@ -217,6 +219,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .set({ deliveredAt: new Date(), outcome: 'skipped_24h_window' })
         .where(eq(reEngagementSchedules.leadId, lead.id))
       return NextResponse.json({ outcome: 'skipped_24h_window' })
+    }
+
+    // Global spaced-burst guard: if this lead has already been sent a pile of outbound
+    // messages without replying once (across every subsystem — code request, timeouts,
+    // prior nudges), don't add another. Stop the cadence and mark them terminal instead;
+    // transitionLead cancels every pending job for the lead on the way into a terminal /
+    // NEVER_REENGAGE status, so the rest of the cascade unwinds on its own.
+    const outboundStreak = await countOutboundSinceLastInbound(lead.id)
+    if (outboundStreak >= REENGAGE_OUTBOUND_CEILING) {
+      await db
+        .update(reEngagementSchedules)
+        .set({ deliveredAt: new Date(), outcome: 'skipped_outbound_ceiling' })
+        .where(eq(reEngagementSchedules.leadId, lead.id))
+      const to: LeadStatus =
+        lead.leadStatus === 'waiting_for_code' ? 'code_delivered_no_response' : 'abandono'
+      await transitionLead(lead.id, to, 'outbound_ceiling_reached', correlationId)
+      return NextResponse.json({ outcome: 'skipped_outbound_ceiling' })
     }
 
     const attempt = payload.attemptNumber as 1 | 2 | 3

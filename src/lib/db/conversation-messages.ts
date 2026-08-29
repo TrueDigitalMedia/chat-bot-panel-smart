@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, ne } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
@@ -99,6 +99,36 @@ export async function getLastOutboundMessage(leadId: string): Promise<LastOutbou
     .orderBy(desc(conversationMessages.createdAt))
     .limit(1)
   return row ?? null
+}
+
+/**
+ * Number of outbound messages (excluding contentType 'system') sent to this lead since
+ * their most recent inbound message — or since the start of the conversation if they
+ * have never replied. This is the "business-initiated messages without a reply" metric
+ * that spans every subsystem (code request, timeouts, re-engagement, freeze), unlike
+ * `dedupeRepeat` in messaging/send.ts which only catches byte-identical consecutive text.
+ * Used as the global backstop against the spaced-burst pattern that tanks Meta quality.
+ */
+export async function countOutboundSinceLastInbound(leadId: string): Promise<number> {
+  const [lastIn] = await db
+    .select({ createdAt: conversationMessages.createdAt })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'in')))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(1)
+
+  const conditions = [
+    eq(conversationMessages.leadId, leadId),
+    eq(conversationMessages.direction, 'out'),
+    ne(conversationMessages.contentType, 'system'),
+  ]
+  if (lastIn) conditions.push(gt(conversationMessages.createdAt, lastIn.createdAt))
+
+  const [row] = await db
+    .select({ n: count() })
+    .from(conversationMessages)
+    .where(and(...conditions))
+  return row?.n ?? 0
 }
 
 /** Last `limit` turns for a lead, oldest → newest — used to ground LLM context in what was actually said. */

@@ -43,6 +43,6 @@ export async function handleMissingPhoneRecovery(
     return
   }
   const updated = await applyPhoneRemediation(lead.id, phone)
-  await sendText(updated, `✅ Número guardado: ${phone}. Estamos generando tu código de registro…`)
+  await sendText(updated, `✅ Número guardado: ${phone}`)
   await requestRegistrationCodeForLead(updated, 2, correlationId)
 }

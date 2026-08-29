@@ -25,6 +25,9 @@ export async function handleAppDownloaded(lead: Lead, correlationId: string): Pr
   // always files its job under the lead's actual current phase.
   await cancelPendingJobs(lead.id, 2).catch(() => {})
 
-  await sendText(lead, '¡Perfecto! Estamos generando tu código de registro…')
+  // No "estamos generando tu código…" acknowledgement here on purpose: the code can be
+  // minutes away (or time out into `abandono`), and that message becomes the first of a
+  // spaced burst of unanswered business messages. deliverRegistrationCode sends the code
+  // itself as soon as it's in hand.
   await requestRegistrationCodeForLead(lead, 2, correlationId)
 }

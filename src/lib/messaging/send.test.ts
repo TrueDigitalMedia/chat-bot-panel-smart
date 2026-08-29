@@ -6,18 +6,24 @@ const {
   whatsappSendText,
   getLastOutboundMessage,
   logConversationMessage,
+  countOutboundSinceLastInbound,
 } = vi.hoisted(() => ({
   telegramSendText: vi.fn(),
   telegramSendContactRequest: vi.fn(),
   whatsappSendText: vi.fn(),
   getLastOutboundMessage: vi.fn(),
   logConversationMessage: vi.fn(),
+  countOutboundSinceLastInbound: vi.fn(),
 }))
 
 vi.mock('@/lib/telegram/send', () => ({ sendText: telegramSendText, sendContactRequest: telegramSendContactRequest }))
 vi.mock('@/lib/whatsapp/send', () => ({ sendWhatsAppText: whatsappSendText }))
 vi.mock('@/lib/whatsapp/pending-choices', () => ({ setPendingWaChoices: vi.fn() }))
-vi.mock('@/lib/db/conversation-messages', () => ({ getLastOutboundMessage, logConversationMessage }))
+vi.mock('@/lib/db/conversation-messages', () => ({
+  getLastOutboundMessage,
+  logConversationMessage,
+  countOutboundSinceLastInbound,
+}))
 
 import { sendText, sendPhoneRequest } from './send'
 import type { ChannelRecipient } from '@/types/channel'
@@ -37,6 +43,7 @@ beforeEach(() => {
   telegramSendContactRequest.mockResolvedValue(undefined)
   whatsappSendText.mockResolvedValue(undefined)
   logConversationMessage.mockResolvedValue(undefined)
+  countOutboundSinceLastInbound.mockResolvedValue(0)
 })
 
 describe('sendText — never repeats the same message verbatim', () => {
@@ -115,6 +122,17 @@ describe('sendText — never repeats the same message verbatim', () => {
     const to = makeRecipient()
 
     await sendText(to, 'msg')
+
+    expect(telegramSendText).not.toHaveBeenCalled()
+    expect(logConversationMessage).not.toHaveBeenCalled()
+  })
+
+  it('suppresses any send once the outbound-without-reply ceiling is hit, even with brand-new text', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    countOutboundSinceLastInbound.mockResolvedValue(7)
+    const to = makeRecipient()
+
+    await sendText(to, 'un mensaje totalmente nuevo')
 
     expect(telegramSendText).not.toHaveBeenCalled()
     expect(logConversationMessage).not.toHaveBeenCalled()

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText } from '@/lib/messaging/send'
+import { sendText, sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText } from '@/lib/messaging/send'
 import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
 import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
@@ -16,7 +16,7 @@ import type { Lead } from '@/types/lead'
 const ONBOARDING_VIDEO = process.env.ONBOARDING_VIDEO_URL ?? ''
 
 const ONBOARDING_INSTRUCTIONS_TEXT =
-  '📋 Estos son los pasos para registrarte en la app; tu código de registro va justo a continuación 👇\n\n' +
+  '📋 Pasos para registrarte en la app (tu código de registro está en el mensaje anterior ☝️):\n\n' +
   '1️⃣ Abre la app e ingresa a «¿Ha olvidado su contraseña?».\n' +
   '2️⃣ Escribe tu código de usuario y pulsa «entregar».\n' +
   '3️⃣ Escribe los últimos 4 dígitos de tu celular (el mismo que colocaste para contactarte).\n' +
@@ -45,30 +45,25 @@ export async function deliverRegistrationCode(
     .where(eq(leads.id, lead.id))
 
   const label = opts.mock ? ' (mock)' : ''
-  if (ONBOARDING_VIDEO) {
-    await sendVideo(lead, ONBOARDING_VIDEO, '🎬 Video con los pasos para registrarte')
-  }
-
-  const text =
-    `✅ Tu código de registro${label} es: ${code}\n\n` +
+  const codeText = `✅ Tu código de registro${label} es: ${code}`
+  const instructionsText =
     `${ONBOARDING_INSTRUCTIONS_TEXT}\n\n` +
     `Cuando hayas “activado” la app con ese código, confirma aquí:`
   const buttons = [
     [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
     [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
   ]
-  // Mock codes (REGISTRATION_CODE_MOCK_ENABLED, test-only) always go out as a single
-  // free-text message — never through an approved template, since the "(mock)" label
+  // Mock codes (REGISTRATION_CODE_MOCK_ENABLED, test-only) always go out as plain
+  // free-text messages — never through an approved template, since the "(mock)" label
   // wouldn't render cleanly inside the OTP template's variable and mock traffic should
   // never reach production credentials anyway.
   //
   // Meta rejects a single template mixing an OTP-shaped variable with password-reset/
   // verification instructions (phishing-pattern detection) — the approved templates are
   // split into a bare Authentication OTP template and a separate Utility template for
-  // the instructions + confirm buttons. Only switch to that two-message send once BOTH
-  // are confirmed approved; otherwise send the exact same single combined message as
-  // before, which also keeps Telegram/web/Meta-direct WhatsApp and the mid-rollout
-  // "not approved yet" case behaving exactly like today.
+  // the instructions + confirm buttons. Only switch to those templates once BOTH are
+  // confirmed approved; otherwise use plain free-text/keyboard sends, which also keeps
+  // Telegram/web/Meta-direct WhatsApp and the mid-rollout "not approved yet" case working.
   const useSplitTemplates =
     !opts.mock &&
     lead.channel === 'whatsapp' &&
@@ -76,6 +71,12 @@ export async function deliverRegistrationCode(
     (await getApprovedTemplate(REGISTRATION_CODE_OTP_TEMPLATE)) &&
     (await getApprovedTemplate(REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE))
 
+  // Fixed 3-part sequence for every channel/path: (1) the code on its own, (2) the video,
+  // (3) instructions + confirm buttons. Sending the code first and alone keeps it from
+  // being buried, and the uniform order means the split-template and plain paths behave
+  // the same way apart from which transport each step uses.
+
+  // 1. Code.
   if (useSplitTemplates) {
     // Meta's own docs: "Business-scoped user IDs (BSUIDs) can be used to send any type
     // of message except for one-tap, zero-tap, and copy code authentication templates,
@@ -84,24 +85,29 @@ export async function deliverRegistrationCode(
     // channelUserId (which is the BSUID for a user on WhatsApp's username/privacy
     // feature) — confirmed by a real failure (Twilio error 63005, "Channel rejected
     // content") sending this exact template to a BSUID "To", and by a controlled retest.
-    // Every other send below (video, the Utility instructions template, the plain
-    // combined fallback) keeps routing via `lead`/channelUserId as normal — Meta allows
-    // BSUID addressing for those, and it's what already works for BSUID leads today.
+    // The video and the Utility instructions template below keep routing via
+    // `lead`/channelUserId as normal — Meta allows BSUID addressing for those.
     // phoneNumber should always be set by the time a WhatsApp lead reaches link_sent
     // (phone.ts's channelRequiresPhonePrompt / missing-phone-recovery.ts) — this falls
     // back to `lead` itself only as a defensive no-op for a pre-fix straggler.
     const otpRecipient = lead.channel === 'whatsapp' && lead.phoneNumber ? { ...lead, channelUserId: lead.phoneNumber } : lead
-    await sendTemplateOrText(otpRecipient, REGISTRATION_CODE_OTP_TEMPLATE, `✅ Tu código de registro es: ${code}`, {
+    await sendTemplateOrText(otpRecipient, REGISTRATION_CODE_OTP_TEMPLATE, codeText, {
       contentVariables: { '1': code },
     })
-    await sendTemplateOrKeyboard(
-      lead,
-      REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE,
-      `${ONBOARDING_INSTRUCTIONS_TEXT}\n\nCuando hayas “activado” la app con ese código, confirma aquí:`,
-      buttons,
-    )
   } else {
-    await sendInlineKeyboard(lead, text, buttons)
+    await sendText(lead, codeText)
+  }
+
+  // 2. Video (optional).
+  if (ONBOARDING_VIDEO) {
+    await sendVideo(lead, ONBOARDING_VIDEO, '🎬 Video con los pasos para registrarte')
+  }
+
+  // 3. Instructions + confirm buttons.
+  if (useSplitTemplates) {
+    await sendTemplateOrKeyboard(lead, REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE, instructionsText, buttons)
+  } else {
+    await sendInlineKeyboard(lead, instructionsText, buttons)
   }
 
   await scheduleFreezeRegistration(lead.id, opts.phase)
