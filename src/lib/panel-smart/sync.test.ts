@@ -251,6 +251,34 @@ describe('previewPanelSmartSync', () => {
     })
   })
 
+  it('includes the phone number in the synced answers when the lead has one', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, phoneNumber: '+50378889999', panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'telefono',
+      pregunta: 'Número de Teléfono',
+      respuesta: '+50378889999',
+    })
+  })
+
+  it('omits the phone number when the lead has none', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, phoneNumber: null, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'telefono')).toBe(false)
+  })
+
   it('omits nse_region when the GPS lookup had no catalog match (an "allowlist miss", nseRegion stays null)', async () => {
     isPanelSmartSyncEnabled.mockReturnValue(true)
     dbMock.select

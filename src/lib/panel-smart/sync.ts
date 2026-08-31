@@ -215,6 +215,18 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
   })
 
+  // Add the lead's phone number — not a survey question, it's the WhatsApp identity we
+  // captured at first contact. Also sent to TDM's registration-code request
+  // (tdm-registration/build-request.ts) as `telefono`; this puts it in the general
+  // answers sync too. Pushed whenever a sync fires, only when present.
+  if (hasValue(lead.phoneNumber)) {
+    responses.push({
+      codigo_pregunta: 'telefono',
+      pregunta: 'Número de Teléfono',
+      respuesta: lead.phoneNumber as string,
+    })
+  }
+
   // Add NSE region — not one of SURVEY_FIELDS since it's not a question we ask the user,
   // it's computed during GPS capture (gps-capture.ts's lookupNseRegion) from their
   // department/municipality against the NSE catalog. Also sent to TDM's registration-code
