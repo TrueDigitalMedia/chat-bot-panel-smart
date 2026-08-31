@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Receiver } from '@upstash/qstash'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, lt } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
@@ -58,6 +58,32 @@ async function claimSchedule(
     .returning({ id: reEngagementSchedules.id })
 
   return claimed.length > 0
+}
+
+/**
+ * Finalizes the outcome of the ONE schedule row this delivery owns. Every write here
+ * must stay scoped to (leadId, phase, attemptNumber) — a bare `eq(leadId)` filter
+ * overwrites deliveredAt/outcome on every other schedule row for the lead, including
+ * jobs that haven't fired yet (outcome still NULL), which then get silently dropped
+ * by claimSchedule as "already delivered" and corrupts the per-attempt audit trail
+ * the 24h-window compliance check relies on.
+ */
+async function finalizeSchedule(
+  leadId: string,
+  phase: number,
+  attemptNumber: number,
+  outcome: string,
+): Promise<void> {
+  await db
+    .update(reEngagementSchedules)
+    .set({ deliveredAt: new Date(), outcome })
+    .where(
+      and(
+        eq(reEngagementSchedules.leadId, leadId),
+        eq(reEngagementSchedules.phase, phase),
+        eq(reEngagementSchedules.attemptNumber, attemptNumber),
+      ),
+    )
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -176,27 +202,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // was scheduled (e.g. it self-resolved through a different channel) — every other
     // action in this file already self-guards on status; this one previously didn't.
     if (isTerminal(lead.leadStatus as LeadStatus)) {
-      await db
-        .update(reEngagementSchedules)
-        .set({ deliveredAt: new Date(), outcome: 'skipped_terminal' })
-        .where(eq(reEngagementSchedules.leadId, lead.id))
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_terminal')
       return NextResponse.json({ outcome: 'skipped_terminal' })
     }
 
     if (NEVER_REENGAGE_STATUSES.has(lead.leadStatus as LeadStatus)) {
-      await db
-        .update(reEngagementSchedules)
-        .set({ deliveredAt: new Date(), outcome: 'skipped_declined' })
-        .where(eq(reEngagementSchedules.leadId, lead.id))
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_declined')
       return NextResponse.json({ outcome: 'skipped_declined' })
     }
 
     // Check if lead has consented to re-engagement contact
     if (lead.reEngagementConsentAccepted !== true) {
-      await db
-        .update(reEngagementSchedules)
-        .set({ deliveredAt: new Date(), outcome: 'skipped_no_consent' })
-        .where(eq(reEngagementSchedules.leadId, lead.id))
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_no_consent')
       return NextResponse.json({ outcome: 'skipped_no_consent' })
     }
 
@@ -214,10 +231,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // margin covers scheduling jitter/retries without cutting the real cadence short.
     const hoursSinceActivity = (Date.now() - lastActivity) / (60 * 60 * 1000)
     if (hoursSinceActivity >= 23) {
-      await db
-        .update(reEngagementSchedules)
-        .set({ deliveredAt: new Date(), outcome: 'skipped_24h_window' })
-        .where(eq(reEngagementSchedules.leadId, lead.id))
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_24h_window')
       return NextResponse.json({ outcome: 'skipped_24h_window' })
     }
 
@@ -228,14 +242,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // NEVER_REENGAGE status, so the rest of the cascade unwinds on its own.
     const outboundStreak = await countOutboundSinceLastInbound(lead.id)
     if (outboundStreak >= REENGAGE_OUTBOUND_CEILING) {
-      await db
-        .update(reEngagementSchedules)
-        .set({ deliveredAt: new Date(), outcome: 'skipped_outbound_ceiling' })
-        .where(eq(reEngagementSchedules.leadId, lead.id))
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_outbound_ceiling')
       const to: LeadStatus =
         lead.leadStatus === 'waiting_for_code' ? 'code_delivered_no_response' : 'abandono'
       await transitionLead(lead.id, to, 'outbound_ceiling_reached', correlationId)
       return NextResponse.json({ outcome: 'skipped_outbound_ceiling' })
+    }
+
+    // Defensive cap: attemptNumber in the payload is already bounded 1..3, but a
+    // stuck/looping counter (historically inflated by the unscoped schedule updates
+    // fixed above, or an undetected duplicate delivery) must never keep sending. If the
+    // lead has already had its full quota of nudges, stop the cadence rather than pile on.
+    if (lead.reEngagementCount >= MAX_REENGAGEMENT_ATTEMPTS) {
+      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_attempts_exhausted')
+      return NextResponse.json({ outcome: 'skipped_attempts_exhausted' })
     }
 
     const attempt = payload.attemptNumber as 1 | 2 | 3
@@ -257,15 +277,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ],
     )
 
-    await db
-      .update(reEngagementSchedules)
-      .set({ deliveredAt: new Date(), outcome: 'no_response' })
-      .where(eq(reEngagementSchedules.leadId, lead.id))
+    await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'no_response')
 
+    // Conditional increment: the WHERE clause is a second line of defense against a
+    // runaway counter — if a concurrent delivery already pushed it to the ceiling, this
+    // update is a no-op instead of overshooting MAX_REENGAGEMENT_ATTEMPTS.
     await db
       .update(leads)
       .set({ reEngagementCount: lead.reEngagementCount + 1, updatedAt: new Date() })
-      .where(eq(leads.id, lead.id))
+      .where(and(eq(leads.id, lead.id), lt(leads.reEngagementCount, MAX_REENGAGEMENT_ATTEMPTS)))
 
     if (attempt >= MAX_REENGAGEMENT_ATTEMPTS) {
       // Don't abandon synchronously here — the message we just sent carries its own

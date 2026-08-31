@@ -52,8 +52,20 @@ vi.mock('@/lib/db/conversation-messages', () => ({
 }))
 vi.mock('@/lib/correlation', () => ({ generateCorrelationId: () => 'corr-1' }))
 
+import { and, eq, lt } from 'drizzle-orm'
 import { POST } from './route'
+import { reEngagementSchedules, leads } from '@/lib/db/schema'
+import { MAX_REENGAGEMENT_ATTEMPTS } from '@/lib/scheduler/constants'
 import type { JobPayload } from '@/lib/scheduler/re-engagement'
+
+/** The exact WHERE every schedule write in the re-engage branch must use — scoped to
+ * the one (leadId, phase, attemptNumber) row this delivery owns, never a bare leadId. */
+const scheduleRowWhere = (phase: number, attempt: number) =>
+  and(
+    eq(reEngagementSchedules.leadId, 'lead-1'),
+    eq(reEngagementSchedules.phase, phase),
+    eq(reEngagementSchedules.attemptNumber, attempt),
+  )
 
 function fakeRequest(payload: JobPayload): NextRequest {
   return {
@@ -70,18 +82,19 @@ function selectChain(rows: unknown[]) {
 /** Controls what `claimSchedule`'s `.returning()` resolves to — non-empty means "claimed". */
 let claimResult: Array<{ id: string }> = [{ id: 'sched-1' }]
 
-function updateChain(captured: Record<string, unknown>[]) {
+/** Records every `db.update(...).set(v).where(w)` as { set, where } across a test. */
+let updateCalls: Array<{ set: Record<string, unknown>; where: unknown }> = []
+
+function updateChain() {
   return {
-    set: (v: Record<string, unknown>) => {
-      captured.push(v)
-      return {
-        where: () => {
-          const result = Promise.resolve(undefined) as Promise<undefined> & { returning?: () => Promise<Array<{ id: string }>> }
-          result.returning = () => Promise.resolve(claimResult)
-          return result
-        },
-      }
-    },
+    set: (v: Record<string, unknown>) => ({
+      where: (w: unknown) => {
+        updateCalls.push({ set: v, where: w })
+        const result = Promise.resolve(undefined) as Promise<undefined> & { returning?: () => Promise<Array<{ id: string }>> }
+        result.returning = () => Promise.resolve(claimResult)
+        return result
+      },
+    }),
   }
 }
 
@@ -99,8 +112,8 @@ beforeEach(() => {
   verify.mockResolvedValue(true)
   countOutboundSinceLastInbound.mockResolvedValue(0)
   claimResult = [{ id: 'sched-1' }]
-  const updateCaptured: Record<string, unknown>[] = []
-  dbMock.update.mockReturnValue(updateChain(updateCaptured))
+  updateCalls = []
+  dbMock.update.mockReturnValue(updateChain())
 })
 
 describe('POST /api/jobs/re-engage', () => {
@@ -318,6 +331,67 @@ describe('POST /api/jobs/re-engage', () => {
     expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
     expect(scheduleJob).not.toHaveBeenCalled()
     expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'outbound_ceiling_reached', 'corr-1')
+  })
+
+  it('re-engage: a successful send finalizes only its own schedule row and increments the count with a ceiling guard', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1, reEngagementCount: 1 }]))
+    getNextMessageVariant.mockResolvedValue({ text: 'mensaje', variantOrder: 1 })
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 2, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('sent')
+
+    // The 'no_response' finalize must be scoped to this exact row — a bare eq(leadId)
+    // here is the bug that overwrote sibling jobs' outcomes.
+    const finalize = updateCalls.find((c) => c.set.outcome === 'no_response')
+    expect(finalize).toBeDefined()
+    expect(finalize!.where).toEqual(scheduleRowWhere(1, 2))
+
+    // No schedule finalize in this request may target the whole lead (the initial
+    // claimSchedule write, outcome 'received', legitimately has its own isNull filter).
+    const scheduleWrites = updateCalls.filter(
+      (c) => 'deliveredAt' in c.set && c.set.outcome !== 'received',
+    )
+    expect(scheduleWrites).toHaveLength(1)
+    for (const w of scheduleWrites) {
+      expect(w.where).toEqual(scheduleRowWhere(1, 2))
+    }
+
+    // Count increment carries the lt(MAX) ceiling guard.
+    const countBump = updateCalls.find((c) => c.set.reEngagementCount === 2)
+    expect(countBump).toBeDefined()
+    expect(countBump!.where).toEqual(
+      and(eq(leads.id, 'lead-1'), lt(leads.reEngagementCount, MAX_REENGAGEMENT_ATTEMPTS)),
+    )
+  })
+
+  it('re-engage: stops without sending when the lead has already had its full quota of nudges', async () => {
+    dbMock.select.mockReturnValue(
+      selectChain([{ ...BASE_LEAD, reEngagementCount: MAX_REENGAGEMENT_ATTEMPTS }]),
+    )
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_attempts_exhausted')
+    expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
+    expect(scheduleJob).not.toHaveBeenCalled()
+    const finalize = updateCalls.find((c) => c.set.outcome === 'skipped_attempts_exhausted')
+    expect(finalize!.where).toEqual(scheduleRowWhere(1, 1))
+  })
+
+  it('re-engage: a skip path (no consent) also finalizes only its own schedule row', async () => {
+    dbMock.select.mockReturnValue(
+      selectChain([{ ...BASE_LEAD, reEngagementConsentAccepted: false }]),
+    )
+
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 3, action: 're-engage' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_no_consent')
+    const finalize = updateCalls.find((c) => c.set.outcome === 'skipped_no_consent')
+    expect(finalize!.where).toEqual(scheduleRowWhere(2, 3))
   })
 
   it('re-engage: the outbound-ceiling stop marks a waiting_for_code lead code_delivered_no_response, not abandono', async () => {
