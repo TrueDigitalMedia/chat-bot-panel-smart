@@ -196,7 +196,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'freeze_applied' })
   }
 
-  // --- Re-engagement timeout — the final (3rd) nudge's Continue/Stop buttons went
+  // --- Re-engagement timeout — the nudge's Continue/Stop buttons went
   // unanswered long enough that we give up. Only abandons if the lead genuinely never
   // responded: isTerminal already covers an explicit "No, gracias" tap (handled
   // synchronously in reengage-choice.ts, which sets a different, more specific status
@@ -272,22 +272,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // REENGAGE_OUTBOUND_CEILING — is enforced for every action up front by
     // stopForOutboundCeiling, before this branch runs.)
 
-    // Defensive cap: attemptNumber in the payload is already bounded 1..3, but a
-    // stuck/looping counter (historically inflated by the unscoped schedule updates
+    // Defensive cap: attemptNumber in the payload is already bounded by the cadence, but
+    // a stuck/looping counter (historically inflated by the unscoped schedule updates
     // fixed above, or an undetected duplicate delivery) must never keep sending. If the
-    // lead has already had its full quota of nudges, stop the cadence rather than pile on.
+    // lead has already had its full quota of nudges (MAX_REENGAGEMENT_ATTEMPTS), stop
+    // the cadence rather than pile on.
     if (lead.reEngagementCount >= MAX_REENGAGEMENT_ATTEMPTS) {
       await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_attempts_exhausted')
       return NextResponse.json({ outcome: 'skipped_attempts_exhausted' })
     }
 
-    const attempt = payload.attemptNumber as 1 | 2 | 3
+    const attempt = payload.attemptNumber
     const pool = resolveMessagePool(lead.leadStatus as LeadStatus)
     const { text: message, variantOrder } = await getNextMessageVariant(lead.id, attempt, pool)
-    // Every nudge offers an explicit way out instead of just repeating the ask, so a
-    // genuinely uninterested lead can opt out (`re_engagement_declined_{1st,2nd,3rd}_attempt`
-    // — see reengage-choice.ts) rather than only being able to decline on attempt 2 or
-    // silently riding out to attempt 3's `re_engagement_exhausted`.
+    // The nudge offers an explicit way out instead of just repeating the ask, so a
+    // genuinely uninterested lead can opt out (`re_engagement_declined_1st_attempt`
+    // — see reengage-choice.ts) rather than silently riding out to
+    // `re_engagement_exhausted`.
     await sendTemplateOrKeyboard(
       lead,
       reengageTemplateLogicalId(pool, attempt, variantOrder),
@@ -311,7 +312,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .where(and(eq(leads.id, lead.id), lt(leads.reEngagementCount, MAX_REENGAGEMENT_ATTEMPTS)))
 
     if (attempt >= MAX_REENGAGEMENT_ATTEMPTS) {
-      // Don't abandon synchronously here — the message we just sent carries its own
+      // Final nudge of the configured cadence (with MAX_REENGAGEMENT_ATTEMPTS = 1, the
+      // only one). Don't abandon synchronously here — the message we just sent carries its
       // Continue/Stop buttons, and marking the lead abandono in this same request means
       // any tap on either button (routed through handleReengageChoice's isTerminal
       // check) would already be too late, landing on the generic "can't continue"
@@ -327,7 +329,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'sent_final_awaiting_response' })
     }
 
-    const nextAttempt = (attempt + 1) as 2 | 3
+    const nextAttempt = attempt + 1
     // lead.currentPhase (freshly fetched above), not payload.phase — the lead may have
     // advanced phases between when this job was scheduled and when it fires.
     await scheduleJob(lead.id, lead.currentPhase, nextAttempt, reengagementDelaySeconds(nextAttempt), 're-engage')

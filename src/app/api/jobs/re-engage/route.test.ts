@@ -163,7 +163,7 @@ describe('POST /api/jobs/re-engage', () => {
   it('re-engage: skips with skipped_declined and does not send when a stale job outlives the inactivity freeze', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'code_delivered_no_response' }]))
 
-    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 2, action: 're-engage' }))
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
     expect(body.outcome).toBe('skipped_declined')
@@ -203,7 +203,7 @@ describe('POST /api/jobs/re-engage', () => {
     expect(sendText).not.toHaveBeenCalled()
   })
 
-  it('re-engage: resolves the message pool from the lead\'s current status (link_sent → phase2 pool) and escalates under the fresh currentPhase', async () => {
+  it('re-engage: resolves the message pool from the lead\'s current status (link_sent → phase2 pool) and arms the give-up timer under the fresh currentPhase', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'link_sent', currentPhase: 2 }]))
     getNextMessageVariant.mockResolvedValue({ text: '¿Ya descargaste la app?', variantOrder: 1 })
 
@@ -222,16 +222,18 @@ describe('POST /api/jobs/re-engage', () => {
         ],
       ],
     )
-    // Escalates using the freshly-read currentPhase (2), not payload.phase (1).
-    expect(scheduleJob).toHaveBeenCalledWith('lead-1', 2, 2, expect.any(Number), 're-engage')
-    expect(body.outcome).toBe('sent')
+    // Single-attempt cadence: no 2nd nudge is chained; the give-up timer is armed
+    // under the freshly-read currentPhase (2), not payload.phase (1).
+    expect(scheduleJob).toHaveBeenCalledWith('lead-1', 2, 96, expect.any(Number), 're_engagement_timeout')
+    expect(scheduleJob).not.toHaveBeenCalledWith('lead-1', expect.anything(), 2, expect.anything(), 're-engage')
+    expect(body.outcome).toBe('sent_final_awaiting_response')
   })
 
-  it('re-engage: schedules a re_engagement_timeout instead of abandoning synchronously after the final attempt', async () => {
+  it('re-engage: schedules a re_engagement_timeout instead of abandoning synchronously after the single nudge', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1 }]))
     getNextMessageVariant.mockResolvedValue({ text: 'mensaje', variantOrder: 1 })
 
-    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 3, action: 're-engage' }))
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
     // Abandoning here, in the same request that just sent the final nudge's own
@@ -348,19 +350,19 @@ describe('POST /api/jobs/re-engage', () => {
   })
 
   it('re-engage: a successful send finalizes only its own schedule row and increments the count with a ceiling guard', async () => {
-    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1, reEngagementCount: 1 }]))
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, currentPhase: 1, reEngagementCount: 0 }]))
     getNextMessageVariant.mockResolvedValue({ text: 'mensaje', variantOrder: 1 })
 
-    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 2, action: 're-engage' }))
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
-    expect(body.outcome).toBe('sent')
+    expect(body.outcome).toBe('sent_final_awaiting_response')
 
     // The 'no_response' finalize must be scoped to this exact row — a bare eq(leadId)
     // here is the bug that overwrote sibling jobs' outcomes.
     const finalize = updateCalls.find((c) => c.set.outcome === 'no_response')
     expect(finalize).toBeDefined()
-    expect(finalize!.where).toEqual(scheduleRowWhere(1, 2))
+    expect(finalize!.where).toEqual(scheduleRowWhere(1, 1))
 
     // No schedule finalize in this request may target the whole lead (the initial
     // claimSchedule write, outcome 'received', legitimately has its own isNull filter).
@@ -369,11 +371,11 @@ describe('POST /api/jobs/re-engage', () => {
     )
     expect(scheduleWrites).toHaveLength(1)
     for (const w of scheduleWrites) {
-      expect(w.where).toEqual(scheduleRowWhere(1, 2))
+      expect(w.where).toEqual(scheduleRowWhere(1, 1))
     }
 
     // Count increment carries the lt(MAX) ceiling guard.
-    const countBump = updateCalls.find((c) => c.set.reEngagementCount === 2)
+    const countBump = updateCalls.find((c) => c.set.reEngagementCount === 1)
     expect(countBump).toBeDefined()
     expect(countBump!.where).toEqual(
       and(eq(leads.id, 'lead-1'), lt(leads.reEngagementCount, MAX_REENGAGEMENT_ATTEMPTS)),
@@ -400,19 +402,19 @@ describe('POST /api/jobs/re-engage', () => {
       selectChain([{ ...BASE_LEAD, reEngagementConsentAccepted: false }]),
     )
 
-    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 3, action: 're-engage' }))
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
     expect(body.outcome).toBe('skipped_no_consent')
     const finalize = updateCalls.find((c) => c.set.outcome === 'skipped_no_consent')
-    expect(finalize!.where).toEqual(scheduleRowWhere(2, 3))
+    expect(finalize!.where).toEqual(scheduleRowWhere(2, 1))
   })
 
   it('re-engage: the outbound-ceiling stop marks a waiting_for_code lead code_delivered_no_response, not abandono', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code', currentPhase: 2 }]))
     countOutboundSinceLastInbound.mockResolvedValue(9)
 
-    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 2, action: 're-engage' }))
+    const res = await POST(fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' }))
     const body = await res.json()
 
     expect(body.outcome).toBe('skipped_outbound_ceiling')

@@ -17,7 +17,7 @@ export interface ReEngagementSchedule {
   id: string
   leadId: string
   phase: PhaseNumber
-  attemptNumber: 1 | 2 | 3
+  attemptNumber: number
   scheduledAt: Date
   deliveredAt: Date | null
   outcome: 'responded' | 'no_response' | 'cancelled' | null

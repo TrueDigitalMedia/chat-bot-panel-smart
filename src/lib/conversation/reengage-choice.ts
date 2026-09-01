@@ -13,16 +13,18 @@ export function isReengageCallback(callbackData: string | undefined): boolean {
 }
 
 /**
- * Handles the "¿quieres continuar?" buttons attached to the 2nd re-engagement nudge
+ * Handles the "¿quieres continuar?" buttons attached to the re-engagement nudge
  * (see jobs/re-engage/route.ts). "Continue" resumes the lead's normal flow via a
  * "no text, no callback" turn — the same maneuver resendPendingQuestion/handlePhase1
  * already use elsewhere for resuming mid-flow — routed through routeMessage (dynamic
  * import to avoid a cycle, since flow-router.ts imports this module statically) so
  * every pool (phase 1, link_sent, Ficha Hogar) re-shows its own correct pending step
  * and re-arms the recontact cadence as a side effect of the resumed handler's own
- * scheduleRecontact call. "Stop" records an explicit decline — distinct from silently
- * exhausting all 3 attempts (`re_engagement_exhausted`) — and cancels whatever
- * recontact attempt was still scheduled.
+ * scheduleRecontact call (that re-armed job will no-op when it fires, since
+ * reEngagementCount has already hit its cap of one — see jobs/re-engage/route.ts).
+ * "Stop" records an explicit decline — distinct from silently letting the single
+ * attempt time out (`re_engagement_exhausted`) — and cancels whatever recontact job
+ * was still scheduled.
  */
 export async function handleReengageChoice(
   lead: Lead,

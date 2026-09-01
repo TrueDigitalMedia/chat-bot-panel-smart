@@ -19,8 +19,13 @@ export function resolveMessagePool(leadStatus: LeadStatus): MessagePool {
   return 'phase1_reengage'
 }
 
-/** Fallback copy used when no DB variants are seeded yet for a given pool. */
-export function getFallbackMessage(pool: MessagePool, attemptNumber: 1 | 2 | 3): string {
+/**
+ * Fallback copy used when no DB variants are seeded yet for a given pool. Only attempts
+ * 1-3 have hardcoded copy; a higher attempt number (if MAX_REENGAGEMENT_ATTEMPTS is ever
+ * raised past 3 without adding entries here) clamps to the attempt-3 "last call" message.
+ */
+export function getFallbackMessage(pool: MessagePool, attemptNumber: number): string {
+  const key = Math.min(Math.max(attemptNumber, 1), 3) as 1 | 2 | 3
   const messages: Record<MessagePool, Record<1 | 2 | 3, string>> = {
     phase1_reengage: {
       1: '👋 ¡Hola! Notamos que te quedaste a mitad del proceso de inscripción a PanelSmart. ¿Te gustaría continuar y ganar premios por compartir tus compras? 🎁',
@@ -38,7 +43,7 @@ export function getFallbackMessage(pool: MessagePool, attemptNumber: 1 | 2 | 3):
       3: '⏰ Último aviso: completa tu Ficha Hogar pronto o podrías perder tu lugar en el panel.',
     },
   }
-  return messages[pool][attemptNumber]
+  return messages[pool][key]
 }
 
 /**
@@ -54,7 +59,7 @@ export interface MessageVariantResult {
 
 export async function getNextMessageVariant(
   leadId: string,
-  attemptNumber: 1 | 2 | 3,
+  attemptNumber: number,
   pool: MessagePool,
 ): Promise<MessageVariantResult> {
   // Fetch all variants for this pool+attempt

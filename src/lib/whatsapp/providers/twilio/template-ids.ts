@@ -13,7 +13,7 @@ export const REGISTRATION_CODE_DELAYED_TEMPLATE = 'registration_code_delayed'
 /** Stable logical id for a re-engagement variant — matches message_variants' unique (pool, attemptNumber, variantOrder). */
 export function reengageTemplateLogicalId(
   pool: MessagePool,
-  attemptNumber: 1 | 2 | 3,
+  attemptNumber: number,
   variantOrder: number,
 ): string {
   return `${pool}_a${attemptNumber}_v${variantOrder}`

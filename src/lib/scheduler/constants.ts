@@ -5,14 +5,37 @@ export const PHASE2_CODE_DELAY_SECONDS = 600 // 10 minutes — when we POST the 
 // re_engagement_schedules rows (unique on leadId+phase+attemptNumber) never collide.
 export const REGISTRATION_CODE_TIMEOUT_ATTEMPT_NUMBER = 95
 
-// Named map keyed by attempt number (1-indexed) to avoid off-by-one errors
-export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
-  1: 4500,   // 75 minutes
-  2: 25200,  // 7 hours
-  3: 43200,  // 12 hours (keep total < 24h with variant rotation)
-}
+// Re-engagement cadence: one delay per attempt, 0-indexed (index 0 = attempt 1). The
+// Nth nudge is scheduled REENGAGEMENT_CADENCE_SECONDS[N-1] after the previous turn.
+// Keep the running total under 24h so every nudge lands inside WhatsApp's
+// customer-service window.
+export const REENGAGEMENT_CADENCE_SECONDS = [
+  4500,   // attempt 1 — 75 minutes
+  25200,  // attempt 2 — 7 hours
+  43200,  // attempt 3 — 12 hours
+] as const
 
-export const MAX_REENGAGEMENT_ATTEMPTS = 3
+/**
+ * The single knob for how many recontact nudges the bot sends before giving up.
+ * Currently 1: send one nudge (with its Continue/Stop buttons), then wait
+ * RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS for a reply before abandoning — no 2nd/3rd nudge.
+ *
+ * To change it, set this to any value from 1..REENGAGEMENT_CADENCE_SECONDS.length and
+ * nothing else needs editing. To go higher, first add matching entries to
+ * REENGAGEMENT_CADENCE_SECONDS above and to getFallbackMessage in scheduler/messages.ts.
+ */
+export const MAX_REENGAGEMENT_ATTEMPTS = 1
+
+if (
+  MAX_REENGAGEMENT_ATTEMPTS < 1 ||
+  MAX_REENGAGEMENT_ATTEMPTS > REENGAGEMENT_CADENCE_SECONDS.length
+) {
+  throw new Error(
+    `MAX_REENGAGEMENT_ATTEMPTS (${MAX_REENGAGEMENT_ATTEMPTS}) must be between 1 and ` +
+      `REENGAGEMENT_CADENCE_SECONDS.length (${REENGAGEMENT_CADENCE_SECONDS.length}) — ` +
+      `add cadence + fallback-copy entries before raising it further.`,
+  )
+}
 
 // If a lead has already received this many outbound messages since their last inbound
 // reply, the re-engage job (and scheduleRecontact, and every other job action) stops the
@@ -25,12 +48,12 @@ export const MAX_REENGAGEMENT_ATTEMPTS = 3
 // termination happens before the mute transport backstop kicks in.
 export const REENGAGE_OUTBOUND_CEILING = 4
 
-// Sentinel attemptNumber for the re_engagement_timeout job scheduled after the final
-// (3rd) nudge — distinct from the 1-3 attempt numbers themselves, so its
-// re_engagement_schedules row never collides with attempt 3's own row.
+// Sentinel attemptNumber for the re_engagement_timeout job scheduled after the single
+// nudge — distinct from the 1-3 attempt numbers themselves, so its
+// re_engagement_schedules row never collides with the nudge's own row.
 export const RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER = 96
 
-// How long to wait, after sending the final re-engagement nudge (with its own
+// How long to wait, after sending the re-engagement nudge (with its own
 // Continue/Stop buttons), before giving up on a lead who never taps either one. Must
 // NOT be shorter than the time it takes a real person to notice and tap a WhatsApp
 // message — see jobs/re-engage/route.ts's re_engagement_timeout handler, which used to
@@ -39,18 +62,20 @@ export const RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER = 96
 export const RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS = 43200 // 12 hours
 
 /**
- * REENGAGEMENT_DELAY_SECONDS[attempt], overridable via RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
- * (comma-separated, 1-indexed — e.g. "30,60,90" for local testing). Centralizes the
- * override-parsing that used to be duplicated at each scheduling call site.
+ * Delay before the given attempt's nudge (attempt is 1-indexed). Values past the
+ * configured cadence are clamped to the last defined step. Overridable via
+ * RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS (comma-separated, 1-indexed — e.g. "30,60,90"
+ * for local testing). Centralizes the override-parsing that used to be duplicated at
+ * each scheduling call site.
  */
-export function reengagementDelaySeconds(attempt: 1 | 2 | 3): number {
+export function reengagementDelaySeconds(attempt: number): number {
+  const idx = Math.min(Math.max(attempt, 1), REENGAGEMENT_CADENCE_SECONDS.length) - 1
   const cadenceOverride = process.env.RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS
   if (cadenceOverride) {
-    const delays = cadenceOverride.split(',').map(Number)
-    const override = delays[attempt - 1]
+    const override = cadenceOverride.split(',').map(Number)[idx]
     if (override) return override
   }
-  return REENGAGEMENT_DELAY_SECONDS[attempt]
+  return REENGAGEMENT_CADENCE_SECONDS[idx]
 }
 
 // Scheduled right after the registration code is delivered (mock or real) — if the
