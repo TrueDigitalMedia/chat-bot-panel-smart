@@ -17,6 +17,15 @@ export function supportRedirect(): string {
 
 export const NOT_UNDERSTOOD_MESSAGE = 'No entendí lo que respondiste 🤔. Te vuelvo a preguntar:'
 
+/** Sent at most once to a lead who already opted out and keeps writing — a fixed line,
+ *  never an AI-generated reply, so nothing the bot says after a STOP can read as
+ *  reopening the conversation. Names the one way back in (see OPT_OUT_REENTRY_TEXT). */
+export const OPT_OUT_ACK_TEXT =
+  'Ya no te contactaremos para este proceso. Si más adelante quieres retomarlo, escribe *retomar* y lo reactivamos.'
+
+/** Confirmation when an opted-out lead explicitly asks to come back (detectOptOutReversalIntent). */
+export const OPT_OUT_REENTRY_TEXT = '¡Listo! Reactivamos tu proceso. Empezamos de nuevo desde el inicio 🚀'
+
 export const AGENT_HANDOFF_EMAIL = 'hola@wp.numerator.com'
 
 export const PHASE2_AGENT_INTRO =

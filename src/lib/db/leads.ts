@@ -175,6 +175,27 @@ export const LINK_SENT_TIMEOUT_REASONS = new Set([
 ])
 
 /**
+ * statusReasons that mean the lead explicitly asked to stop being contacted — a
+ * free-text "STOP"/"ya no me escriban" (`user_freetext_opt_out`) or a "No, gracias" tap
+ * on a re-engagement nudge (`re_engagement_declined_*`). Any flow-router branch that
+ * runs after the opt-out must treat these as a definitive opt-out and never reinterpret
+ * a later message as fresh consent or reply to it with an AI-generated message.
+ * `re_engagement_exhausted` (3 nudges silently ignored, no explicit STOP) is deliberately
+ * NOT in this set — that's a silent drop-off, not an express opt-out.
+ */
+export const OPT_OUT_STATUS_REASONS = new Set([
+  'user_freetext_opt_out',
+  're_engagement_declined_1st_attempt',
+  're_engagement_declined_2nd_attempt',
+  're_engagement_declined_3rd_attempt',
+  're_engagement_declined',
+])
+
+export function hasOptedOut(lead: Pick<Lead, 'statusReason'>): boolean {
+  return OPT_OUT_STATUS_REASONS.has(lead.statusReason ?? '')
+}
+
+/**
  * Un-abandons a lead whose `link_sent` -> `abandono` move was one of the TDM timeout
  * reasons above, not a user decline — a late "Ya la descargué" tap here means the
  * registration code request is still worth retrying rather than telling a qualified

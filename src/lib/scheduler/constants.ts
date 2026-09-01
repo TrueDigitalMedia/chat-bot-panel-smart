@@ -15,13 +15,15 @@ export const REENGAGEMENT_DELAY_SECONDS: Record<1 | 2 | 3, number> = {
 export const MAX_REENGAGEMENT_ATTEMPTS = 3
 
 // If a lead has already received this many outbound messages since their last inbound
-// reply, the re-engage job stops the cadence and marks them terminal
-// (`code_delivered_no_response` from `waiting_for_code`, else `abandono`) instead of
-// sending yet another nudge — the "freeze before chaining more than N without a response"
-// safeguard against Meta-quality-tanking spaced bursts. Kept below
-// MAX_OUTBOUND_WITHOUT_REPLY in messaging/send.ts (7) so this orderly termination happens
-// before the mute transport backstop kicks in.
-export const REENGAGE_OUTBOUND_CEILING = 5
+// reply, the re-engage job (and scheduleRecontact, and every other job action) stops the
+// cadence and marks them terminal (`code_delivered_no_response` from `waiting_for_code`,
+// else `abandono`) instead of sending yet another nudge — the "freeze before chaining
+// more than N without a response" safeguard against Meta-quality-tanking spaced bursts.
+// Set to 4: it still clears the largest legitimate no-reply burst (a code delivery is
+// code + video + instructions = 3 messages) but cuts the cascade at the 4th unanswered
+// send. Kept below MAX_OUTBOUND_WITHOUT_REPLY in messaging/send.ts (5) so this orderly
+// termination happens before the mute transport backstop kicks in.
+export const REENGAGE_OUTBOUND_CEILING = 4
 
 // Sentinel attemptNumber for the re_engagement_timeout job scheduled after the final
 // (3rd) nudge — distinct from the 1-3 attempt numbers themselves, so its

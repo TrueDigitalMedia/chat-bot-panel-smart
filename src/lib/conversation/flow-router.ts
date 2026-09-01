@@ -12,10 +12,10 @@ import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/a
 import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
-import { resetLeadConversation, recordConsentEvent } from '@/lib/db/leads'
+import { resetLeadConversation, recordConsentEvent, hasOptedOut } from '@/lib/db/leads'
 import { hasSentOutboundMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
-import { supportRedirect, agentHandoffReply } from './exit-messages'
+import { supportRedirect, agentHandoffReply, OPT_OUT_ACK_TEXT, OPT_OUT_REENTRY_TEXT } from './exit-messages'
 import { mightBeAgenteTypo } from './agent-typo'
 import { mightBeOptOutIntent } from './opt-out-heuristic'
 import type { Lead, LeadStatus } from '@/types/lead'
@@ -118,6 +118,19 @@ async function alreadyAcknowledgedReminder(leadId: string, messageText: string):
   return last?.meta?.closing === true
 }
 
+/** True once the fixed opt-out acknowledgment (OPT_OUT_ACK_TEXT, tagged meta.optOutAck)
+ *  has already been the last thing we sent — so an opted-out lead who keeps writing gets
+ *  it exactly once and then silence, never a repeat and never an AI reply. */
+async function alreadySentOptOutAck(leadId: string): Promise<boolean> {
+  const last = await getLastOutboundMessage(leadId)
+  return last?.meta?.optOutAck === true
+}
+
+/** Cheap pre-filter for "I changed my mind, let me back in" — only a match here spends an
+ *  AI call (detectOptOutReversalIntent). Deliberately broad; the AI check is the gate. */
+const OPT_OUT_REENTRY_HINT =
+  /\b(volver|retomar|reactiv|reanud|particip|continuar|seguir|inscrib|s[ií]\s+quiero)\b/i
+
 /**
  * Sends the closing reply for a "¿ya me registré?"-style question and actually ends the
  * conversation: cancels every pending job for the lead (recontact + any functional job)
@@ -212,6 +225,35 @@ export async function routeMessage(
     await cancelPendingRecontact(lead.id).catch(() => {})
     await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
     await handlePhase1(fresh, '', undefined, correlationId)
+    return
+  }
+
+  // A lead who already opted out (explicit "STOP" / "No, gracias" on a nudge — see
+  // OPT_OUT_STATUS_REASONS) keeps their terminal status, but every later message from
+  // them fell through to the terminal / NEVER_REENGAGE branches below, which reply with
+  // an AI-generated message (declineFollowupOrSupportRedirect -> generateFreeTextReply).
+  // That can read as reopening the conversation — a direct Meta-policy violation after an
+  // explicit STOP, and in one real case the AI even phrased it as confirming fresh
+  // consent. Handled here, ahead of every other branch: an explicit re-entry request
+  // restarts the flow; anything else gets one fixed acknowledgment, once, then silence.
+  // Checked before the free-text opt-out block below so the *first* opt-out still runs
+  // through there (hasOptedOut is only true once the transition has already happened).
+  if (hasOptedOut(lead)) {
+    if (messageText.trim() && !isRestartRequest(messageText) && OPT_OUT_REENTRY_HINT.test(messageText)) {
+      const { detectOptOutReversalIntent } = await import('./detect-opt-out-reversal')
+      if (await detectOptOutReversalIntent(messageText, { leadId: lead.id, correlationId })) {
+        const fresh = await resetLeadConversation(lead.id)
+        await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+        await cancelPendingRecontact(lead.id).catch(() => {})
+        await recordConsentEvent(lead.id, 'opt_out', lead.channel, true, OPT_OUT_REENTRY_TEXT, messageText)
+        await sendText(fresh, OPT_OUT_REENTRY_TEXT)
+        await handlePhase1(fresh, '', undefined, correlationId)
+        return
+      }
+    }
+    if (!(await alreadySentOptOutAck(lead.id))) {
+      await sendText(lead, OPT_OUT_ACK_TEXT, { closing: true, optOutAck: true })
+    }
     return
   }
 

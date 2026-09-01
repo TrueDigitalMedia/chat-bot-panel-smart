@@ -86,6 +86,32 @@ async function finalizeSchedule(
     )
 }
 
+/**
+ * Global spaced-burst guard, hoisted out of the 're-engage' branch so it also covers
+ * request_registration_code / registration_code_timeout / freeze_registration: if this
+ * lead has already been sent REENGAGE_OUTBOUND_CEILING outbound messages without a single
+ * reply (across every subsystem), stop the cascade instead of adding another message.
+ * Finalizes this delivery's own schedule row and marks the lead terminal —
+ * transitionLead cancels every other pending job on the way into a terminal /
+ * NEVER_REENGAGE status, so the rest of the cascade unwinds on its own. Returns true when
+ * it acted (caller must stop). No-op for a lead already terminal or in a NEVER_REENGAGE
+ * status — those have no valid transition to abandono and their own guards handle them.
+ */
+async function stopForOutboundCeiling(
+  lead: typeof leads.$inferSelect,
+  payload: JobPayload,
+  correlationId: string,
+): Promise<boolean> {
+  const status = lead.leadStatus as LeadStatus
+  if (isTerminal(status) || NEVER_REENGAGE_STATUSES.has(status)) return false
+  const outboundStreak = await countOutboundSinceLastInbound(lead.id)
+  if (outboundStreak < REENGAGE_OUTBOUND_CEILING) return false
+  await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_outbound_ceiling')
+  const to: LeadStatus = status === 'waiting_for_code' ? 'code_delivered_no_response' : 'abandono'
+  await transitionLead(lead.id, to, 'outbound_ceiling_reached', correlationId)
+  return true
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
   const signature = request.headers.get('Upstash-Signature') ?? ''
@@ -125,6 +151,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       correlationId,
     })
     return NextResponse.json({ outcome: 'skipped_duplicate_delivery' })
+  }
+
+  // Spaced-burst guard for every action (see stopForOutboundCeiling) — checked before the
+  // per-action logic so a lead buried in unanswered outbound also short-circuits the
+  // code-request / timeout / freeze actions, not just re-engagement nudges.
+  if (await stopForOutboundCeiling(lead, payload, correlationId)) {
+    return NextResponse.json({ outcome: 'skipped_outbound_ceiling' })
   }
 
   // --- Registration code request (client-mysql-integration.md §2b) ---
@@ -235,19 +268,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ outcome: 'skipped_24h_window' })
     }
 
-    // Global spaced-burst guard: if this lead has already been sent a pile of outbound
-    // messages without replying once (across every subsystem — code request, timeouts,
-    // prior nudges), don't add another. Stop the cadence and mark them terminal instead;
-    // transitionLead cancels every pending job for the lead on the way into a terminal /
-    // NEVER_REENGAGE status, so the rest of the cascade unwinds on its own.
-    const outboundStreak = await countOutboundSinceLastInbound(lead.id)
-    if (outboundStreak >= REENGAGE_OUTBOUND_CEILING) {
-      await finalizeSchedule(lead.id, payload.phase, payload.attemptNumber, 'skipped_outbound_ceiling')
-      const to: LeadStatus =
-        lead.leadStatus === 'waiting_for_code' ? 'code_delivered_no_response' : 'abandono'
-      await transitionLead(lead.id, to, 'outbound_ceiling_reached', correlationId)
-      return NextResponse.json({ outcome: 'skipped_outbound_ceiling' })
-    }
+    // (The global spaced-burst ceiling — countOutboundSinceLastInbound >=
+    // REENGAGE_OUTBOUND_CEILING — is enforced for every action up front by
+    // stopForOutboundCeiling, before this branch runs.)
 
     // Defensive cap: attemptNumber in the payload is already bounded 1..3, but a
     // stuck/looping counter (historically inflated by the unscoped schedule updates

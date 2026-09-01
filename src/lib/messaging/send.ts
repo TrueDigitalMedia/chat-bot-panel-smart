@@ -42,9 +42,10 @@ const MAX_CONSECUTIVE_REPEATS = 3
 // the "spaced burst" pattern — 4–7 different business messages over hours with no reply —
 // that drops Meta's quality rating. The orderly path (marking the lead terminal) is the
 // re-engage job's `skipped_outbound_ceiling` branch; this only stops the bleeding if that
-// never runs. Calibrated above the largest legitimate no-reply burst: a code delivery is
-// code + video + instructions = 3 messages.
-const MAX_OUTBOUND_WITHOUT_REPLY = 7
+// never runs. Calibrated just above the largest legitimate no-reply burst (a code
+// delivery is code + video + instructions = 3 messages) and one above
+// REENGAGE_OUTBOUND_CEILING (4) so the orderly termination always fires first.
+const MAX_OUTBOUND_WITHOUT_REPLY = 5
 
 /** True when the lead has already received MAX_OUTBOUND_WITHOUT_REPLY outbound messages
  *  since their last inbound — see the constant above. Transport-only: callers just skip

@@ -4,7 +4,8 @@ import { db } from '@/lib/db/client'
 import { reEngagementSchedules, leads } from '@/lib/db/schema'
 import { env, appBaseUrl } from '@/lib/env'
 import { isTerminal } from '@/lib/state-machine/transitions'
-import { reengagementDelaySeconds } from './constants'
+import { reengagementDelaySeconds, REENGAGE_OUTBOUND_CEILING } from './constants'
+import { countOutboundSinceLastInbound } from '@/lib/db/conversation-messages'
 import type { LeadStatus } from '@/types/lead'
 
 const qstash = new Client({ token: env.QSTASH_TOKEN })
@@ -133,6 +134,12 @@ export async function scheduleRecontact(leadId: string, correlationId: string): 
   await cancelPendingRecontact(leadId).catch(() => {})
 
   if (isTerminal(lead.leadStatus as LeadStatus)) return
+
+  // Don't arm another nudge cadence for a lead already buried in unanswered outbound —
+  // stop the spaced burst at the source instead of after the job has already sent one.
+  // The job itself (stopForOutboundCeiling) still enforces the same ceiling for any
+  // cadence already in flight.
+  if ((await countOutboundSinceLastInbound(leadId)) >= REENGAGE_OUTBOUND_CEILING) return
 
   const delay = reengagementDelaySeconds(1)
   await scheduleJob(leadId, lead.currentPhase, 1, delay, 're-engage').catch((err) => {

@@ -29,6 +29,8 @@ const {
   reviveAbandonedLinkSent,
   isMissingPhoneForRegistration,
   handleMissingPhoneRecovery,
+  hasOptedOut,
+  detectOptOutReversalIntent,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -58,6 +60,8 @@ const {
   reviveAbandonedLinkSent: vi.fn(),
   isMissingPhoneForRegistration: vi.fn().mockReturnValue(false),
   handleMissingPhoneRecovery: vi.fn(),
+  hasOptedOut: vi.fn().mockReturnValue(false),
+  detectOptOutReversalIntent: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -85,11 +89,18 @@ vi.mock('@/lib/db/leads', () => ({
   reviveDeclinedLead,
   recordConsentEvent,
   reviveAbandonedLinkSent,
+  hasOptedOut,
 }))
+vi.mock('./detect-opt-out-reversal', () => ({ detectOptOutReversalIntent }))
 vi.mock('./missing-phone-recovery', () => ({ isMissingPhoneForRegistration, handleMissingPhoneRecovery }))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
-vi.mock('./exit-messages', () => ({ supportRedirect: () => 'support redirect' }))
+vi.mock('./exit-messages', () => ({
+  supportRedirect: () => 'support redirect',
+  agentHandoffReply: () => 'agent handoff',
+  OPT_OUT_ACK_TEXT: 'opt-out ack',
+  OPT_OUT_REENTRY_TEXT: 'opt-out reentry',
+}))
 vi.mock('./ficha-hogar-correction', () => ({
   handleFichaHogarCorrectionFlow,
   tryHandleFichaHogarCorrectionRequest,
@@ -128,6 +139,8 @@ beforeEach(() => {
   hasSentOutboundMessage.mockResolvedValue(true)
   detectRegistrationRetryIntent.mockResolvedValue(false)
   detectOptOutIntent.mockResolvedValue(false)
+  detectOptOutReversalIntent.mockResolvedValue(false)
+  hasOptedOut.mockReturnValue(false)
   generateFreeTextReply.mockResolvedValue({ intent: 'needs_reply', reply: 'support redirect' })
   getLastOutboundMessage.mockResolvedValue(null)
   transitionLead.mockResolvedValue(undefined)
@@ -476,7 +489,7 @@ describe('routeMessage — free-text opt-out', () => {
     expect(handlePhase1).toHaveBeenCalledWith(lead, 'no', undefined, 'corr-1')
   })
 
-  it('is not re-triggered from an already-terminal state (falls through to the generic support redirect)', async () => {
+  it('is not re-triggered from an already-terminal state with no opt-out reason (falls through to the generic support redirect)', async () => {
     const lead = makeLead({ leadStatus: 'abandono', currentPhase: 1 })
 
     await routeMessage(lead, makeInbound({ text: 'ya no me escriban' }), 'corr-1')
@@ -518,6 +531,67 @@ describe('routeMessage — free-text opt-out', () => {
 
     expect(detectOptOutIntent).not.toHaveBeenCalled()
     expect(transitionLead).not.toHaveBeenCalled()
+  })
+})
+
+describe('routeMessage — lead who has already opted out keeps writing', () => {
+  beforeEach(() => {
+    hasOptedOut.mockReturnValue(true)
+  })
+
+  it('sends the fixed opt-out acknowledgment once, never an AI-generated reply', async () => {
+    const lead = makeLead({ leadStatus: 'abandono', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+    getLastOutboundMessage.mockResolvedValue(null)
+
+    await routeMessage(lead, makeInbound({ text: 'hola? por qué no me responden' }), 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
+    expect(generateFreeTextReply).not.toHaveBeenCalled()
+    expect(transitionLead).not.toHaveBeenCalled()
+  })
+
+  it('stays silent on the next message once the fixed acknowledgment was already the last thing sent', async () => {
+    const lead = makeLead({ leadStatus: 'abandono', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+    getLastOutboundMessage.mockResolvedValue({ meta: { optOutAck: true } })
+
+    await routeMessage(lead, makeInbound({ text: 'sigo esperando' }), 'corr-1')
+
+    expect(sendText).not.toHaveBeenCalled()
+  })
+
+  it('an explicit "quiero volver" re-entry restarts the flow and re-consents', async () => {
+    detectOptOutReversalIntent.mockResolvedValue(true)
+    const fresh = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+    resetLeadConversation.mockResolvedValue(fresh)
+    const lead = makeLead({ leadStatus: 'abandono', statusReason: 'user_freetext_opt_out', currentPhase: 1, channel: 'whatsapp' })
+
+    await routeMessage(lead, makeInbound({ text: 'cambié de opinión, sí quiero participar' }), 'corr-1')
+
+    expect(resetLeadConversation).toHaveBeenCalledWith('lead-1')
+    expect(recordConsentEvent).toHaveBeenCalledWith('lead-1', 'opt_out', 'whatsapp', true, 'opt-out reentry', 'cambié de opinión, sí quiero participar')
+    expect(sendText).toHaveBeenCalledWith(fresh, 'opt-out reentry')
+    expect(handlePhase1).toHaveBeenCalledWith(fresh, '', undefined, 'corr-1')
+  })
+
+  it('a complaint (not a re-entry request) just gets the fixed acknowledgment, no restart', async () => {
+    detectOptOutReversalIntent.mockResolvedValue(false)
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'abandono', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'esto estuvo muy mal, quiero seguir quejándome' }), 'corr-1')
+
+    expect(resetLeadConversation).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
+  })
+
+  it('treats a re-engagement decline reason the same as a free-text opt-out', async () => {
+    const lead = makeLead({ leadStatus: 'abandono', statusReason: 're_engagement_declined_2nd_attempt', currentPhase: 1 })
+    getLastOutboundMessage.mockResolvedValue(null)
+
+    await routeMessage(lead, makeInbound({ text: 'ok y ahora qué' }), 'corr-1')
+
+    expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
+    expect(generateFreeTextReply).not.toHaveBeenCalled()
   })
 })
 

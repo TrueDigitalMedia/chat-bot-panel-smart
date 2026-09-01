@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { dbMock, publishJSON, messagesDelete } = vi.hoisted(() => ({
+const { dbMock, publishJSON, messagesDelete, countOutboundSinceLastInbound } = vi.hoisted(() => ({
   dbMock: { select: vi.fn(), insert: vi.fn(), update: vi.fn() },
   publishJSON: vi.fn(),
   messagesDelete: vi.fn(),
+  countOutboundSinceLastInbound: vi.fn().mockResolvedValue(0),
 }))
 vi.mock('@/lib/db/client', () => ({ db: dbMock }))
+vi.mock('@/lib/db/conversation-messages', () => ({ countOutboundSinceLastInbound }))
 vi.mock('@/lib/env', () => ({
   env: { QSTASH_TOKEN: 'test-token' },
   appBaseUrl: () => 'https://example.test',
@@ -61,6 +63,7 @@ function updateChain(captured: Record<string, unknown>[]) {
 beforeEach(() => {
   vi.resetAllMocks()
   publishJSON.mockResolvedValue({ messageId: 'qstash-msg-1' })
+  countOutboundSinceLastInbound.mockResolvedValue(0)
 })
 
 describe('scheduleJob', () => {
@@ -175,6 +178,32 @@ describe('scheduleRecontact', () => {
     // ...then a fresh one is scheduled under phase 2 (not whatever phase the caller
     // might have had cached), attempt 1.
     expect(insertCaptured.values).toMatchObject({ leadId: 'lead-1', phase: 2, attemptNumber: 1, action: 're-engage' })
+  })
+
+  it('cancels without scheduling when the lead is buried in unanswered outbound (>= ceiling)', async () => {
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ leadStatus: 'link_sent', currentPhase: 2 }])) // fresh lead lookup
+      .mockReturnValueOnce(selectChain([])) // cancelPendingRecontact's row lookup
+    countOutboundSinceLastInbound.mockResolvedValue(4) // REENGAGE_OUTBOUND_CEILING
+
+    await scheduleRecontact('lead-1', 'corr-1')
+
+    expect(dbMock.insert).not.toHaveBeenCalled()
+    expect(publishJSON).not.toHaveBeenCalled()
+  })
+
+  it('still schedules when the outbound streak is below the ceiling', async () => {
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ leadStatus: 'link_sent', currentPhase: 2 }]))
+      .mockReturnValueOnce(selectChain([]))
+    dbMock.update.mockReturnValue(updateChain([]))
+    const insertCaptured: { values?: Record<string, unknown> } = {}
+    dbMock.insert.mockReturnValue(insertChain(insertCaptured))
+    countOutboundSinceLastInbound.mockResolvedValue(3)
+
+    await scheduleRecontact('lead-1', 'corr-1')
+
+    expect(insertCaptured.values).toMatchObject({ leadId: 'lead-1', attemptNumber: 1, action: 're-engage' })
   })
 
   it('no-ops entirely when the lead no longer exists', async () => {

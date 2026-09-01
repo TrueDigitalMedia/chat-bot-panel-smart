@@ -308,6 +308,20 @@ describe('POST /api/jobs/re-engage', () => {
     expect(requestRegistrationCodeForLead).not.toHaveBeenCalled()
   })
 
+  it('request_registration_code: the outbound-ceiling guard also short-circuits this action, not just re-engage', async () => {
+    dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'link_sent', currentPhase: 2 }]))
+    countOutboundSinceLastInbound.mockResolvedValue(4)
+
+    const res = await POST(
+      fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 0, action: 'request_registration_code' }),
+    )
+    const body = await res.json()
+
+    expect(body.outcome).toBe('skipped_outbound_ceiling')
+    expect(requestRegistrationCodeForLead).not.toHaveBeenCalled()
+    expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'outbound_ceiling_reached', 'corr-1')
+  })
+
   it('freeze_registration: transitions waiting_for_code leads to code_delivered_no_response', async () => {
     dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code' }]))
 
