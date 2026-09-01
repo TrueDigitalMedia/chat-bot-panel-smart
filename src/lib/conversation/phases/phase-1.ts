@@ -397,6 +397,12 @@ export async function handlePhase1(
           field: question.fieldName,
         })
         fieldValue = messageText.trim()
+      } else if (question.fieldName === 'email' && /.+@.+\..+/.test(messageText.trim())) {
+        // A transient model failure (e.g. AI_NoObjectGeneratedError) must not reject a
+        // well-formed email — the schema's own check is z.string().email(), so a basic
+        // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
+        console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
+        fieldValue = messageText.trim()
       } else {
         console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
         const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
