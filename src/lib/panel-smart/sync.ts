@@ -215,6 +215,25 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     respuesta: fichaHogar?.completedAt ? 'Sí' : 'No',
   })
 
+  // Add the date of the lead's first message — `leads.createdAt` is stamped when the
+  // lead row is inserted on first inbound contact (db/leads.ts upsertLead), so it's the
+  // moment the conversation started. Not a survey question; sent as a full ISO timestamp
+  // whenever a sync fires.
+  responses.push({
+    codigo_pregunta: 'fecha_primer_mensaje',
+    pregunta: 'Fecha del Primer Mensaje',
+    respuesta: new Date(lead.createdAt).toISOString(),
+  })
+
+  // Add the date of the lead's last message — `leads.lastActivityAt` is bumped by
+  // upsertLead on every inbound message, so it's the timestamp of the most recent
+  // contact from the lead. Same ISO format; sent whenever a sync fires.
+  responses.push({
+    codigo_pregunta: 'fecha_ultimo_mensaje',
+    pregunta: 'Fecha del Último Mensaje',
+    respuesta: new Date(lead.lastActivityAt).toISOString(),
+  })
+
   // Add the lead's phone number — not a survey question, it's the WhatsApp identity we
   // captured at first contact. Also sent to TDM's registration-code request
   // (tdm-registration/build-request.ts) as `telefono`; this puts it in the general

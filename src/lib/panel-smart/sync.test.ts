@@ -47,6 +47,8 @@ const LEAD_ROW = {
   panelSmartSyncStatus: null,
   panelSmartLastSyncAt: null,
   panelSmartSyncedAnswersJson: null,
+  createdAt: new Date('2026-01-15T10:00:00.000Z'),
+  lastActivityAt: new Date('2026-01-16T09:30:00.000Z'),
 }
 
 const PROFILE_ROW = {
@@ -103,10 +105,16 @@ describe('syncPendingPanelSmartAnswers', () => {
     const result = await syncPendingPanelSmartAnswers('lead-1', 'corr-1', { trigger: 'state_transition' })
 
     expect(result).toBe(true)
-    expect(syncToPanelSmart).toHaveBeenCalledWith({
-      lead_id: 'lead-1',
-      responses: [{ codigo_pregunta: 'cars', pregunta: expect.any(String), respuesta: '2 o más' }],
-    })
+    const sent = syncToPanelSmart.mock.calls[0][0] as {
+      lead_id: string
+      responses: Array<{ codigo_pregunta: string; respuesta: unknown }>
+    }
+    expect(sent.lead_id).toBe('lead-1')
+    expect(sent.responses).toContainEqual({ codigo_pregunta: 'cars', pregunta: expect.any(String), respuesta: '2 o más' })
+    // The changed survey field is the only *diffed* answer sent; the always-on metadata
+    // rows (lead_status, ficha_hogar_completada, fecha_primer_mensaje,
+    // fecha_ultimo_mensaje) ride along.
+    expect(sent.responses.map((r) => r.codigo_pregunta)).not.toContain('fullName')
     expect(updateSets[0]).toMatchObject({
       panelSmartSyncStatus: 'synced',
       panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
@@ -264,6 +272,32 @@ describe('previewPanelSmartSync', () => {
       codigo_pregunta: 'telefono',
       pregunta: 'Número de Teléfono',
       respuesta: '+50378889999',
+    })
+  })
+
+  it('includes the first- and last-message dates (leads.createdAt / lastActivityAt) as ISO timestamps', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{
+        ...LEAD_ROW,
+        createdAt: new Date('2026-02-03T14:25:00.000Z'),
+        lastActivityAt: new Date('2026-02-09T18:40:00.000Z'),
+        panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
+      }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'fecha_primer_mensaje',
+      pregunta: 'Fecha del Primer Mensaje',
+      respuesta: '2026-02-03T14:25:00.000Z',
+    })
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'fecha_ultimo_mensaje',
+      pregunta: 'Fecha del Último Mensaje',
+      respuesta: '2026-02-09T18:40:00.000Z',
     })
   })
 
