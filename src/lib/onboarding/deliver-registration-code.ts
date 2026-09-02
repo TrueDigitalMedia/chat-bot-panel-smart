@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { sendText, sendVideo, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText } from '@/lib/messaging/send'
+import { sendText, sendInlineKeyboard, sendTemplateOrKeyboard, sendTemplateOrText } from '@/lib/messaging/send'
 import { scheduleFreezeRegistration } from '@/lib/scheduler/registration-freeze'
 import { REGISTER_CALLBACK_YES, REGISTER_CALLBACK_NO } from './registration-choice'
 import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
@@ -15,19 +15,27 @@ import type { Lead } from '@/types/lead'
 
 const ONBOARDING_VIDEO = process.env.ONBOARDING_VIDEO_URL ?? ''
 
+// Kept in sync with the approved WhatsApp/Twilio template body for
+// REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE (scripts/twilio-templates.config.ts) —
+// on that path this string is only the fallback; the two must match so every channel
+// reads the same. The video now travels as a link inside this one message instead of a
+// separate native video send.
 const ONBOARDING_INSTRUCTIONS_TEXT =
   '📋 Pasos para registrarte en la app (tu código de registro está en el mensaje anterior ☝️):\n\n' +
+  (ONBOARDING_VIDEO ? `🎬 Video con los pasos: ${ONBOARDING_VIDEO}\n\n` : '') +
   '1️⃣ Abre la app e ingresa a «¿Ha olvidado su contraseña?».\n' +
   '2️⃣ Escribe tu código de usuario y pulsa «entregar».\n' +
   '3️⃣ Escribe los últimos 4 dígitos de tu celular (el mismo que colocaste para contactarte).\n' +
   '4️⃣ Recibirás un código por mensaje de texto a tu número de celular; escríbelo para terminar la verificación.\n\n' +
-  'Si tienes cualquier duda durante el registro, escríbeme y te ayudo.'
+  'Si tienes cualquier duda durante el registro, escríbeme y te ayudo.\n\n' +
+  'Cuando hayas “activado” la app con ese código, confirma aquí:'
 
 /**
  * Everything that happens once a registration code is in hand, however it arrived
  * (mock, or the real TDM webhook — src/app/api/webhooks/tdm-registration-code/route.ts):
- * transition to `waiting_for_code`, optional video, confirm-buttons message, and arm
- * the 20h inactivity freeze. Single source of truth so neither path can drift from the
+ * transition to `waiting_for_code`, send the code then the instructions + confirm
+ * buttons (walkthrough video linked inside that message), and arm the 20h inactivity
+ * freeze. Single source of truth so neither path can drift from the
  * other — extracted from jobs/re-engage.ts's old mock/real-poll branches, which had
  * this duplicated.
  */
@@ -46,9 +54,7 @@ export async function deliverRegistrationCode(
 
   const label = opts.mock ? ' (mock)' : ''
   const codeText = `✅ Tu código de registro${label} es: ${code}`
-  const instructionsText =
-    `${ONBOARDING_INSTRUCTIONS_TEXT}\n\n` +
-    `Cuando hayas “activado” la app con ese código, confirma aquí:`
+  const instructionsText = ONBOARDING_INSTRUCTIONS_TEXT
   const buttons = [
     [{ text: '✅ Ya me registré', callback_data: REGISTER_CALLBACK_YES }],
     [{ text: '❌ No pude registrarme', callback_data: REGISTER_CALLBACK_NO }],
@@ -71,10 +77,12 @@ export async function deliverRegistrationCode(
     (await getApprovedTemplate(REGISTRATION_CODE_OTP_TEMPLATE)) &&
     (await getApprovedTemplate(REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE))
 
-  // Fixed 3-part sequence for every channel/path: (1) the code on its own, (2) the video,
-  // (3) instructions + confirm buttons. Sending the code first and alone keeps it from
-  // being buried, and the uniform order means the split-template and plain paths behave
-  // the same way apart from which transport each step uses.
+  // Fixed 2-part sequence for every channel/path: (1) the code on its own, (2) the
+  // instructions + confirm buttons, with the walkthrough video carried as a link inside
+  // that second message (ONBOARDING_INSTRUCTIONS_TEXT) rather than a separate native
+  // video send. Sending the code first and alone keeps it from being buried, and the
+  // uniform order means the split-template and plain paths behave the same way apart
+  // from which transport each step uses.
 
   // 1. Code.
   if (useSplitTemplates) {
@@ -85,8 +93,8 @@ export async function deliverRegistrationCode(
     // channelUserId (which is the BSUID for a user on WhatsApp's username/privacy
     // feature) — confirmed by a real failure (Twilio error 63005, "Channel rejected
     // content") sending this exact template to a BSUID "To", and by a controlled retest.
-    // The video and the Utility instructions template below keep routing via
-    // `lead`/channelUserId as normal — Meta allows BSUID addressing for those.
+    // The Utility instructions template below keeps routing via `lead`/channelUserId as
+    // normal — Meta allows BSUID addressing for that.
     // phoneNumber should always be set by the time a WhatsApp lead reaches link_sent
     // (phone.ts's channelRequiresPhonePrompt / missing-phone-recovery.ts) — this falls
     // back to `lead` itself only as a defensive no-op for a pre-fix straggler.
@@ -98,12 +106,7 @@ export async function deliverRegistrationCode(
     await sendText(lead, codeText)
   }
 
-  // 2. Video (optional).
-  if (ONBOARDING_VIDEO) {
-    await sendVideo(lead, ONBOARDING_VIDEO, '🎬 Video con los pasos para registrarte')
-  }
-
-  // 3. Instructions + confirm buttons.
+  // 2. Instructions + confirm buttons (the video link is embedded in the text).
   if (useSplitTemplates) {
     await sendTemplateOrKeyboard(lead, REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE, instructionsText, buttons)
   } else {

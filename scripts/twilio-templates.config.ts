@@ -232,14 +232,20 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     logicalId: 'registration_instructions_confirm',
     category: 'UTILITY',
+    // Must stay byte-identical to ONBOARDING_INSTRUCTIONS_TEXT in
+    // src/lib/onboarding/deliver-registration-code.ts (that string is the fallback for
+    // non-template channels). The code goes out as its own message just before this one,
+    // hence "en el mensaje anterior ☝️". The walkthrough video is linked inline here
+    // instead of a separate native video send.
     body:
-      '📋 Estos son los pasos para registrarte en la app; tu código de registro va justo a continuación 👇\n\n' +
+      '📋 Pasos para registrarte en la app (tu código de registro está en el mensaje anterior ☝️):\n\n' +
+      '🎬 Video con los pasos: https://uuv37gxxh4odldus.public.blob.vercel-storage.com/iniciar_sesion_ps.mp4\n\n' +
       '1️⃣ Abre la app e ingresa a «¿Ha olvidado su contraseña?».\n' +
       '2️⃣ Escribe tu código de usuario y pulsa «entregar».\n' +
       '3️⃣ Escribe los últimos 4 dígitos de tu celular (el mismo que colocaste para contactarte).\n' +
       '4️⃣ Recibirás un código por mensaje de texto a tu número de celular; escríbelo para terminar la verificación.\n\n' +
       'Si tienes cualquier duda durante el registro, escríbeme y te ayudo.\n\n' +
-      'Cuando hayas "activado" la app con ese código, confirma aquí:',
+      'Cuando hayas “activado” la app con ese código, confirma aquí:',
     buttons: [
       { title: 'Ya me registré', id: 'register:yes' },
       { title: 'No registrado', id: 'register:no' },
