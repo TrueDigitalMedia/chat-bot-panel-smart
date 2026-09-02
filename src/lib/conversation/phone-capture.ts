@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { flowStates, leads } from '@/lib/db/schema'
 import { sendPhoneRequest, confirmPhoneSaved, sendText } from '@/lib/messaging/send'
-import { channelRequiresPhonePrompt, normalizePhone } from '@/lib/phone'
+import { channelRequiresPhonePrompt, isBsuidChannelUserId, normalizePhone } from '@/lib/phone'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import type { Lead } from '@/types/lead'
 
@@ -20,6 +20,10 @@ export function needsPhoneCapture(lead: Lead): boolean {
 
 export async function resolveWhatsAppPhone(lead: Lead): Promise<Lead> {
   if (lead.channel !== 'whatsapp' || lead.phoneNumber) return lead
+  // A BSUID ("DO.929750206851603") is not a phone number. Leaving phoneNumber unset lets
+  // needsPhoneCapture fall through to asking the user, instead of normalizePhone mangling
+  // the id into a bogus "+929750206851603" that then flows to TDM / Panel Smart.
+  if (isBsuidChannelUserId(lead.channelUserId)) return lead
   const phone = normalizePhone(lead.channelUserId.startsWith('+') ? lead.channelUserId : `+${lead.channelUserId}`)
   if (!phone) return lead
   const [updated] = await db
