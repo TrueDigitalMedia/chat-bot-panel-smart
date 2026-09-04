@@ -8,7 +8,7 @@
 
 ## Summary
 
-Add a `quota_targets` table plus an authenticated `/admin/quotas` page and `/api/admin/quotas*` routes so Kantar's per-country/region/NSE-level lead targets live in Postgres instead of `docs/Kantar Quotas Test.xlsx`. Rewire `checkQuotaAvailability` (currently a deterministic-random mock) to query real target-vs-achieved counts, and update its two call sites (`phase-1.ts`, `handle-confirm.ts`) to pass the country/region data they already have loaded. Import/export round-trips through the existing `xlsx` dependency (already used by `scripts/import-cam-nse-excel.ts`), reusing that script's pattern rather than adding a new one. Admin auth is a single shared-password HTTP Basic Auth check in Next.js middleware — no user table, no new auth dependency.
+Add a `quota_targets` table plus an authenticated `/admin/quotas` page and `/api/admin/quotas*` routes so Kantar's per-country/region/NSE-level lead targets live in Postgres instead of `docs/cam/Kantar Quotas Test.xlsx`. Rewire `checkQuotaAvailability` (currently a deterministic-random mock) to query real target-vs-achieved counts, and update its two call sites (`phase-1.ts`, `handle-confirm.ts`) to pass the country/region data they already have loaded. Import/export round-trips through the existing `xlsx` dependency (already used by `scripts/import-cam-nse-excel.ts`), reusing that script's pattern rather than adding a new one. Admin auth is a single shared-password HTTP Basic Auth check in Next.js middleware — no user table, no new auth dependency.
 
 ## Technical Context
 
