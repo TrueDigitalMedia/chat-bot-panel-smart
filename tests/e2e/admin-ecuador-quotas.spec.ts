@@ -74,14 +74,16 @@ test.describe('Admin dashboard — filter by Ecuador (spec 014 US5)', () => {
     await loginAsAdmin(page)
     await page.goto('/admin/dashboard')
 
-    const filtersForm = page.locator('form').first()
-    const countryOptions = await filtersForm.locator('select').nth(0).locator('option').allTextContents()
+    // Target by accessible label, not position — the admin sidebar's own logout <form>
+    // renders before the dashboard's filters form in the DOM.
+    const countrySelect = page.getByLabel('País')
+    const countryOptions = await countrySelect.locator('option').allTextContents()
     expect(countryOptions).toContain('Ecuador')
 
-    await filtersForm.locator('select').nth(0).selectOption('Ecuador')
+    await countrySelect.selectOption('Ecuador')
     await expect(page).toHaveURL(/country=Ecuador/)
 
-    const regionOptions = await filtersForm.locator('select').nth(1).locator('option').allTextContents()
+    const regionOptions = await page.getByLabel('Región').locator('option').allTextContents()
     expect(regionOptions).toContain('Quito Norte')
   })
 })
