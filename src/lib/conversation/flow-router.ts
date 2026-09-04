@@ -12,7 +12,8 @@ import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/a
 import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
 import { SURVEY_QUESTIONS } from './survey-questions'
-import { resetLeadConversation, recordConsentEvent, hasOptedOut } from '@/lib/db/leads'
+import { resetLeadConversation, recordConsentEvent, hasOptedOut, getLeadById } from '@/lib/db/leads'
+import { withLeadLock } from '@/lib/concurrency/lead-lock'
 import { hasSentOutboundMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { supportRedirect, agentHandoffReply, OPT_OUT_ACK_TEXT, OPT_OUT_REENTRY_TEXT } from './exit-messages'
@@ -193,11 +194,29 @@ async function declineFollowupOrSupportRedirect(
   await sendText(lead, result.reply ?? supportRedirect(), { closing: true })
 }
 
-export async function routeMessage(
-  lead: Lead,
-  inbound: ChannelInbound,
-  correlationId: string,
-): Promise<void> {
+/**
+ * Serializes turns per lead (src/lib/concurrency/lead-lock.ts) — near-simultaneous
+ * webhook deliveries for the same lead otherwise race through routeMessageLocked
+ * concurrently, each starting from the same stale `lead` snapshot and taking
+ * independent "first turn" branches (duplicate opt-in/T&C sends, skipped state
+ * transitions — see the 2026-09 conversation audit). Re-fetches the lead once the lock
+ * is held so a turn queued behind another sees that turn's committed status, not the
+ * possibly-stale object the caller passed in.
+ */
+export async function routeMessage(lead: Lead, inbound: ChannelInbound, correlationId: string): Promise<void> {
+  await withLeadLock(lead.id, async () => {
+    const fresh = (await getLeadById(lead.id)) ?? lead
+    await routeMessageLocked(fresh, inbound, correlationId)
+  })
+}
+
+/**
+ * Same as routeMessage but without acquiring the per-lead lock — for a caller that is
+ * itself already running inside a locked routeMessage turn (handleReengageChoice's
+ * "resume the flow" re-entry) and would otherwise deadlock/self-block waiting on a
+ * lock it already holds.
+ */
+export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, correlationId: string): Promise<void> {
   const status = lead.leadStatus as LeadStatus
   const messageText = inbound.text
   const callbackData = inbound.callbackData

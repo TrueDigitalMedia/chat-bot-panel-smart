@@ -333,6 +333,22 @@ export const conversationMessages = pgTable(
   ],
 )
 
+/**
+ * Per-lead lease lock serializing flow-router turns (src/lib/concurrency/lead-lock.ts).
+ * Guards against near-simultaneous webhook deliveries for the same lead (e.g. WhatsApp
+ * client retries or duplicate provider callbacks with distinct message ids, so the
+ * providerMessageId dedupe in handle-inbound.ts doesn't catch them) racing through
+ * routeMessage concurrently on stale lead state and producing duplicate/out-of-order
+ * replies. `lockedAt` is a lease, not a mutex: a stale lease (older than the lock's own
+ * timeout) can be reclaimed, so a crashed/hung holder can't deadlock a lead forever.
+ */
+export const leadProcessingLocks = pgTable('lead_processing_locks', {
+  leadId: uuid('lead_id')
+    .primaryKey()
+    .references(() => leads.id, { onDelete: 'cascade' }),
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+})
+
 export const consentTypeEnum = pgEnum('consent_type', ['opt_in', 'terms', 're_engagement', 'opt_out'])
 
 export const consentEvents = pgTable(
