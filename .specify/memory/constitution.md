@@ -1,15 +1,29 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.0.0 → 1.1.0
-Modified principles: N/A
-Added sections: Core Principles — IV. Flexible Quota Eligibility (new)
+Version change: 1.1.0 → 1.2.0
+Modified principles:
+  - IV. Flexible Quota Eligibility → IV. Flexible Quota Eligibility (expanded: quota
+    dimensions, regions, and the pregnancy/baby exception are now explicitly evaluated
+    per country using that country's own NSE scoring system)
+Added sections:
+  - Core Principles — V. Country-Scoped Recruitment Configuration (new)
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md ⚠ Pending — Constitution Check section should reference Principle IV for any feature touching quota_targets, NSE scoring, or lead capture
+  - .specify/templates/plan-template.md ✅ Reviewed — Constitution Check is generic
+    ("[Gates determined based on constitution file]"); no edit required
   - .specify/templates/spec-template.md ✅ Reviewed — generic structure applies; no changes needed
   - .specify/templates/tasks-template.md ✅ Reviewed — generic structure applies; no changes needed
 Follow-up TODOs:
-  - specs/011-flexible-quota-matching (or next available number): formalize this principle into a spec via /speckit-specify — data model for per-dimension quotas (NSE, edad, integrantes), open-region matching, per-region aggregate cap, and the unlimited pregnancy/baby-under-36-months exception.
+  - specs/014 (or next available number): formalize Ecuador onboarding via /speckit-specify —
+    Ecuador INEC point-based NSE scoring (health insurance of PSH, monthly income, dwelling
+    finishes, floor material, vehicle count, PSH occupation, PSH education, internet),
+    Provincia/Cantón/Parroquia geography, 10-digit phone format, region catalog
+    (Guayaquil Norte/Sur, Quito Sur, Sierra, Costa Norte/Sur, Cuenca, Santo Domingo),
+    NSE buckets (AB / C / 5+). Source: docs/ecuador/.
+  - specs/015 (or next available number): formalize Mexico onboarding via /speckit-specify —
+    Mexico AMAI-style NSE scoring (full bathrooms, cars, bedrooms, home internet, number of
+    people 14+ who worked last month), Estado/Municipio/Código Postal geography, Kantar
+    region / ESTRATO catalog (AMCM and others). Source: docs/mexico/.
 -->
 
 # AI Chat Platform Constitution
@@ -71,14 +85,52 @@ combined key that all conditions must satisfy at once:
   exists to prevent over-concentration in a single region.
 - A household reporting a pregnancy or a baby aged 0–36 months MUST always qualify, with no quota limit,
   regardless of NSE level, age band, or household size.
-- This rule applies uniformly across all countries served by the platform. Any plan that touches
-  `quota_targets`, NSE/SCL scoring, or the lead capture flow MUST verify compliance with this principle
-  in its Constitution Check section.
+- Quota dimensions, region catalogs, and NSE levels are defined **per country** (see Principle V). A
+  lead's NSE level MUST be derived from its own country's scoring system before quota evaluation, and
+  quota cells, region caps, and the pregnancy/baby exception MUST be applied within that country's
+  configuration — never cross-country.
+- Any plan that touches `quota_targets`, region caps, NSE/SCL/AMAI scoring, or the lead capture flow
+  MUST verify compliance with this principle in its Constitution Check section.
 
 **Rationale**: Requiring simultaneous region+NSE match under-fills quotas and rejects otherwise-valid
 leads that satisfy a different open dimension. The business now prioritizes filling any open quota cell
 over exact combined matches, while an aggregate per-region cap keeps recruitment from concentrating in
-whichever region is easiest to qualify for.
+whichever region is easiest to qualify for. Because each country uses a different NSE instrument, quota
+math is only meaningful inside a single country's configuration.
+
+### V. Country-Scoped Recruitment Configuration
+
+The platform recruits panelists in multiple countries — currently the SCL-CAM Central America set plus
+**Ecuador** and **Mexico** — and each country's onboarding MUST be driven by its own configuration, not
+by a single hardcoded model:
+
+- **NSE scoring is country-specific.** There is no universal formula. Central America uses the Kantar
+  Worldpanel SCL-CAM formula; Ecuador uses the INEC point-based system (health insurance of the
+  principal household earner, monthly household income, dwelling finishes, predominant floor material,
+  vehicle count, earner occupation, earner education, internet access); Mexico uses the AMAI-style rule
+  (full bathrooms, cars, bedrooms used for sleeping, home internet, and the number of household members
+  aged 14+ who worked in the last month). Each country's scoring, its input questions, and its NSE
+  cutoffs MUST be sourced from that country's reference documents (`docs/<country>/`) and covered by
+  unit tests against those sources.
+- **Questionnaire content is country-specific.** Origin options, address structure (e.g. Ecuador:
+  Provincia/Cantón/Parroquia; Mexico: Estado/Municipio/Código Postal), phone-number format and
+  validation, and answer option lists MUST match the country's approved questionnaire. Shared questions
+  (pregnancy, baby under 36 months, unlimited-data package, household roster) keep uniform semantics
+  across countries.
+- **Geography and region catalogs are country-specific.** NSE region lookup MUST resolve within the
+  lead's country catalog only. A location that is not in the country's catalog is out of geographic
+  quota for that country and MUST be handled as such — never matched against another country's regions.
+- **No country may be special-cased in shared code paths.** Adding or changing a country MUST be a
+  configuration/data change plus its own tests; it MUST NOT require conditional branches scattered
+  through the LLM prompt layer, quota engine, or lead pipeline. Any unavoidable per-country branch MUST
+  be justified under Principle III.
+- Every plan that adds a country, or changes scoring, questionnaire, or geo behavior, MUST state in its
+  Constitution Check which countries it affects and confirm the others are unchanged.
+
+**Rationale**: Ecuador and Mexico are outside the SCL-CAM methodology and use entirely different
+socioeconomic instruments and administrative geography. Treating "the questionnaire" or "the NSE
+formula" as global would silently misclassify leads and corrupt quota data. Country-scoped
+configuration keeps each market correct in isolation and makes the next market an additive change.
 
 ## Technology Stack
 
@@ -89,8 +141,9 @@ constraints:
 - **AI Orchestration**: Vercel AI SDK (`ai` package) as the primary LLM interface; Chat SDK
   (`chat-sdk.dev`) for conversation state and UI primitives.
 - **Deployment**: Vercel platform; edge and serverless functions preferred over always-on servers.
-- **Storage**: Vercel KV or Vercel Postgres for lead and conversation persistence — no external
-  databases without documented justification.
+- **Storage**: Neon Postgres via Drizzle ORM for lead and conversation persistence — no external
+  databases without documented justification. New `.sql` migrations MUST be applied to the live
+  database in the same change as the schema update.
 - **Testing**: Vitest for unit tests; Playwright for end-to-end flows; AI SDK core MUST NOT be
   mocked unless testing pure UI logic.
 - **Styling**: Tailwind CSS; no additional CSS frameworks without explicit approval.
@@ -103,10 +156,13 @@ reaching for third-party alternatives.
 All development MUST follow this workflow to maintain quality and traceability:
 
 - Features are specified in `/specs/[###-feature-name]/spec.md` before implementation begins.
-- Code review is REQUIRED for all changes to the LLM prompt layer, lead capture logic, and auth flows.
+- Code review is REQUIRED for all changes to the LLM prompt layer, lead capture logic, auth flows,
+  and any country's NSE scoring or questionnaire configuration.
 - Observability instrumentation is part of the definition of done — a feature is not complete without
   logs and metrics wired up.
 - Lead capture paths MUST have an end-to-end test before merging to main.
+- Country-specific NSE scoring MUST have unit tests that assert results against the country's
+  reference documents.
 - Breaking changes to the LLM prompt contract MUST be versioned and documented in the relevant spec.
 
 ## Governance
@@ -125,4 +181,4 @@ source of development principles for the AI Chat Platform.
   Tracking table with explicit justification.
 - Refer to `.specify/` for runtime development guidance and workflow tooling.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-20
+**Version**: 1.2.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-09-03
