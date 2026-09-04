@@ -5,16 +5,22 @@ import styles from './dashboard.module.css'
 
 interface FiltersFormProps {
   countries: string[]
-  dimensionValues: readonly string[]
+  nseLevelsByCountry: Record<string, string[]>
   regionsByCountry: Record<string, string[]>
 }
 
-export function FiltersForm({ countries, dimensionValues, regionsByCountry }: FiltersFormProps) {
+export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry }: FiltersFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const selectedCountry = searchParams.get('country') ?? ''
   const availableRegions = selectedCountry ? (regionsByCountry[selectedCountry] ?? []) : []
+  // With no country selected, offer the union of every country's NSE values (this
+  // dashboard is scoped to dimensionType 'nse' only — see the page.tsx comment) so an
+  // admin can still filter across countries by NSE segment.
+  const dimensionValues = selectedCountry
+    ? (nseLevelsByCountry[selectedCountry] ?? [])
+    : [...new Set(Object.values(nseLevelsByCountry).flat())]
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString())

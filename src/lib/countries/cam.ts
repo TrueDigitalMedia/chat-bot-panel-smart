@@ -7,7 +7,7 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
-import { lookupNseRegion } from '@/lib/geo/cam-nse-catalog'
+import { lookupNseRegion, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
 import type { CountryConfig, GeoHierarchy, NseResult } from './types'
 
 const EDUCATION_PSH_QUESTION: SurveyQuestion = {
@@ -187,5 +187,6 @@ export function makeCamConfig(country: string): CountryConfig {
     computeNse: camComputeNse,
     resolveNseRegion: (geo) => lookupNseRegion(country, geo.stateProvince ?? '', geo.municipality ?? ''),
     validatePhone: camValidatePhone,
+    listNseRegions: () => listNseRegionsForCountry(country),
   }
 }

@@ -2,7 +2,12 @@ import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, quotaRegionCaps, surveyProfiles } from '@/lib/db/schema'
 import { QUALIFIED_STATUSES } from '@/lib/quotas/quota-progress'
-import { canonicalCountry, canonicalNseRegion, listCatalogCountries, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
+import { canonicalCountry } from '@/lib/geo/cam-nse-catalog'
+import {
+  isSupportedCountry,
+  listNseRegionsForSupportedCountry,
+  canonicalNseRegionForSupportedCountry,
+} from '@/lib/countries/registry'
 import { QuotaTargetError } from '@/lib/quotas/quota-targets'
 
 export interface RegionCapRow {
@@ -22,13 +27,13 @@ export interface RegionCapProgress {
 
 function validateCountryRegion(country: string, region: string): { country: string; region: string } {
   const canonicalCountryName = canonicalCountry(country) ?? country
-  if (!listCatalogCountries().includes(canonicalCountryName)) {
+  if (!isSupportedCountry(canonicalCountryName)) {
     throw new QuotaTargetError('invalid_country', `Unrecognized country: ${country}`)
   }
-  const canonicalRegion = canonicalNseRegion(canonicalCountryName, region)
+  const canonicalRegion = canonicalNseRegionForSupportedCountry(canonicalCountryName, region)
   if (!canonicalRegion) {
     throw new QuotaTargetError('invalid_region', `Region "${region}" is not valid for ${canonicalCountryName}`, {
-      validRegions: listNseRegionsForCountry(canonicalCountryName),
+      validRegions: [...listNseRegionsForSupportedCountry(canonicalCountryName)],
     })
   }
   return { country: canonicalCountryName, region: canonicalRegion }

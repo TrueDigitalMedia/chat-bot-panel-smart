@@ -239,6 +239,60 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
   })
 })
 
+// Spec 014 US5 (T040/T041): Ecuador quota targets must validate against Ecuador's own
+// catalog/nseLevels (via getCountryConfig), not the CAM-only catalog these were
+// previously hardcoded against.
+describe('quota-targets validation — Ecuador (spec 014 US5)', () => {
+  beforeEach(() => {
+    state.rows = []
+    nextId = 1
+  })
+
+  it('accepts a valid Ecuador region + NSE level (AB/C/D-E, not CAM Nivel 1-4)', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    const row = await createQuotaTarget({
+      country: 'Ecuador',
+      region: 'Guayaquil Norte',
+      dimensionType: 'nse',
+      dimensionValue: 'AB',
+      targetCount: 30,
+    })
+    expect(row).toMatchObject({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionValue: 'AB' })
+  })
+
+  it('rejects a CAM-style dimensionValue ("Nivel 1") for Ecuador', async () => {
+    const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      createQuotaTarget({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionType: 'nse', dimensionValue: 'Nivel 1' }),
+    ).rejects.toThrow(QuotaTargetError)
+  })
+
+  it('rejects a region not in the Ecuador catalog', async () => {
+    const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      createQuotaTarget({ country: 'Ecuador', region: 'Región Inventada', dimensionType: 'nse', dimensionValue: 'AB' }),
+    ).rejects.toThrow(QuotaTargetError)
+  })
+
+  it('accepts Ecuador on the shared edad/integrantes dimensions (FR-012 — same bands as every country)', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    const row = await createQuotaTarget({
+      country: 'Ecuador',
+      region: 'Cuenca',
+      dimensionType: 'edad',
+      dimensionValue: '50+',
+      targetCount: 10,
+    })
+    expect(row).toMatchObject({ dimensionType: 'edad', dimensionValue: '50+' })
+  })
+
+  it('normalizes "ecuador"/"EC" to the canonical "Ecuador" before validating', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    const row = await createQuotaTarget({ country: 'ec', region: 'Cuenca', dimensionType: 'nse', dimensionValue: 'C' })
+    expect(row.country).toBe('Ecuador')
+  })
+})
+
 describe('updateQuotaTarget bumps updatedAt on every call (spec 005 FR-010)', () => {
   beforeEach(() => {
     lastUpdateSet = null

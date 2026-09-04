@@ -144,10 +144,14 @@ record.
 **Independent Test**: In `/admin/quotas` select Ecuador → Ecuador regions + NSE levels offered; create
 a target + cap; `/admin/leads` filters by Ecuador and its regions.
 
-- [ ] T040 [US5] Update `src/lib/geo/cam-nse-catalog.ts` (or wherever `listCatalogCountries` / `listNseRegionsForCountry` live, used by `src/app/admin/quotas/page.tsx`) to include Ecuador countries + regions from `data/geo/ecuador-nse-regions.json`
-- [ ] T041 [US5] Source the admin NSE-dimension option list per country from `getCountryConfig(country).nseLevels` so Ecuador shows AB / C / D/E in `src/app/admin/quotas/new-quota-target-row.tsx` and `quota-filters-form.tsx`
-- [ ] T042 [P] [US5] Confirm `src/app/admin/leads` country + region filters render Ecuador (string-driven; add Ecuador to any hardcoded country list found)
-- [ ] T043 [P] [US5] E2E/integration test `tests/e2e/admin-ecuador-quotas.spec.ts` — select Ecuador in the quota screen, region dropdown = 12 Ecuador regions, NSE = {AB,C,D/E}, create + persist a target and a region cap; leads filter by Ecuador
+- [X] T040 [US5] Update `src/lib/geo/cam-nse-catalog.ts` (or wherever `listCatalogCountries` / `listNseRegionsForCountry` live, used by `src/app/admin/quotas/page.tsx`) to include Ecuador countries + regions from `data/geo/ecuador-nse-regions.json`
+  - Implemented via `CountryConfig.listNseRegions()` (new, `types.ts`/`cam.ts`/`ecuador.ts`) + `listSupportedCountries`/`listNseRegionsForSupportedCountry`/`canonicalNseRegionForSupportedCountry` in `registry.ts` (Principle V — the country-name branch stays there), rather than editing `cam-nse-catalog.ts` itself. Also fixed the **server-side** validation (`quota-targets.ts`'s `validateAndCanonicalize`, `region-caps.ts`'s `validateCountryRegion`) that was silently CAM-only — an Ecuador quota submission would have been rejected with `invalid_country` even with a fixed UI dropdown.
+- [X] T041 [US5] Source the admin NSE-dimension option list per country from `getCountryConfig(country).nseLevels` so Ecuador shows AB / C / D/E in `src/app/admin/quotas/new-quota-target-row.tsx` and `quota-filters-form.tsx`
+  - Also fixed `quota-targets.ts`'s dimensionValue validation (was hardcoded to CAM's `NSE_LEVELS` for every country) and the filters' "no country selected" case (shows the union of every country's NSE values instead of only CAM's).
+- [X] T042 [P] [US5] Confirm `src/app/admin/leads` country + region filters render Ecuador (string-driven; add Ecuador to any hardcoded country list found)
+  - There is no `/admin/leads` route in this repo — the leads-filtering screen is `/admin/dashboard` (`filters-form.tsx`); fixed identically to T040/T041.
+- [X] T043 [P] [US5] E2E/integration test `tests/e2e/admin-ecuador-quotas.spec.ts` — select Ecuador in the quota screen, region dropdown = 12 Ecuador regions, NSE = {AB,C,D/E}, create + persist a target and a region cap; leads filter by Ecuador
+  - Spec written (3 tests, real browser interaction against a live dev server + admin login, mirroring `admin-login.spec.ts`'s convention) but **could not be executed** in this environment: Playwright needs Chromium revision 1228 and the sandboxed download proxy only serves 1223 (same pre-existing gap `admin-login.spec.ts` already has — not introduced here). The underlying logic it exercises is covered instead by 8 new unit-test cases added to `tests/unit/quota-targets.test.ts` / `quota-region-caps.test.ts` (Ecuador region/NSE-level accept+reject, CAM-value rejection, country-alias normalization) — all passing.
 
 **Checkpoint**: Research team can operate Ecuador quotas unaided (SC-005).
 

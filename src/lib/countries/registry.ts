@@ -5,6 +5,7 @@
  */
 import { makeCamConfig } from './cam'
 import { ecuadorConfig } from './ecuador'
+import { normalizeGeoKey } from '@/lib/geo/cam-nse-catalog'
 import type { CountryConfig } from './types'
 
 const CAM_COUNTRY_NAMES = [
@@ -39,4 +40,31 @@ export function getCountryConfig(country: string | null | undefined): CountryCon
 export function isSupportedCountry(country: string | null | undefined): boolean {
   if (!country) return false
   return country === 'Ecuador' || camConfigs.has(country)
+}
+
+/**
+ * Every country name with a real CountryConfig — for admin tooling that needs to
+ * enumerate all supported countries (spec 014 US5: quota/leads-dashboard country
+ * dropdowns) without itself branching on country names (Principle V).
+ */
+export function listSupportedCountries(): string[] {
+  return [...CAM_COUNTRY_NAMES, 'Ecuador']
+}
+
+/** Every valid `nse_region` for `country`, via that country's own CountryConfig. */
+export function listNseRegionsForSupportedCountry(country: string): readonly string[] {
+  return getCountryConfig(country).listNseRegions()
+}
+
+/**
+ * Canonicalize a possibly differently-cased/accented region name to its exact catalog
+ * string for `country`, using that country's own CountryConfig.listNseRegions() — the
+ * admin-tooling analogue of cam-nse-catalog.ts's canonicalNseRegion, but country-agnostic
+ * (works for Ecuador too). Returns null if no region for that country normalizes to the
+ * same key.
+ */
+export function canonicalNseRegionForSupportedCountry(country: string, region: string): string | null {
+  const regions = listNseRegionsForSupportedCountry(country)
+  const n = normalizeGeoKey(region)
+  return regions.find((r) => normalizeGeoKey(r) === n) ?? null
 }

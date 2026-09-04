@@ -1,12 +1,13 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { quotaTargets } from '@/lib/db/schema'
+import { canonicalCountry } from '@/lib/geo/cam-nse-catalog'
 import {
-  canonicalCountry,
-  canonicalNseRegion,
-  listCatalogCountries,
-  listNseRegionsForCountry,
-} from '@/lib/geo/cam-nse-catalog'
+  isSupportedCountry,
+  getCountryConfig,
+  listNseRegionsForSupportedCountry,
+  canonicalNseRegionForSupportedCountry,
+} from '@/lib/countries/registry'
 import {
   NSE_LEVELS,
   AGE_BANDS,
@@ -22,9 +23,13 @@ import {
 export { NSE_LEVELS, AGE_BANDS, HOUSEHOLD_BANDS, DIMENSION_TYPES }
 export type { NseLevel, DimensionType }
 
-/** Valid `dimension_value`s per `dimension_type` — see specs/011-flexible-quota-matching/data-model.md. */
-const DIMENSION_VALUES: Record<DimensionType, readonly string[]> = {
-  nse: NSE_LEVELS,
+/**
+ * Valid `dimension_value`s per `dimension_type` — see specs/011-flexible-quota-matching/data-model.md.
+ * `nse` is country-specific (CAM's "Nivel 1-4" vs Ecuador's "AB"/"C"/"D/E" — spec 014
+ * FR-009/FR-014) and resolved per-call via `getCountryConfig(country).nseLevels` instead
+ * of this fixed table; `edad`/`integrantes` are shared across every country (FR-012).
+ */
+const DIMENSION_VALUES: Record<Exclude<DimensionType, 'nse'>, readonly string[]> = {
   edad: AGE_BANDS,
   integrantes: HOUSEHOLD_BANDS,
 }
@@ -73,14 +78,14 @@ function validateAndCanonicalize(input: QuotaTargetInput): {
   dimensionValue: string
 } {
   const country = canonicalCountry(input.country) ?? input.country
-  if (!listCatalogCountries().includes(country)) {
+  if (!isSupportedCountry(country)) {
     throw new QuotaTargetError('invalid_country', `Unrecognized country: ${input.country}`)
   }
 
-  const region = canonicalNseRegion(country, input.region)
+  const region = canonicalNseRegionForSupportedCountry(country, input.region)
   if (!region) {
     throw new QuotaTargetError('invalid_region', `Region "${input.region}" is not valid for ${country}`, {
-      validRegions: listNseRegionsForCountry(country),
+      validRegions: [...listNseRegionsForSupportedCountry(country)],
     })
   }
 
@@ -91,7 +96,7 @@ function validateAndCanonicalize(input: QuotaTargetInput): {
   }
   const dimensionType = input.dimensionType as DimensionType
 
-  const validValues = DIMENSION_VALUES[dimensionType]
+  const validValues = dimensionType === 'nse' ? getCountryConfig(country).nseLevels : DIMENSION_VALUES[dimensionType]
   if (!validValues.includes(input.dimensionValue)) {
     throw new QuotaTargetError(
       'invalid_dimension_value',

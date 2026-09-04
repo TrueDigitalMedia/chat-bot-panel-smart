@@ -7,7 +7,7 @@ import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
 import { computeEcuadorNse } from '@/lib/scoring/ecuador-nse'
-import { lookupEcuadorNseRegion } from '@/lib/geo/ecuador-nse-catalog'
+import { lookupEcuadorNseRegion, ECUADOR_REGIONS } from '@/lib/geo/ecuador-nse-catalog'
 import type { CountryConfig, GeoHierarchy } from './types'
 
 const HEALTH_INSURANCE_QUESTION: SurveyQuestion = {
@@ -253,4 +253,5 @@ export const ecuadorConfig: CountryConfig = {
   resolveNseRegion: (geo) =>
     lookupEcuadorNseRegion(geo.stateProvince, geo.municipality, geo.neighborhood),
   validatePhone: ecuadorValidatePhone,
+  listNseRegions: () => ECUADOR_REGIONS,
 }

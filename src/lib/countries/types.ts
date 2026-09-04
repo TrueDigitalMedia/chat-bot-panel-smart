@@ -42,4 +42,11 @@ export interface CountryConfig {
     neighborhood: string | null
   }): string | null
   validatePhone(raw: string): { ok: boolean; normalized: string | null }
+  /**
+   * Every valid `nse_region`/`quota_targets.region` value for this country — the same set
+   * `resolveNseRegion` can return. Used by the admin quota tooling (spec 014 US5) to
+   * populate the region dropdown/validate a submitted region without that tooling having
+   * its own country branch (Principle V).
+   */
+  listNseRegions(): readonly string[]
 }
