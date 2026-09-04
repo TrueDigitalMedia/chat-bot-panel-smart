@@ -24,8 +24,15 @@ import {
   consentEvents,
   fichaHogarProfiles,
   reEngagementSchedules,
+  systemCallLogs,
+  treintaPanelistRecords,
+  treintaPanelistEmbeddings,
+  conversationEvals,
+  panelSmartSyncAttempts,
+  leadMessageVariantUsage,
 } from '@/lib/db/schema'
 import { upsertLead } from '@/lib/db/leads'
+import { logConversationMessage } from '@/lib/db/conversation-messages'
 import { routeMessage } from '@/lib/conversation/flow-router'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -41,6 +48,12 @@ export async function resetLeadTables(): Promise<void> {
   await db.delete(fichaHogarProfiles)
   await db.delete(flowStates)
   await db.delete(surveyProfiles)
+  await db.delete(systemCallLogs)
+  await db.delete(treintaPanelistEmbeddings)
+  await db.delete(treintaPanelistRecords)
+  await db.delete(conversationEvals)
+  await db.delete(panelSmartSyncAttempts)
+  await db.delete(leadMessageVariantUsage)
   await db.delete(leads)
   // quota_targets / quota_region_caps are seeded once per file — see cam-journeys.ts seedQuota()
 }
@@ -119,6 +132,46 @@ export async function runJourney(j: Journey): Promise<JourneySnapshot> {
       callbackData: turn.callbackData,
       contactPhone: turn.contactPhone,
       location: turn.location,
+    }
+
+    // Mirror the real webhook route (src/app/api/webhooks/telegram/route.ts): it logs the
+    // inbound message BEFORE calling routeMessage. Without this, countOutboundSinceLastInbound
+    // (messaging/send.ts) never sees an inbound row, so the outbound-without-reply circuit
+    // breaker trips permanently after MAX_OUTBOUND_WITHOUT_REPLY sends across the whole
+    // journey and every later turn's replies get silently suppressed.
+    if (turn.callbackData) {
+      await logConversationMessage({
+        leadId: lead0.id,
+        direction: 'in',
+        channel: 'telegram',
+        contentType: 'callback',
+        body: turn.callbackData,
+      })
+    } else if (turn.contactPhone) {
+      await logConversationMessage({
+        leadId: lead0.id,
+        direction: 'in',
+        channel: 'telegram',
+        contentType: 'contact',
+        body: turn.contactPhone,
+      })
+    } else if (turn.location) {
+      await logConversationMessage({
+        leadId: lead0.id,
+        direction: 'in',
+        channel: 'telegram',
+        contentType: 'system',
+        body: 'location_shared',
+        meta: { hasLocation: true },
+      })
+    } else if (turn.text) {
+      await logConversationMessage({
+        leadId: lead0.id,
+        direction: 'in',
+        channel: 'telegram',
+        contentType: 'text',
+        body: turn.text,
+      })
     }
 
     // reload the lead each turn (status/phase mutate)

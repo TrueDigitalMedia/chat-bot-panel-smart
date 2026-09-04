@@ -1,0 +1,80 @@
+{
+  "version": "docs/ecuador/Muestra Regiones NSE Ecuador.xlsx",
+  "variables": {
+    "healthInsurancePsh": {
+      "Ninguno": 0,
+      "IESS": 2,
+      "Issfa (militares) Gobierno": 6,
+      "Isspol (policías)": 6,
+      "Privada": 10
+    },
+    "monthlyIncome": {
+      "Hasta $400": 1,
+      "De $401 hasta $700": 2,
+      "De $701 hasta $1.000": 3,
+      "De $1.001 hasta $2.000": 4,
+      "De $2.001 hasta $3.000": 5,
+      "Más de $3.000": 6
+    },
+    "dwellingFinishes": {
+      "Casa de Tabla/Madera techo de Desechos o cartón": 0,
+      "Casa de Tabla/Madera techo de Eternit o Zinc": 3,
+      "Casa de Cemento Techo de Eternit o Zinc": 6,
+      "Casa de Cemento/Ladrillo Techo de Loza o Teja": 9,
+      "Otro (acabados de lujo)": 12
+    },
+    "floorMaterial": {
+      "Duela, parquet, tablón o piso flotante": 10,
+      "Cerámica, baldosa, vinil o marmetón": 7,
+      "Ladrillo o cemento": 4,
+      "Tierra/Caña": 2,
+      "Otros materiales": 0
+    },
+    "vehicleCount": {
+      "0": 0,
+      "1": 6,
+      "2": 9,
+      "3": 12,
+      "4 o más": 14
+    },
+    "occupation": {
+      "Personal directivo de la Administración Pública y de empresas": 13,
+      "Profesionales científicos e intelectuales": 12,
+      "Técnicos y profesionales de nivel medio": 9,
+      "Empleados de oficina": 6,
+      "Trabajador de los servicios y comerciantes": 4,
+      "Trabajador calificados agropecuarios y pesqueros": 3,
+      "Oficiales operarios y artesanos": 3,
+      "Operadores de instalaciones y máquinas": 4,
+      "Trabajadores no calificados": 0,
+      "Fuerzas Armadas": 8,
+      "Desocupados": 1,
+      "Inactivos / Jubilado": 3
+    },
+    "educationPsh": {
+      "Ninguno- No alfabetizado": 0,
+      "Alfabetizado pero no en escuela formal": 1,
+      "Básica incompleta": 3,
+      "Básica completa": 4,
+      "Media incompleta": 5,
+      "Media completa": 6,
+      "Técnica incompleta": 8,
+      "Técnica completa": 10,
+      "Universidad incompleta": 12,
+      "Universidad completa": 15,
+      "Post grado incompleto": 20,
+      "Post grado completo": 20
+    },
+    "internetAccess": {
+      "No internet": 0,
+      "Internet (de Celular)": 3,
+      "Internet Hogar contratado (cable)": 8,
+      "Internet Hogar contratado (Fibra Op)": 15
+    }
+  },
+  "levelCutoffs": [
+    { "maxPoints": 50, "level": "D/E" },
+    { "maxPoints": 75, "level": "C" },
+    { "maxPoints": 9999, "level": "AB" }
+  ]
+}

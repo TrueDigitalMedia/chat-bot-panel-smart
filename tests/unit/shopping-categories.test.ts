@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { SHOPPING_CATEGORIES, SURVEY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { SHOPPING_CATEGORIES } from '@/lib/conversation/survey-questions'
+import { resolveSurveyQuestions } from '@/lib/conversation/survey-plan'
 
 // env.ts validates required vars eagerly at import time, and db/client.ts calls
 // neon(process.env.POSTGRES_URL!) at module load — extract-survey-fields.ts pulls in
@@ -30,7 +31,7 @@ describe('SHOPPING_CATEGORIES — canonical Q14 category list', () => {
 
 describe('Q14 question text — derived from SHOPPING_CATEGORIES', () => {
   it('still contains the full numbered list shown to the user', () => {
-    const q14 = SURVEY_QUESTIONS.find((q) => q.fieldName === 'shoppingCategories')
+    const q14 = resolveSurveyQuestions('Guatemala').find((q) => q.fieldName === 'shoppingCategories')
     expect(q14).toBeDefined()
     for (const { id, label } of SHOPPING_CATEGORIES) {
       expect(q14!.text).toContain(`${id}. ${label}`)

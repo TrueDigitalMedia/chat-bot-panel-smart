@@ -4,11 +4,12 @@ import { leads, surveyProfiles, flowStates } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
-import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
-import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
+import { resolveSurveyQuestions, surveyQuestionCount } from '../survey-plan'
+import { getCountryConfig } from '@/lib/countries/registry'
+import { ecuadorConfig } from '@/lib/countries/ecuador'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
@@ -67,6 +68,22 @@ const D3_BUTTONS: InlineKeyboardButton[][] = [
  * typed number outside the button range still has to work.
  */
 const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
+
+/**
+ * Non-CAM NSE variables with no dedicated survey_profiles column — persisted into
+ * scoring_answers_json instead (spec 014 R6). educationPsh/householdSize/conflictOfInterest
+ * are real columns shared across countries, so they're NOT in this set.
+ */
+const NON_COLUMN_SCORING_FIELDS = new Set([
+  'healthInsurancePsh',
+  'monthlyIncome',
+  'dwellingFinishes',
+  'floorMaterial',
+  'vehicleCount',
+  'occupationHead',
+  'occupationAma',
+  'internetAccess',
+])
 
 /**
  * Decision-point gates (opt-in/D1/D2/D3) only ever expect a button tap — free text
@@ -271,12 +288,21 @@ export async function handlePhase1(
       .set({ surveyQuestionIndex: 1, updatedAt: new Date() })
       .where(eq(leads.id, lead.id))
   }
-  if (idx < 1 || idx > SURVEY_QUESTION_COUNT) {
+
+  const [surveyCountryRow] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const surveyCountry = surveyCountryRow?.country ?? null
+  const questionCount = surveyQuestionCount(surveyCountry)
+
+  if (idx < 1 || idx > questionCount) {
     console.warn('[phase-1] survey index out of range', { leadId: lead.id, idx })
     return
   }
 
-  const question = SURVEY_QUESTIONS[idx - 1]
+  const question = resolveSurveyQuestions(surveyCountry)[idx - 1]
   if (!question) return
 
   let fieldValue: unknown = null
@@ -465,16 +491,64 @@ export async function handlePhase1(
     }
   }
 
-  // Persist field and advance index
-  await db
-    .update(surveyProfiles)
-    .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
-    .where(eq(surveyProfiles.leadId, lead.id))
+  // Persist field and advance index. Non-CAM NSE variables that have no dedicated
+  // survey_profiles column (Ecuador's healthInsurancePsh, monthlyIncome, ...) are merged
+  // into scoring_answers_json instead — see NON_COLUMN_SCORING_FIELDS.
+  if (NON_COLUMN_SCORING_FIELDS.has(question.fieldName)) {
+    const [existing] = await db
+      .select({ scoringAnswersJson: surveyProfiles.scoringAnswersJson })
+      .from(surveyProfiles)
+      .where(eq(surveyProfiles.leadId, lead.id))
+      .limit(1)
+    await db
+      .update(surveyProfiles)
+      .set({ scoringAnswersJson: { ...(existing?.scoringAnswersJson ?? {}), [question.fieldName]: fieldValue } })
+      .where(eq(surveyProfiles.leadId, lead.id))
+  } else {
+    await db
+      .update(surveyProfiles)
+      .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
+      .where(eq(surveyProfiles.leadId, lead.id))
+  }
+
+  // T021: phone capture (phone-capture.ts) runs before country is known, so it can only
+  // apply the generic CAM-shaped validator (normalizePhone). Once country is answered
+  // as Ecuador, re-validate/re-normalize the already-captured phone through
+  // ecuadorConfig.validatePhone — strips a 593/leading-0 prefix and requires exactly 10
+  // digits. CAM/RD countries are intentionally excluded: their phoneNumber is already in
+  // normalizePhone's E.164 form, and camValidatePhone (a plain digit-strip with no `+`)
+  // would silently regress it — see tests/regression (C1's phoneNumber diff caught this
+  // exact mistake in an earlier version of this block). Only rewrites on a successful
+  // re-normalization; an Ecuador-invalid number is left as originally captured rather
+  // than blocking a lead that's already well into the survey (no re-ask flow exists here).
+  if (question.fieldName === 'country' && fieldValue === 'Ecuador' && lead.phoneNumber) {
+    const revalidated = ecuadorConfig.validatePhone(lead.phoneNumber)
+    if (revalidated.ok && revalidated.normalized) {
+      // Ecuador's validator returns 10 local digits (leading 0 restored, e.g.
+      // "0987654321") — re-attach the country code so leads.phoneNumber stays E.164,
+      // matching normalizePhone's own output format used everywhere else downstream.
+      const e164 = `+593${revalidated.normalized.replace(/^0/, '')}`
+      if (e164 !== lead.phoneNumber) {
+        await db.update(leads).set({ phoneNumber: e164, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+      }
+    } else {
+      console.warn('[phase-1] phone failed Ecuador-specific re-validation', { leadId: lead.id })
+    }
+  }
 
   // Minors don't qualify as panelists — checked right after age is captured, before
   // advancing to the next question.
   if (question.fieldName === 'age' && typeof fieldValue === 'number' && isMinorAge(fieldValue)) {
     await transitionLead(lead.id, 'not_qualified', 'age_minor', correlationId)
+    await sendText(to, EXIT_A)
+    return
+  }
+
+  // Sensitive-industry screening (spec 014 FR-002) — only asked for countries whose
+  // CountryConfig.screeningIndustries is non-empty (Ecuador today; CAM's list is empty
+  // so this field is never in a CAM lead's resolved question list — zero CAM impact).
+  if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
+    await transitionLead(lead.id, 'not_qualified', 'sensitive_industry', correlationId)
     await sendText(to, EXIT_A)
     return
   }
@@ -542,7 +616,7 @@ export async function handlePhase1(
     return
   }
 
-  if (finalIdx <= SURVEY_QUESTION_COUNT) {
+  if (finalIdx <= questionCount) {
     await sendSurveyQuestion(to, finalIdx, lead.id)
     return
   }
@@ -555,16 +629,42 @@ export async function handlePhase1(
 
   // Load scoring fields
   const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
-  const score = calculateScore({
+  const cfg = getCountryConfig(profile.country)
+  const answers: Record<string, unknown> = {
     educationPsh: profile.educationPsh,
     cars: profile.cars,
     domesticHelp: profile.domesticHelp,
     householdSize: profile.householdSize,
     bedrooms: profile.bedrooms,
-  })
-  const segment = getQuotaSegment(score)
+    ...(profile.scoringAnswersJson ?? {}),
+  }
+  const { points, level } = cfg.computeNse(answers)
+  const segment = level
+  // `score`/`quotaSegment` keep their CAM meaning (SCL-CAM score, Nivel 1-4) for CAM
+  // leads; non-CAM leads (Ecuador) leave `score` null and use `nsePoints` instead.
+  const isCam = cfg.nseLevels[0]?.startsWith('Nivel') ?? false
 
-  await db.update(leads).set({ score, quotaSegment: segment, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+  await db
+    .update(leads)
+    .set({
+      score: isCam ? points : null,
+      quotaSegment: segment,
+      updatedAt: new Date(),
+    })
+    .where(eq(leads.id, lead.id))
+  await db
+    .update(surveyProfiles)
+    .set({ nsePoints: points })
+    .where(eq(surveyProfiles.leadId, lead.id))
+  console.info(
+    JSON.stringify({
+      event: 'nse_score_recorded',
+      lead_id: lead.id,
+      country: profile.country,
+      points,
+      level,
+    }),
+  )
 
   const quotaDecision = await checkQuotaAvailability({
     country: profile.country ?? '',

@@ -155,6 +155,14 @@ export const surveyProfiles = pgTable('survey_profiles', {
   age: smallint('age'),
   isPregnant: boolean('is_pregnant'),
   hasBabyUnder3: boolean('has_baby_under_3'),
+  /** Ecuador (and future non-CAM countries): sensitive-industry screening — see spec 014 FR-002. */
+  conflictOfInterest: boolean('conflict_of_interest'),
+  /** Raw per-variable NSE answers for the lead's country (spec 014 R6). CAM leaves this
+   *  null and keeps using the typed columns above; non-CAM countries (Ecuador, ...) store
+   *  their scoring answers here as { [variableKey]: string }. */
+  scoringAnswersJson: jsonb('scoring_answers_json').$type<Record<string, unknown>>(),
+  /** Country NSE point total (Ecuador 0-500; CAM leaves this null and uses `score`). */
+  nsePoints: smallint('nse_points'),
 })
 
 export const fichaHogarProfiles = pgTable(

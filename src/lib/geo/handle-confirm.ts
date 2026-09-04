@@ -6,9 +6,9 @@ import { askGeoConfirmation, isGeoConfirmCallback, parseGeoConfirmNo, parseGeoCo
 import type { GeoField } from '@/lib/geo/guatemala'
 import { questionIndexForField } from '@/lib/conversation/correction-fields'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
-import { SURVEY_QUESTION_COUNT } from '@/lib/conversation/survey-questions'
+import { resolveSurveyQuestions, surveyQuestionCount } from '@/lib/conversation/survey-plan'
+import { getCountryConfig } from '@/lib/countries/registry'
 import { EXIT_B, EXIT_B_THANKS } from '@/lib/conversation/exit-messages'
-import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { transitionLead } from '@/lib/state-machine'
 import type { Lead } from '@/types/lead'
@@ -23,10 +23,17 @@ export async function persistSurveyFieldAndAdvance(
   correlationId: string,
 ): Promise<void> {
   const to = lead
-  const idx = questionIndexForField(field as Parameters<typeof questionIndexForField>[0])
+  const [countryRow] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const surveyCountry = countryRow?.country ?? null
+  const questionCount = surveyQuestionCount(surveyCountry)
+  const idx = questionIndexForField(field as Parameters<typeof questionIndexForField>[0], surveyCountry)
   // Prefer lead's current index when field matches current question; else use field index
   const currentIdx =
-    lead.surveyQuestionIndex >= 1 && lead.surveyQuestionIndex <= SURVEY_QUESTION_COUNT
+    lead.surveyQuestionIndex >= 1 && lead.surveyQuestionIndex <= questionCount
       ? lead.surveyQuestionIndex
       : idx
 
@@ -75,11 +82,10 @@ export async function persistSurveyFieldAndAdvance(
     return
   }
 
-  // Q5 (neighborhood) is hidden from every user — same "always null, skip to Q6" rule
-  // as the other two advance paths (phase-1.ts, gps-capture.ts's
-  // applyAllowlistAfterConfirm). This is the fuzzy-geo-confirm advance path, so it
-  // needs its own copy of the skip.
-  if (nextIdx === 5) {
+  // Q5 (neighborhood) is hidden for countries that don't ask it (CAM — see
+  // getCountryConfig(country).geoHierarchy.neighborhoodLabel). Ecuador shows it.
+  // TODO(016): replace with the shared nextQuestionToSend helper — see send-survey-question.ts.
+  if (nextIdx === 5 && getCountryConfig(surveyCountry).geoHierarchy.neighborhoodLabel == null) {
     await db
       .update(surveyProfiles)
       .set({ neighborhood: null })
@@ -94,7 +100,7 @@ export async function persistSurveyFieldAndAdvance(
     return
   }
 
-  if (nextIdx <= SURVEY_QUESTION_COUNT) {
+  if (nextIdx <= questionCount) {
     await sendSurveyQuestion(to, nextIdx, lead.id)
     return
   }
@@ -105,15 +111,23 @@ export async function persistSurveyFieldAndAdvance(
     .where(eq(surveyProfiles.leadId, lead.id))
 
   const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
-  const score = calculateScore({
+  const cfg = getCountryConfig(profile.country)
+  const answers: Record<string, unknown> = {
     educationPsh: profile.educationPsh,
     cars: profile.cars,
     domesticHelp: profile.domesticHelp,
     householdSize: profile.householdSize,
     bedrooms: profile.bedrooms,
-  })
-  const segment = getQuotaSegment(score)
-  await db.update(leads).set({ score, quotaSegment: segment, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+    ...(profile.scoringAnswersJson ?? {}),
+  }
+  const { points, level } = cfg.computeNse(answers)
+  const segment = level
+  const isCam = cfg.nseLevels[0]?.startsWith('Nivel') ?? false
+  await db
+    .update(leads)
+    .set({ score: isCam ? points : null, quotaSegment: segment, updatedAt: new Date() })
+    .where(eq(leads.id, lead.id))
+  await db.update(surveyProfiles).set({ nsePoints: points }).where(eq(surveyProfiles.leadId, lead.id))
 
   const quotaDecision = await checkQuotaAvailability({
     country: profile.country ?? '',

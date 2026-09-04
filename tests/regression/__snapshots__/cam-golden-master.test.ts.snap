@@ -1,0 +1,408 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CAM regression — golden master (pre/post 014 + 015) > C1 — full qualify, generic geo (Panamá) 1`] = `
+{
+  "lead": {
+    "channel": "telegram",
+    "channelUserId": "999900001",
+    "channelUsername": "regression",
+    "conversationSummary": null,
+    "currentPhase": 2,
+    "d1Accepted": true,
+    "d3IsShopper": true,
+    "leadStatus": "link_sent",
+    "optInAccepted": true,
+    "panelSmartSyncStatus": null,
+    "panelSmartSyncedAnswersJson": null,
+    "panelSmartSyncedLeadStatus": null,
+    "phoneNumber": "+50761234567",
+    "quotaMatchedDimension": "nse",
+    "quotaMatchedValue": "Nivel 1",
+    "quotaSegment": "Nivel 1",
+    "reEngagementConsentAccepted": true,
+    "reEngagementCount": 0,
+    "score": 677,
+    "statusReason": "survey_complete_quota_available",
+    "surveyQuestionIndex": 20,
+    "tdmRegistrationCode": null,
+  },
+  "surveyProfile": {
+    "age": 34,
+    "bedrooms": 2,
+    "cars": "1",
+    "conflictOfInterest": null,
+    "contactChannel": "WhatsApp",
+    "contactSchedule": "Tarde (13-17hs)",
+    "country": "Panamá",
+    "domesticHelp": false,
+    "educationPsh": "Universidad Completa",
+    "email": "maria@example.com",
+    "extractionModel": null,
+    "fullName": "María Pérez",
+    "gender": "Femenino",
+    "geoSource": "text_exact",
+    "hasBabyUnder3": false,
+    "householdSize": 4,
+    "inQuotaGeo": true,
+    "isPregnant": false,
+    "municipality": "Panama",
+    "neighborhood": null,
+    "nsePoints": 677,
+    "nseRegion": "Centro I",
+    "rawFreeTextJson": null,
+    "scoringAnswersJson": null,
+    "shoppingCategories": [
+      1,
+      2,
+      3,
+    ],
+    "shoppingFrequency": "Semanal",
+    "stateProvince": "Panamá",
+  },
+  "transcript": [
+    {
+      "buttons": [
+        "optin:accept",
+        "optin:decline",
+      ],
+      "method": "keyboard",
+      "text": "¡Hola! Soy el asistente virtual de PanelSmart 🙂
+
+Te invitamos a unirte a nuestro panel de encuestas y ganar premios por compartir tu opinión.
+
+Al responder SÍ, aceptás recibir encuestas y notificaciones de PanelSmart por este canal. Podés darte de baja en cualquier momento respondiendo STOP.
+
+¿Querés inscribirte?",
+    },
+    {
+      "buttons": [
+        "d1:accept",
+        "d1:decline",
+      ],
+      "method": "keyboard",
+      "text": "✅ Antes de continuar, revisá nuestros Términos y Condiciones del programa:
+
+https://www.panelsmart-cenam.com/terminos-y-condiciones
+
+¿Confirmás que los leíste y aceptás participar?",
+    },
+    {
+      "buttons": [
+        "reengagement_consent:accept",
+        "reengagement_consent:decline",
+      ],
+      "method": "keyboard",
+      "text": "📋 Para mejorar tu experiencia, nos gustaría poder contactarte si dejás el registro a mitad del proceso.
+
+¿Autorizás que te contactemos en ese caso?
+
+Podés revocar este permiso en cualquier momento respondiendo STOP.",
+    },
+    {
+      "buttons": [
+        "d3:yes",
+        "d3:no",
+      ],
+      "method": "keyboard",
+      "text": "¿Eres quién administra y organiza las compras del hogar?",
+    },
+    {
+      "method": "contact_request",
+      "text": "Para continuar necesitamos tu número de teléfono.
+
+Toca «Compartir mi número» o escríbelo con código de país (ej. +50255551234).",
+    },
+    {
+      "method": "remove_keyboard",
+      "text": "✅ Número guardado: +50761234567",
+    },
+    {
+      "method": "text",
+      "text": "Escribe tu nombre y apellido",
+    },
+    {
+      "method": "location_request",
+      "text": "📍 Para ubicar tu zona de cupo, comparte tu ubicación GPS.
+
+Toca el botón 📍 del teclado (abajo) — Telegram pedirá permiso de ubicación (app móvil recomendada).
+Si no puedes compartir GPS, toca «Escribir mi ubicación».",
+    },
+    {
+      "method": "remove_keyboard",
+      "text": "De acuerdo, continuamos con las preguntas de ubicación.",
+    },
+    {
+      "buttons": [
+        "country:Guatemala",
+        "country:Honduras",
+        "country:El Salvador",
+        "country:Nicaragua",
+        "country:Costa Rica",
+        "country:Rep. Dominicana",
+        "country:Panamá",
+        "country:Ecuador",
+      ],
+      "method": "keyboard",
+      "text": "¿En qué país te encuentras?",
+    },
+    {
+      "method": "text",
+      "text": "¿En qué provincia/departamento vives?",
+    },
+    {
+      "method": "text",
+      "text": "¿En qué municipio vives?",
+    },
+    {
+      "method": "text",
+      "text": "He entendido que tu municipio es Panama.",
+    },
+    {
+      "method": "text",
+      "text": "✅ ¡Perfecto! Ahora, por favor, escribe tu correo electrónico:",
+    },
+    {
+      "buttons": [
+        "gender:Masculino",
+        "gender:Femenino",
+      ],
+      "method": "keyboard",
+      "text": "¿Cuál es tu género?",
+    },
+    {
+      "method": "text",
+      "text": "¿Cuántos años cumplidos tienes?",
+    },
+    {
+      "buttons": [
+        "educationPsh:No alfabetizado",
+        "educationPsh:Alfabetizado pero no en escuela normal",
+        "educationPsh:Primaria Incompleta",
+        "educationPsh:Primaria Completa",
+        "educationPsh:Secundaria Incompleta",
+        "educationPsh:Secundaria Completa",
+        "educationPsh:Bachillerato Incompleto",
+        "educationPsh:Bachillerato Completo",
+        "educationPsh:Universidad Incompleta",
+        "educationPsh:Universidad Completa",
+        "educationPsh:Pos Grado Incompleto",
+        "educationPsh:Pos Grado Completo",
+      ],
+      "method": "keyboard",
+      "text": "📋💚 Importante: Las siguientes preguntas son solo para segmentar el hogar. 🔒 Tus datos están seguros y nunca serán compartidos. 👉 Recuerda: lo único que se analiza son tus registros de compra 🛒.
+
+¿Cuál es el nivel educativo alcanzado por la persona que se identifica como Principal Sostén del Hogar (PSH)?",
+    },
+    {
+      "buttons": [
+        "cars:0",
+        "cars:1",
+        "cars:2 o más",
+      ],
+      "method": "keyboard",
+      "text": "¿De cuántos autos dispone regularmente este hogar?",
+    },
+    {
+      "buttons": [
+        "domesticHelp:true",
+        "domesticHelp:false",
+      ],
+      "method": "keyboard",
+      "text": "¿Este hogar cuenta actualmente con apoyo de servicio doméstico?",
+    },
+    {
+      "buttons": [
+        "householdSize:1",
+        "householdSize:2",
+        "householdSize:3",
+        "householdSize:4",
+        "householdSize:5",
+        "householdSize:6",
+      ],
+      "method": "keyboard",
+      "text": "¿Cuántas personas residen habitualmente en este hogar? (Si son más de 6, escribe el número)",
+    },
+    {
+      "buttons": [
+        "isPregnant:true",
+        "isPregnant:false",
+      ],
+      "method": "keyboard",
+      "text": "¿Te encuentras actualmente embarazada?",
+    },
+    {
+      "buttons": [
+        "hasBabyUnder3:true",
+        "hasBabyUnder3:false",
+      ],
+      "method": "keyboard",
+      "text": "¿Vive usted con un bebé menor de 3 años?",
+    },
+    {
+      "buttons": [
+        "bedrooms:1",
+        "bedrooms:2",
+        "bedrooms:3",
+        "bedrooms:4",
+        "bedrooms:5",
+        "bedrooms:6",
+      ],
+      "method": "keyboard",
+      "text": "¿Cuántas habitaciones destinadas exclusivamente para dormir tiene este hogar? (Si son más de 6, escribe el número)",
+    },
+    {
+      "buttons": [
+        "shoppingFrequency:Diario",
+        "shoppingFrequency:2-3 veces por semana",
+        "shoppingFrequency:Semanal",
+        "shoppingFrequency:Quincenal",
+        "shoppingFrequency:Mensual",
+      ],
+      "method": "keyboard",
+      "text": "¿Con qué frecuencia realizas las compras para el hogar?",
+    },
+    {
+      "method": "text",
+      "text": "🛍️ ¿Cuáles de estas categorías compras en una semana típica? Puedes elegir todas las que apliquen:
+
+1. Canasta básica
+2. Lácteos
+3. Bebidas
+4. Snacks/Botanas
+5. Cuidado personal
+6. Prod. de limpieza
+7. Cuidado del bebé
+8. Mascotas
+
+(Puedes responder indicando los números de las categorías directamente)",
+    },
+    {
+      "buttons": [
+        "contactChannel:WhatsApp",
+        "contactChannel:Llamada telefónica",
+      ],
+      "method": "keyboard",
+      "text": "¿Cómo te gustaría ser contactado/a por PanelSmart?",
+    },
+    {
+      "buttons": [
+        "contactSchedule:Mañana (9-12hs)",
+        "contactSchedule:Tarde (13-17hs)",
+        "contactSchedule:Noche (18-21hs)",
+      ],
+      "method": "keyboard",
+      "text": "¿En qué horario del día puedes ser contactado/a?",
+    },
+    {
+      "buttons": [
+        "app_downloaded",
+      ],
+      "method": "keyboard",
+      "text": "🎉 ¡Felicidades! Tienes un cupo disponible.
+
+Antes de seguir: si en cualquier momento necesitás ayuda con la app o tenés alguna duda, escribime "agente" y te derivo con nuestro equipo.
+
+Descarga la app:
+📱 iOS: https://apps.apple.com/us/app/panelsmart/id900007535?l=es
+🤖 Android: https://play.google.com/store/apps/details?id=com.lumi.kwpsmartpanel&hl=es_US&gl=US
+
+Una vez descargada, recibirás tu código de registro.",
+    },
+  ],
+}
+`;
+
+exports[`CAM regression — golden master (pre/post 014 + 015) > C4 — decline T&C at D1 (Honduras) 1`] = `
+{
+  "lead": {
+    "channel": "telegram",
+    "channelUserId": "999900004",
+    "channelUsername": "regression",
+    "conversationSummary": null,
+    "currentPhase": 1,
+    "d1Accepted": false,
+    "d3IsShopper": null,
+    "leadStatus": "not_qualified",
+    "optInAccepted": true,
+    "panelSmartSyncStatus": null,
+    "panelSmartSyncedAnswersJson": null,
+    "panelSmartSyncedLeadStatus": null,
+    "phoneNumber": null,
+    "quotaMatchedDimension": null,
+    "quotaMatchedValue": null,
+    "quotaSegment": null,
+    "reEngagementConsentAccepted": null,
+    "reEngagementCount": 0,
+    "score": null,
+    "statusReason": "d1_decline",
+    "surveyQuestionIndex": 0,
+    "tdmRegistrationCode": null,
+  },
+  "surveyProfile": {
+    "age": null,
+    "bedrooms": null,
+    "cars": null,
+    "conflictOfInterest": null,
+    "contactChannel": null,
+    "contactSchedule": null,
+    "country": null,
+    "domesticHelp": null,
+    "educationPsh": null,
+    "email": null,
+    "extractionModel": null,
+    "fullName": null,
+    "gender": null,
+    "geoSource": null,
+    "hasBabyUnder3": null,
+    "householdSize": null,
+    "inQuotaGeo": null,
+    "isPregnant": null,
+    "municipality": null,
+    "neighborhood": null,
+    "nsePoints": null,
+    "nseRegion": null,
+    "rawFreeTextJson": null,
+    "scoringAnswersJson": null,
+    "shoppingCategories": null,
+    "shoppingFrequency": null,
+    "stateProvince": null,
+  },
+  "transcript": [
+    {
+      "buttons": [
+        "optin:accept",
+        "optin:decline",
+      ],
+      "method": "keyboard",
+      "text": "¡Hola! Soy el asistente virtual de PanelSmart 🙂
+
+Te invitamos a unirte a nuestro panel de encuestas y ganar premios por compartir tu opinión.
+
+Al responder SÍ, aceptás recibir encuestas y notificaciones de PanelSmart por este canal. Podés darte de baja en cualquier momento respondiendo STOP.
+
+¿Querés inscribirte?",
+    },
+    {
+      "buttons": [
+        "d1:accept",
+        "d1:decline",
+      ],
+      "method": "keyboard",
+      "text": "✅ Antes de continuar, revisá nuestros Términos y Condiciones del programa:
+
+https://www.panelsmart-cenam.com/terminos-y-condiciones
+
+¿Confirmás que los leíste y aceptás participar?",
+    },
+    {
+      "method": "text",
+      "text": "Lo sentimos 💙
+No te preocupes que tus datos están seguros 🔒 y, si no aplicas esta vez, no te preocupes: no los usaremos ni guardaremos.
+Gracias por tu interés
+Puedes seguir nuestras redes sociales:
+https://www.facebook.com/PanelSmartLatino
+https://www.instagram.com/panelsmart_latino/",
+    },
+  ],
+}
+`;

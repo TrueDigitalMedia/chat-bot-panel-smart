@@ -16,8 +16,10 @@ export default defineConfig({
     // Journeys share one DB — run serially so resetLeadTables() can't race.
     fileParallelism: false,
     sequence: { concurrent: false },
-    hookTimeout: 30_000,
-    testTimeout: 30_000,
+    // Each journey turn does several sequential real Neon HTTP round-trips (no local DB) —
+    // a ~20-turn journey like C1 legitimately takes 30-40s, not a hang. 90s gives headroom.
+    hookTimeout: 90_000,
+    testTimeout: 90_000,
   },
   resolve: {
     alias: {

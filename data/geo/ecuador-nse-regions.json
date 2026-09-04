@@ -1,0 +1,1602 @@
+{
+  "version": "docs/ecuador/Muestra Regiones NSE Ecuador.xlsx",
+  "source": "INEC clasificacion 2022",
+  "regions": [
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "ATACAMES",
+      "parroquia": "ATACAMES",
+      "parroquiaUrbana": "ATACAMES"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "ELOY ALFARO",
+      "parroquia": "VALDEZ",
+      "parroquiaUrbana": "VALDEZ"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "ESMERALDAS",
+      "parroquia": "ESMERALDAS",
+      "parroquiaUrbana": "ESMERALDAS"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "SANTO DOMINGO DE LOS TSACHILAS",
+      "canton": "LA CONCORDIA",
+      "parroquia": "LA CONCORDIA",
+      "parroquiaUrbana": "LA CONCORDIA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "MUISNE",
+      "parroquia": "MUISNE",
+      "parroquiaUrbana": "MUISNE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "QUININDE",
+      "parroquia": "ROSA ZARATE",
+      "parroquiaUrbana": "ROSA ZARATE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "RIOVERDE",
+      "parroquia": "RIOVERDE",
+      "parroquiaUrbana": "RIOVERDE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "ESMERALDAS",
+      "canton": "SAN LORENZO",
+      "parroquia": "SAN LORENZO",
+      "parroquiaUrbana": "SAN LORENZO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "BABA",
+      "parroquia": "BABA",
+      "parroquiaUrbana": "BABA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "BABAHOYO",
+      "parroquia": "BABAHOYO",
+      "parroquiaUrbana": "BABAHOYO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "BUENA FE",
+      "parroquia": "SAN JACINTO DE BUENA FE",
+      "parroquiaUrbana": "SAN JACINTO DE BUENA FE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "MOCACHE",
+      "parroquia": "MOCACHE",
+      "parroquiaUrbana": "MOCACHE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "MONTALVO",
+      "parroquia": "MONTALVO",
+      "parroquiaUrbana": "MONTALVO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "PALENQUE",
+      "parroquia": "PALENQUE",
+      "parroquiaUrbana": "PALENQUE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "PUEBLOVIEJO",
+      "parroquia": "PUEBLOVIEJO",
+      "parroquiaUrbana": "PUEBLOVIEJO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "QUEVEDO",
+      "parroquia": "QUEVEDO",
+      "parroquiaUrbana": "QUEVEDO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "QUINSALOMA",
+      "parroquia": "QUINSALOMA",
+      "parroquiaUrbana": "QUINSALOMA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "URDANETA",
+      "parroquia": "CATARAMA",
+      "parroquiaUrbana": "CATARAMA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "VALENCIA",
+      "parroquia": "VALENCIA",
+      "parroquiaUrbana": "VALENCIA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "VENTANAS",
+      "parroquia": "VENTANAS",
+      "parroquiaUrbana": "VENTANAS"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "LOS RIOS",
+      "canton": "VINCES",
+      "parroquia": "VINCES",
+      "parroquiaUrbana": "VINCES"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "24 DE MAYO",
+      "parroquia": "SUCRE",
+      "parroquiaUrbana": "SUCRE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "BOLIVAR",
+      "parroquia": "CALCETA",
+      "parroquiaUrbana": "CALCETA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "CHONE",
+      "parroquia": "CHONE",
+      "parroquiaUrbana": "CHONE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "EL CARMEN",
+      "parroquia": "EL CARMEN",
+      "parroquiaUrbana": "EL CARMEN"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "FLAVIO ALFARO",
+      "parroquia": "FLAVIO ALFARO",
+      "parroquiaUrbana": "FLAVIO ALFARO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "JAMA",
+      "parroquia": "JAMA",
+      "parroquiaUrbana": "JAMA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "JARAMIJO",
+      "parroquia": "JARAMIJO",
+      "parroquiaUrbana": "JARAMIJO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "JIPIJAPA",
+      "parroquia": "JIPIJAPA",
+      "parroquiaUrbana": "JIPIJAPA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "JUNIN",
+      "parroquia": "JUNIN",
+      "parroquiaUrbana": "JUNIN"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "MONTECRISTI",
+      "parroquia": "MONTECRISTI",
+      "parroquiaUrbana": "MONTECRISTI"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "OLMEDO",
+      "parroquia": "OLMEDO",
+      "parroquiaUrbana": "OLMEDO"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "PAJAN",
+      "parroquia": "PAJAN",
+      "parroquiaUrbana": "PAJAN"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "PEDERNALES",
+      "parroquia": "PEDERNALES",
+      "parroquiaUrbana": "PEDERNALES"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "PICHINCHA",
+      "parroquia": "PICHINCHA",
+      "parroquiaUrbana": "PICHINCHA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "PUERTO LOPEZ",
+      "parroquia": "PUERTO LOPEZ",
+      "parroquiaUrbana": "PUERTO LOPEZ"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "ROCAFUERTE",
+      "parroquia": "ROCAFUERTE",
+      "parroquiaUrbana": "ROCAFUERTE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "SAN VICENTE",
+      "parroquia": "SAN VICENTE",
+      "parroquiaUrbana": "SAN VICENTE"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "SANTA ANA",
+      "parroquia": "SANTA ANA DE VUELTA LARGA",
+      "parroquiaUrbana": "SANTA ANA DE VUELTA LARGA"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "SUCRE",
+      "parroquia": "BAHIA DE CARAQUEZ",
+      "parroquiaUrbana": "BAHIA DE CARAQUEZ"
+    },
+    {
+      "region": "Costa Norte",
+      "provincia": "MANABI",
+      "canton": "TOSAGUA",
+      "parroquia": "TOSAGUA",
+      "parroquiaUrbana": "TOSAGUA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "ARENILLAS",
+      "parroquia": "ARENILLAS",
+      "parroquiaUrbana": "ARENILLAS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "ATAHUALPA",
+      "parroquia": "PACCHA",
+      "parroquiaUrbana": "PACCHA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "BALSAS",
+      "parroquia": "BALSAS",
+      "parroquiaUrbana": "BALSAS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "CHILLA",
+      "parroquia": "CHILLA",
+      "parroquiaUrbana": "CHILLA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "EL GUABO",
+      "parroquia": "EL GUABO",
+      "parroquiaUrbana": "EL GUABO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "HUAQUILLAS",
+      "parroquia": "HUAQUILLAS",
+      "parroquiaUrbana": "HUAQUILLAS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "LAS LAJAS",
+      "parroquia": "LA VICTORIA",
+      "parroquiaUrbana": "LA VICTORIA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "MACHALA",
+      "parroquia": "MACHALA",
+      "parroquiaUrbana": "MACHALA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "MARCABELI",
+      "parroquia": "MARCABELI",
+      "parroquiaUrbana": "MARCABELI"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "PASAJE",
+      "parroquia": "PASAJE",
+      "parroquiaUrbana": "PASAJE"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "PIÑAS",
+      "parroquia": "PIÑAS",
+      "parroquiaUrbana": "PIÑAS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "PORTOVELO",
+      "parroquia": "PORTOVELO",
+      "parroquiaUrbana": "PORTOVELO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "SANTA ROSA",
+      "parroquia": "SANTA ROSA",
+      "parroquiaUrbana": "SANTA ROSA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "EL ORO",
+      "canton": "ZARUMA",
+      "parroquia": "ZARUMA",
+      "parroquiaUrbana": "ZARUMA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "ALFREDO BAQUERIZO MORENO (JUJAN)",
+      "parroquia": "ALFREDO BAQUERIZO MORENO (JUJAN)",
+      "parroquiaUrbana": "ALFREDO BAQUERIZO MORENO (JUJAN)"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "BALAO",
+      "parroquia": "BALAO",
+      "parroquiaUrbana": "BALAO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "BALZAR",
+      "parroquia": "BALZAR",
+      "parroquiaUrbana": "BALZAR"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "COLIMES",
+      "parroquia": "COLIMES",
+      "parroquiaUrbana": "COLIMES"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "CORONEL MARCELINO MARIDUEÑA",
+      "parroquia": "CORONEL MARCELINO MARIDUEÑA",
+      "parroquiaUrbana": "CORONEL MARCELINO MARIDUEÑA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "DAULE",
+      "parroquia": "DAULE",
+      "parroquiaUrbana": "DAULE"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "EL EMPALME",
+      "parroquia": "VELASCO IBARRA",
+      "parroquiaUrbana": "VELASCO IBARRA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "EL TRIUNFO",
+      "parroquia": "EL TRIUNFO",
+      "parroquiaUrbana": "EL TRIUNFO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "GENERAL  ANTONIO ELIZALDE",
+      "parroquia": "GENERAL ANTONIO ELIZALDE",
+      "parroquiaUrbana": "GENERAL ANTONIO ELIZALDE"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "ISIDRO AYORA",
+      "parroquia": "ISIDRO AYORA",
+      "parroquiaUrbana": "ISIDRO AYORA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "LOMAS DE SARGENTILLO",
+      "parroquia": "LOMAS DE SARGENTILLO",
+      "parroquiaUrbana": "LOMAS DE SARGENTILLO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "MILAGRO",
+      "parroquia": "MILAGRO",
+      "parroquiaUrbana": "MILAGRO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "NARANJAL",
+      "parroquia": "NARANJAL",
+      "parroquiaUrbana": "NARANJAL"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "NARANJITO",
+      "parroquia": "NARANJITO",
+      "parroquiaUrbana": "NARANJITO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "NOBOL",
+      "parroquia": "NARCISA DE JESUS",
+      "parroquiaUrbana": "NARCISA DE JESUS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "PALESTINA",
+      "parroquia": "PALESTINA",
+      "parroquiaUrbana": "PALESTINA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "PEDRO CARBO",
+      "parroquia": "PEDRO CARBO",
+      "parroquiaUrbana": "PEDRO CARBO"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "PLAYAS",
+      "parroquia": "GENERAL VILLAMIL",
+      "parroquiaUrbana": "GENERAL VILLAMIL"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "SANTA LUCIA",
+      "parroquia": "SANTA LUCIA",
+      "parroquiaUrbana": "SANTA LUCIA"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "SIMON BOLIVAR",
+      "parroquia": "SIMON BOLIVAR",
+      "parroquiaUrbana": "SIMON BOLIVAR"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "SALITRE",
+      "parroquia": "EL SALITRE",
+      "parroquiaUrbana": "EL SALITRE"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "GUAYAS",
+      "canton": "SAN JACINTO DE YAGUACHI",
+      "parroquia": "SAN JACINTO DE YAGUACHI",
+      "parroquiaUrbana": "SAN JACINTO DE YAGUACHI"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "SANTA ELENA",
+      "canton": "LA LIBERTAD",
+      "parroquia": "LA LIBERTAD",
+      "parroquiaUrbana": "LA LIBERTAD"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "SANTA ELENA",
+      "canton": "SALINAS",
+      "parroquia": "SALINAS",
+      "parroquiaUrbana": "SALINAS"
+    },
+    {
+      "region": "Costa Sur",
+      "provincia": "SANTA ELENA",
+      "canton": "SANTA ELENA",
+      "parroquia": "SANTA ELENA",
+      "parroquiaUrbana": "SANTA ELENA"
+    },
+    {
+      "region": "Cuenca",
+      "provincia": "AZUAY",
+      "canton": "CUENCA",
+      "parroquia": "CUENCA",
+      "parroquiaUrbana": "CUENCA"
+    },
+    {
+      "region": "Guayaquil Norte",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "CARBO (CONCEPCIÓN) "
+    },
+    {
+      "region": "Guayaquil Norte",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "ROCA"
+    },
+    {
+      "region": "Guayaquil Norte",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "TARQUI"
+    },
+    {
+      "region": "Guayaquil Norte",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "PASCUALES"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "AYACUCHO"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "BOLÍVAR  (SAGRARIO) "
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "FEBRES CORDERO"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "GARCÍA MORENO"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "LETAMENDI"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "NUEVE DE OCTUBRE"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "OLMEDO  (SAN ALEJO) "
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "ROCAFUERTE"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "SUCRE"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "URDANETA"
+    },
+    {
+      "region": "Guayaquil Sur",
+      "provincia": "GUAYAS",
+      "canton": "GUAYAQUIL",
+      "parroquia": "GUAYAQUIL",
+      "parroquiaUrbana": "XIMENA"
+    },
+    {
+      "region": "Manta Porto Viejo",
+      "provincia": "MANABI",
+      "canton": "MANTA",
+      "parroquia": "MANTA",
+      "parroquiaUrbana": "MANTA"
+    },
+    {
+      "region": "Manta Porto Viejo",
+      "provincia": "MANABI",
+      "canton": "PORTOVIEJO",
+      "parroquia": "PORTOVIEJO",
+      "parroquiaUrbana": "PORTOVIEJO"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "CALDERON",
+      "parroquiaUrbana": "CALDERON"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "CONOCOTO",
+      "parroquiaUrbana": "CONOCOTO"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "CUMBAYA",
+      "parroquiaUrbana": "CUMBAYA"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "POMASQUI",
+      "parroquiaUrbana": "POMASQUI"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "SAN ANTONIO",
+      "parroquiaUrbana": "SAN ANTONIO"
+    },
+    {
+      "region": "Zona Perfieria/Valles",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "TUMBACO",
+      "parroquiaUrbana": "TUMBACO"
+    },
+    {
+      "region": "Zona Periferia GYE",
+      "provincia": "GUAYAS",
+      "canton": "DURAN",
+      "parroquia": "ELOY ALFARO",
+      "parroquiaUrbana": "ELOY ALFARO"
+    },
+    {
+      "region": "Zona Periferia GYE",
+      "provincia": "GUAYAS",
+      "canton": "SAMBORONDON",
+      "parroquia": "SAMBORONDON",
+      "parroquiaUrbana": "SAMBORONDON"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "BELISARIO QUEVEDO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "CARCELÉN"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "CENTRO HISTÓRICO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "COCHAPAMBA"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "COMITÉ DEL PUEBLO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "COTOCOLLAO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "EL CONDADO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "IÑAQUITO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "ITCHIMBIA"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "JIPIJAPA"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "KENNEDY"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA CONCEPCIÓN"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "MARISCAL SUCRE"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "PONCEANO"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "RUMIPAMBA"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "SAN ISIDRO DEL INCA"
+    },
+    {
+      "region": "Quito Norte",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "SAN JUAN"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "CHILIBULO"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "CHILLOGALLO"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "CHIMBACALLE"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "GUAMANÍ"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA ARGELIA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA ECUATORIANA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA FERROVIARIA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA LIBERTAD"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA MAGDALENA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "LA MENA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "PUENGASÍ"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "QUITUMBE"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "SAN BARTOLO"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "SOLANDA"
+    },
+    {
+      "region": "Quito Sur",
+      "provincia": "PICHINCHA",
+      "canton": "DISTRITO METROPOLITANO DE QUITO",
+      "parroquia": "QUITO",
+      "parroquiaUrbana": "TURUBAMBA"
+    },
+    {
+      "region": "Santo Domingo",
+      "provincia": "SANTO DOMINGO DE LOS TSACHILAS",
+      "canton": "SANTO DOMINGO",
+      "parroquia": "SANTO DOMINGO DE LOS COLORADOS",
+      "parroquiaUrbana": "SANTO DOMINGO DE LOS COLORADOS"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "CAMILO PONCE ENRIQUEZ",
+      "parroquia": "CAMILO PONCE ENRIQUEZ",
+      "parroquiaUrbana": "CAMILO PONCE ENRIQUEZ"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "CHORDELEG",
+      "parroquia": "CHORDELEG",
+      "parroquiaUrbana": "CHORDELEG"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "EL PAN",
+      "parroquia": "EL PAN",
+      "parroquiaUrbana": "EL PAN"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "GIRON",
+      "parroquia": "GIRON",
+      "parroquiaUrbana": "GIRON"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "GUACHAPALA",
+      "parroquia": "GUACHAPALA",
+      "parroquiaUrbana": "GUACHAPALA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "GUALACEO",
+      "parroquia": "GUALACEO",
+      "parroquiaUrbana": "GUALACEO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "NABON",
+      "parroquia": "NABON",
+      "parroquiaUrbana": "NABON"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "OÑA",
+      "parroquia": "SAN FELIPE DE OÑA",
+      "parroquiaUrbana": "SAN FELIPE DE OÑA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "PAUTE",
+      "parroquia": "PAUTE",
+      "parroquiaUrbana": "PAUTE"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "PUCARA",
+      "parroquia": "PUCARA",
+      "parroquiaUrbana": "PUCARA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "SAN FERNANDO",
+      "parroquia": "SAN FERNANDO",
+      "parroquiaUrbana": "SAN FERNANDO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "SANTA ISABEL",
+      "parroquia": "SANTA ISABEL",
+      "parroquiaUrbana": "SANTA ISABEL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "SEVILLA DE ORO",
+      "parroquia": "SEVILLA DE ORO",
+      "parroquiaUrbana": "SEVILLA DE ORO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "AZUAY",
+      "canton": "SIGSIG",
+      "parroquia": "SIGSIG",
+      "parroquiaUrbana": "SIGSIG"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "CALUMA",
+      "parroquia": "CALUMA",
+      "parroquiaUrbana": "CALUMA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "CHILLANES",
+      "parroquia": "CHILLANES",
+      "parroquiaUrbana": "CHILLANES"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "ECHEANDIA",
+      "parroquia": "ECHEANDIA",
+      "parroquiaUrbana": "ECHEANDIA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "GUARANDA",
+      "parroquia": "GUARANDA",
+      "parroquiaUrbana": "GUARANDA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "LAS NAVES",
+      "parroquia": "LAS NAVES",
+      "parroquiaUrbana": "LAS NAVES"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "CHIMBO",
+      "parroquia": "SAN JOSE DE CHIMBO",
+      "parroquiaUrbana": "SAN JOSE DE CHIMBO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "BOLIVAR",
+      "canton": "SAN MIGUEL",
+      "parroquia": "SAN MIGUEL",
+      "parroquiaUrbana": "SAN MIGUEL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "AZOGUES",
+      "parroquia": "AZOGUES",
+      "parroquiaUrbana": "AZOGUES"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "BIBLIAN",
+      "parroquia": "BIBLIAN",
+      "parroquiaUrbana": "BIBLIAN"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "CAÑAR",
+      "parroquia": "CAÑAR",
+      "parroquiaUrbana": "CAÑAR"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "DELEG",
+      "parroquia": "DELEG",
+      "parroquiaUrbana": "DELEG"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "EL TAMBO",
+      "parroquia": "EL TAMBO",
+      "parroquiaUrbana": "EL TAMBO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "LA TRONCAL",
+      "parroquia": "LA TRONCAL",
+      "parroquiaUrbana": "LA TRONCAL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CAÑAR",
+      "canton": "SUSCAL",
+      "parroquia": "SUSCAL",
+      "parroquiaUrbana": "SUSCAL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "BOLIVAR",
+      "parroquia": "BOLIVAR",
+      "parroquiaUrbana": "BOLIVAR"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "ESPEJO",
+      "parroquia": "EL ANGEL",
+      "parroquiaUrbana": "EL ANGEL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "MIRA",
+      "parroquia": "MIRA",
+      "parroquiaUrbana": "MIRA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "MONTUFAR",
+      "parroquia": "SAN GABRIEL",
+      "parroquiaUrbana": "SAN GABRIEL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "SAN PEDRO DE HUACA",
+      "parroquia": "HUACA",
+      "parroquiaUrbana": "HUACA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CARCHI",
+      "canton": "TULCAN",
+      "parroquia": "TULCAN",
+      "parroquiaUrbana": "TULCAN"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "LA MANA",
+      "parroquia": "LA MANA",
+      "parroquiaUrbana": "LA MANA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "LATACUNGA",
+      "parroquia": "LATACUNGA",
+      "parroquiaUrbana": "LATACUNGA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "PANGUA",
+      "parroquia": "EL CORAZON",
+      "parroquiaUrbana": "EL CORAZON"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "PUJILI",
+      "parroquia": "PUJILI",
+      "parroquiaUrbana": "PUJILI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "SALCEDO",
+      "parroquia": "SAN MIGUEL",
+      "parroquiaUrbana": "SAN MIGUEL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "SAQUISILI",
+      "parroquia": "SAQUISILI",
+      "parroquiaUrbana": "SAQUISILI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "COTOPAXI",
+      "canton": "SIGCHOS",
+      "parroquia": "SIGCHOS",
+      "parroquiaUrbana": "SIGCHOS"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "ALAUSI",
+      "parroquia": "ALAUSI",
+      "parroquiaUrbana": "ALAUSI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "CHAMBO",
+      "parroquia": "CHAMBO",
+      "parroquiaUrbana": "CHAMBO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "CHUNCHI",
+      "parroquia": "CHUNCHI",
+      "parroquiaUrbana": "CHUNCHI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "COLTA",
+      "parroquia": "VILLA LA UNION",
+      "parroquiaUrbana": "VILLA LA UNION"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "CUMANDA",
+      "parroquia": "CUMANDA",
+      "parroquiaUrbana": "CUMANDA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "GUAMOTE",
+      "parroquia": "GUAMOTE",
+      "parroquiaUrbana": "GUAMOTE"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "GUANO",
+      "parroquia": "GUANO",
+      "parroquiaUrbana": "GUANO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "PALLATANGA",
+      "parroquia": "PALLATANGA",
+      "parroquiaUrbana": "PALLATANGA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "PENIPE",
+      "parroquia": "PENIPE",
+      "parroquiaUrbana": "PENIPE"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "CHIMBORAZO",
+      "canton": "RIOBAMBA",
+      "parroquia": "RIOBAMBA",
+      "parroquiaUrbana": "RIOBAMBA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "ANTONIO ANTE",
+      "parroquia": "ATUNTAQUI",
+      "parroquiaUrbana": "ATUNTAQUI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "COTACACHI",
+      "parroquia": "COTACACHI",
+      "parroquiaUrbana": "COTACACHI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "IBARRA",
+      "parroquia": "SAN MIGUEL DE IBARRA",
+      "parroquiaUrbana": "SAN MIGUEL DE IBARRA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "OTAVALO",
+      "parroquia": "OTAVALO",
+      "parroquiaUrbana": "OTAVALO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "PIMAMPIRO",
+      "parroquia": "PIMAMPIRO",
+      "parroquiaUrbana": "PIMAMPIRO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "IMBABURA",
+      "canton": "SAN MIGUEL DE URCUQUI",
+      "parroquia": "URCUQUI",
+      "parroquiaUrbana": "URCUQUI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "CALVAS",
+      "parroquia": "CARIAMANGA",
+      "parroquiaUrbana": "CARIAMANGA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "CATAMAYO",
+      "parroquia": "CATAMAYO",
+      "parroquiaUrbana": "CATAMAYO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "CELICA",
+      "parroquia": "CELICA",
+      "parroquiaUrbana": "CELICA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "CHAGUARPAMBA",
+      "parroquia": "CHAGUARPAMBA",
+      "parroquiaUrbana": "CHAGUARPAMBA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "ESPINDOLA",
+      "parroquia": "AMALUZA",
+      "parroquiaUrbana": "AMALUZA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "GONZANAMA",
+      "parroquia": "GONZANAMA",
+      "parroquiaUrbana": "GONZANAMA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "LOJA",
+      "parroquia": "LOJA",
+      "parroquiaUrbana": "LOJA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "MACARA",
+      "parroquia": "MACARA",
+      "parroquiaUrbana": "MACARA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "OLMEDO",
+      "parroquia": "OLMEDO",
+      "parroquiaUrbana": "OLMEDO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "PALTAS",
+      "parroquia": "CATACOCHA",
+      "parroquiaUrbana": "CATACOCHA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "PINDAL",
+      "parroquia": "PINDAL",
+      "parroquiaUrbana": "PINDAL"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "PUYANGO",
+      "parroquia": "ALAMOR",
+      "parroquiaUrbana": "ALAMOR"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "QUILANGA",
+      "parroquia": "QUILANGA",
+      "parroquiaUrbana": "QUILANGA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "SARAGURO",
+      "parroquia": "SARAGURO",
+      "parroquiaUrbana": "SARAGURO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "SOZORANGA",
+      "parroquia": "SOZORANGA",
+      "parroquiaUrbana": "SOZORANGA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "LOJA",
+      "canton": "ZAPOTILLO",
+      "parroquia": "ZAPOTILLO",
+      "parroquiaUrbana": "ZAPOTILLO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "CAYAMBE",
+      "parroquia": "CAYAMBE",
+      "parroquiaUrbana": "CAYAMBE"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "MEJIA",
+      "parroquia": "MACHACHI",
+      "parroquiaUrbana": "MACHACHI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "PEDRO MONCAYO",
+      "parroquia": "TABACUNDO",
+      "parroquiaUrbana": "TABACUNDO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "PEDRO VICENTE MALDONADO",
+      "parroquia": "PEDRO VICENTE MALDONADO",
+      "parroquiaUrbana": "PEDRO VICENTE MALDONADO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "PUERTO QUITO",
+      "parroquia": "PUERTO QUITO",
+      "parroquiaUrbana": "PUERTO QUITO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "RUMIÑAHUI",
+      "parroquia": "SANGOLQUI",
+      "parroquiaUrbana": "SANGOLQUI"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "PICHINCHA",
+      "canton": "SAN MIGUEL DE LOS BANCOS",
+      "parroquia": "SAN MIGUEL DE LOS BANCOS",
+      "parroquiaUrbana": "SAN MIGUEL DE LOS BANCOS"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "AMBATO",
+      "parroquia": "AMBATO",
+      "parroquiaUrbana": "AMBATO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "BAÑOS DE AGUA SANTA",
+      "parroquia": "BAÑOS",
+      "parroquiaUrbana": "BAÑOS"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "CEVALLOS",
+      "parroquia": "CEVALLOS",
+      "parroquiaUrbana": "CEVALLOS"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "MOCHA",
+      "parroquia": "MOCHA",
+      "parroquiaUrbana": "MOCHA"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "PATATE",
+      "parroquia": "PATATE",
+      "parroquiaUrbana": "PATATE"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "QUERO",
+      "parroquia": "QUERO",
+      "parroquiaUrbana": "QUERO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "SAN PEDRO DE PELILEO",
+      "parroquia": "PELILEO",
+      "parroquiaUrbana": "PELILEO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "SANTIAGO DE PILLARO",
+      "parroquia": "PILLARO",
+      "parroquiaUrbana": "PILLARO"
+    },
+    {
+      "region": "Sierra",
+      "provincia": "TUNGURAHUA",
+      "canton": "TISALEO",
+      "parroquia": "TISALEO",
+      "parroquiaUrbana": "TISALEO"
+    }
+  ]
+}

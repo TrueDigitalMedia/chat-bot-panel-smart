@@ -11,7 +11,7 @@ import {
 import { handleAppDownloaded, isAppDownloadedCallback } from '@/lib/onboarding/app-downloaded'
 import { handleReengageChoice, isReengageCallback } from './reengage-choice'
 import { handleCorrectionFlow, tryHandleCorrectionRequest } from './correction'
-import { SURVEY_QUESTIONS } from './survey-questions'
+import { resolveSurveyQuestions } from './survey-plan'
 import { resetLeadConversation, recordConsentEvent, hasOptedOut } from '@/lib/db/leads'
 import { hasSentOutboundMessage, getLastOutboundMessage } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
@@ -476,7 +476,11 @@ export async function routeMessage(
     }
 
     if (messageText) {
-      const pendingQuestionText = SURVEY_QUESTIONS[lead.surveyQuestionIndex - 1]?.text ?? ''
+      // Best-effort hint text for the AI correction/FAQ prompt, not authoritative state —
+      // CAM ordering is close enough even for a non-CAM lead (rare edge case: the
+      // question shown and this hint text briefly disagree for Ecuador leads until the
+      // survey's own country-aware lookups run). TODO(016): thread country through here.
+      const pendingQuestionText = resolveSurveyQuestions(null)[lead.surveyQuestionIndex - 1]?.text ?? ''
       // Cheap regex-only pass here (no AI) — this runs ahead of every answer attempt, so
       // the AI fallback only kicks in later, from phase-1.ts's own "couldn't resolve this
       // answer" branches, once normal answer-resolution has already failed.

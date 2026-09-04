@@ -10,9 +10,9 @@ import { reverseGeocode, type PlaceProposal } from '@/lib/geo/reverse-geocode'
 import { askGpsConfirmation, GPS_YES, GPS_NO } from '@/lib/geo/gps-confirm'
 import {
   canonicalCountry,
-  lookupNseRegion,
   type GeoSource,
 } from '@/lib/geo/cam-nse-catalog'
+import { getCountryConfig } from '@/lib/countries/registry'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import { matchButtonChoice } from './match-button-choice'
 import { interpretButtonAnswer } from './interpret-button-answer'
@@ -314,22 +314,23 @@ async function applyAllowlistAfterConfirm(
   _correlationId: string,
 ): Promise<void> {
   const country = canonicalCountry(proposal.country) ?? proposal.country
-  const nseRegion = lookupNseRegion(country, proposal.stateProvince, proposal.municipality)
+  const nseRegion = getCountryConfig(country).resolveNseRegion({
+    stateProvince: proposal.stateProvince,
+    municipality: proposal.municipality,
+    neighborhood: null,
+  })
 
-  if (!nseRegion) {
-    console.info('[gps] nse_allowlist_miss', {
-      leadId: lead.id,
+  console.info(
+    JSON.stringify({
+      event: 'geo_resolve',
+      lead_id: lead.id,
+      path: 'gps',
       country,
-      stateProvince: proposal.stateProvince,
+      state_province: proposal.stateProvince,
       municipality: proposal.municipality,
-    })
-  } else {
-    console.info('[gps] nse_allowlist_hit', {
-      leadId: lead.id,
-      country,
-      nseRegion,
-    })
-  }
+      matched_region: nseRegion,
+    }),
+  )
 
   // Q5 (neighborhood) is never asked — recorded as null unconditionally, GPS-detected
   // value included, so it's silently hidden from every user regardless of channel.
@@ -376,15 +377,27 @@ export async function applyManualMunicipalityAllowlist(
     correlationId: string
   },
 ): Promise<{ nseRegion: string | null }> {
-  const nseRegion = lookupNseRegion(opts.country, opts.stateProvince, opts.municipality)
-  console.info(nseRegion ? '[gps] nse_allowlist_hit' : '[gps] nse_allowlist_miss', {
-    leadId: lead.id,
-    path: 'manual',
-    country: opts.country,
+  const [manualProfile] = await db
+    .select({ neighborhood: surveyProfiles.neighborhood })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const nseRegion = getCountryConfig(opts.country).resolveNseRegion({
     stateProvince: opts.stateProvince,
     municipality: opts.municipality,
-    nseRegion,
+    neighborhood: manualProfile?.neighborhood ?? null,
   })
+  console.info(
+    JSON.stringify({
+      event: 'geo_resolve',
+      lead_id: lead.id,
+      path: 'manual',
+      country: opts.country,
+      state_province: opts.stateProvince,
+      municipality: opts.municipality,
+      matched_region: nseRegion,
+    }),
+  )
   await db
     .update(surveyProfiles)
     .set({

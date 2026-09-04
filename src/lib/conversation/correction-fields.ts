@@ -1,4 +1,5 @@
 import { SURVEY_FIELDS, type SurveyFieldName } from '@/types/lead'
+import { resolveSurveyQuestions } from './survey-plan'
 
 export const FIELD_LABELS: Record<SurveyFieldName, string> = {
   fullName: 'Nombre',
@@ -111,8 +112,20 @@ export function cascadeClearFields(field: SurveyFieldName): SurveyFieldName[] {
   return []
 }
 
-export function questionIndexForField(field: SurveyFieldName): number {
-  return SURVEY_FIELDS.indexOf(field) + 1
+/**
+ * Position of `field` in the survey resolved for `country` (1-based). Country-aware
+ * since 014 — Ecuador's NSE variables aren't in the fixed CAM `SURVEY_FIELDS` order.
+ * Falls back to the CAM order when `country` is omitted (back-compat for callers that
+ * haven't threaded a country through yet) or when `field` isn't in the resolved list.
+ */
+export function questionIndexForField(
+  field: SurveyFieldName | string,
+  country?: string | null,
+): number {
+  const resolved = resolveSurveyQuestions(country ?? null)
+  const idx = resolved.findIndex((q) => q.fieldName === field)
+  if (idx >= 0) return idx + 1
+  return SURVEY_FIELDS.indexOf(field as SurveyFieldName) + 1
 }
 
 export const CORRECT_MENU = 'correct:menu'

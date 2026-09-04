@@ -1,7 +1,7 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 
 export interface SurveyQuestion {
-  index: number // 1-16
+  index: number // 1-based position in the resolved list (see survey-plan.ts resolveSurveyQuestions)
   fieldName: string
   text: string
   inputType: 'free_text' | 'button'
@@ -27,7 +27,12 @@ export const SHOPPING_CATEGORIES: ReadonlyArray<{ id: number; label: string }> =
 
 const SHOPPING_CATEGORIES_TEXT = SHOPPING_CATEGORIES.map((c) => `${c.id}. ${c.label}`).join('\n')
 
-export const SURVEY_QUESTIONS: SurveyQuestion[] = [
+/**
+ * Country-agnostic questions asked before any country-specific NSE block. `index` is a
+ * placeholder — resolveSurveyQuestions() (survey-plan.ts) re-indexes every question by
+ * its position in the resolved list for a given country.
+ */
+export const SHARED_PREFIX: SurveyQuestion[] = [
   {
     index: 1,
     fieldName: 'fullName',
@@ -52,7 +57,10 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
         { text: 'Costa Rica', callback_data: 'country:Costa Rica' },
         { text: 'Rep. Dominicana', callback_data: 'country:Rep. Dominicana' },
       ],
-      [{ text: 'Panamá', callback_data: 'country:Panamá' }],
+      [
+        { text: 'Panamá', callback_data: 'country:Panamá' },
+        { text: 'Ecuador', callback_data: 'country:Ecuador' },
+      ],
     ],
   },
   {
@@ -64,8 +72,9 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     index: 4,
     fieldName: 'municipality',
-    // 'Cantón' is Costa Rica-specific terminology, overridden for that country in
-    // send-survey-question.ts — every other country just gets 'municipio'.
+    // 'Cantón' is Costa Rica/Ecuador-specific terminology, overridden for those countries
+    // via getCountryConfig(country).geoHierarchy — every other country just gets the
+    // generic 'municipio' wording from here.
     text: '¿En qué municipio vives?',
     inputType: 'free_text',
   },
@@ -99,86 +108,17 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     text: '¿Cuántos años cumplidos tienes?',
     inputType: 'free_text',
   },
+]
+
+/**
+ * Pregnancy / baby-under-36-months questions — the unlimited quota exception
+ * (constitution Principle IV) applies uniformly across every country, so every
+ * CountryConfig.scoringQuestions splices this block in (see cam.ts / ecuador.ts).
+ * Kept as one shared constant instead of duplicating the copy per country.
+ */
+export const PREGNANCY_BABY_QUESTIONS: SurveyQuestion[] = [
   {
-    index: 9,
-    fieldName: 'educationPsh',
-    text: '📋💚 Importante: Las siguientes preguntas son solo para segmentar el hogar. 🔒 Tus datos están seguros y nunca serán compartidos. 👉 Recuerda: lo único que se analiza son tus registros de compra 🛒.\n\n¿Cuál es el nivel educativo alcanzado por la persona que se identifica como Principal Sostén del Hogar (PSH)?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: 'No alfabetizado', callback_data: 'educationPsh:No alfabetizado' },
-        {
-          text: 'Alfabetizado (sin escuela)',
-          callback_data: 'educationPsh:Alfabetizado pero no en escuela normal',
-        },
-      ],
-      [
-        { text: 'Primaria Incompleta', callback_data: 'educationPsh:Primaria Incompleta' },
-        { text: 'Primaria Completa', callback_data: 'educationPsh:Primaria Completa' },
-      ],
-      [
-        { text: 'Secundaria Incompleta', callback_data: 'educationPsh:Secundaria Incompleta' },
-        { text: 'Secundaria Completa', callback_data: 'educationPsh:Secundaria Completa' },
-      ],
-      [
-        { text: 'Bachillerato Incompleto', callback_data: 'educationPsh:Bachillerato Incompleto' },
-        { text: 'Bachillerato Completo', callback_data: 'educationPsh:Bachillerato Completo' },
-      ],
-      [
-        { text: 'Universidad Incompleta', callback_data: 'educationPsh:Universidad Incompleta' },
-        { text: 'Universidad Completa', callback_data: 'educationPsh:Universidad Completa' },
-      ],
-      [
-        { text: 'Pos Grado Incompleto', callback_data: 'educationPsh:Pos Grado Incompleto' },
-        { text: 'Pos Grado Completo', callback_data: 'educationPsh:Pos Grado Completo' },
-      ],
-    ],
-  },
-  {
-    index: 10,
-    fieldName: 'cars',
-    text: '¿De cuántos autos dispone regularmente este hogar?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: '0', callback_data: 'cars:0' },
-        { text: '1', callback_data: 'cars:1' },
-        { text: '2 o más', callback_data: 'cars:2 o más' },
-      ],
-    ],
-  },
-  {
-    index: 11,
-    fieldName: 'domesticHelp',
-    text: '¿Este hogar cuenta actualmente con apoyo de servicio doméstico?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: 'Sí', callback_data: 'domesticHelp:true' },
-        { text: 'No', callback_data: 'domesticHelp:false' },
-      ],
-    ],
-  },
-  {
-    index: 12,
-    fieldName: 'householdSize',
-    text: '¿Cuántas personas residen habitualmente en este hogar? (Si son más de 6, escribe el número)',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: '1', callback_data: 'householdSize:1' },
-        { text: '2', callback_data: 'householdSize:2' },
-        { text: '3', callback_data: 'householdSize:3' },
-      ],
-      [
-        { text: '4', callback_data: 'householdSize:4' },
-        { text: '5', callback_data: 'householdSize:5' },
-        { text: '6', callback_data: 'householdSize:6' },
-      ],
-    ],
-  },
-  {
-    index: 13,
+    index: 0,
     fieldName: 'isPregnant',
     text: '¿Te encuentras actualmente embarazada?',
     inputType: 'button',
@@ -190,7 +130,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 14,
+    index: 0,
     fieldName: 'hasBabyUnder3',
     text: '¿Vive usted con un bebé menor de 3 años?',
     inputType: 'button',
@@ -201,26 +141,12 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
       ],
     ],
   },
+]
+
+/** Country-agnostic questions asked after every country's NSE block. */
+export const SHARED_SUFFIX: SurveyQuestion[] = [
   {
-    index: 15,
-    fieldName: 'bedrooms',
-    text: '¿Cuántas habitaciones destinadas exclusivamente para dormir tiene este hogar? (Si son más de 6, escribe el número)',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: '1', callback_data: 'bedrooms:1' },
-        { text: '2', callback_data: 'bedrooms:2' },
-        { text: '3', callback_data: 'bedrooms:3' },
-      ],
-      [
-        { text: '4', callback_data: 'bedrooms:4' },
-        { text: '5', callback_data: 'bedrooms:5' },
-        { text: '6', callback_data: 'bedrooms:6' },
-      ],
-    ],
-  },
-  {
-    index: 16,
+    index: 0,
     fieldName: 'shoppingFrequency',
     text: '¿Con qué frecuencia realizas las compras para el hogar?',
     inputType: 'button',
@@ -237,13 +163,13 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 17,
+    index: 0,
     fieldName: 'shoppingCategories',
     text: `🛍️ ¿Cuáles de estas categorías compras en una semana típica? Puedes elegir todas las que apliquen:\n\n${SHOPPING_CATEGORIES_TEXT}\n\n(Puedes responder indicando los números de las categorías directamente)`,
     inputType: 'free_text',
   },
   {
-    index: 18,
+    index: 0,
     fieldName: 'contactChannel',
     text: '¿Cómo te gustaría ser contactado/a por PanelSmart?',
     inputType: 'button',
@@ -255,7 +181,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    index: 19,
+    index: 0,
     fieldName: 'contactSchedule',
     text: '¿En qué horario del día puedes ser contactado/a?',
     inputType: 'button',
@@ -269,5 +195,7 @@ export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   },
 ]
 
-/** Single source of truth for the survey's total question count — never hardcode this. */
-export const SURVEY_QUESTION_COUNT = SURVEY_QUESTIONS.length
+// NOTE: the pre-014 fixed SURVEY_QUESTIONS / SURVEY_QUESTION_COUNT constants are gone.
+// Every caller now goes through `resolveSurveyQuestions(country)` / `surveyQuestionCount(country)`
+// in `./survey-plan` — for a CAM/RD country these are byte-identical to the old fixed
+// array (see tests/unit/country-config-registry.test.ts), so behavior is unchanged.
