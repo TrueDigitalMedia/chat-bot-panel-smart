@@ -58,7 +58,7 @@ function mergeMessages(
   )
 }
 
-export function ChatWindow() {
+export function ChatWindow({ roomSlug }: { roomSlug?: string } = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -106,7 +106,10 @@ export function ChatWindow() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/chat/web')
+      // The room slug is only sent on the bootstrap GET — it pre-scopes a brand-new
+      // conversation to that country (spec 016). Poll + POST are unchanged.
+      const url = roomSlug ? `/api/chat/web?room=${encodeURIComponent(roomSlug)}` : '/api/chat/web'
+      const res = await fetch(url)
       if (!res.ok) throw new Error('bootstrap_failed')
       const data = (await res.json()) as ChatResponse
       // Hydrate full history on every mount, including a reload mid-survey (US2) —

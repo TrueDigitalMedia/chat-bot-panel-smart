@@ -3,6 +3,7 @@
 exports[`CAM regression — golden master (pre/post 014 + 015) > C1 — full qualify, generic geo (Panamá) 1`] = `
 {
   "lead": {
+    "acquisitionSource": null,
     "channel": "telegram",
     "channelUserId": "999900001",
     "channelUsername": "regression",
@@ -316,6 +317,7 @@ Una vez descargada, recibirás tu código de registro.",
 exports[`CAM regression — golden master (pre/post 014 + 015) > C4 — decline T&C at D1 (Honduras) 1`] = `
 {
   "lead": {
+    "acquisitionSource": null,
     "channel": "telegram",
     "channelUserId": "999900004",
     "channelUsername": "regression",

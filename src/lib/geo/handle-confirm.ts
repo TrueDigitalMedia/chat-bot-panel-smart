@@ -6,7 +6,7 @@ import { askGeoConfirmation, isGeoConfirmCallback, parseGeoConfirmNo, parseGeoCo
 import type { GeoField } from '@/lib/geo/guatemala'
 import { questionIndexForField } from '@/lib/conversation/correction-fields'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
-import { resolveSurveyQuestions, surveyQuestionCount } from '@/lib/conversation/survey-plan'
+import { resolveSurveyQuestions, surveyQuestionCount, nextQuestionForCountry } from '@/lib/conversation/survey-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
 import { EXIT_B, EXIT_B_THANKS } from '@/lib/conversation/exit-messages'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
@@ -82,25 +82,10 @@ export async function persistSurveyFieldAndAdvance(
     return
   }
 
-  // Q5 (neighborhood) is hidden for countries that don't ask it (CAM — see
-  // getCountryConfig(country).geoHierarchy.neighborhoodLabel). Ecuador shows it.
-  // TODO(016): replace with the shared nextQuestionToSend helper — see send-survey-question.ts.
-  if (nextIdx === 5 && getCountryConfig(surveyCountry).geoHierarchy.neighborhoodLabel == null) {
-    await db
-      .update(surveyProfiles)
-      .set({ neighborhood: null })
-      .where(eq(surveyProfiles.leadId, lead.id))
-    const skipIdx = 6
-    await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-    await db
-      .update(flowStates)
-      .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
-      .where(eq(flowStates.leadId, lead.id))
-    await sendSurveyQuestion(to, skipIdx, lead.id)
-    return
-  }
-
-  if (nextIdx <= questionCount) {
+  // Any pre-answered / geo-not-asked skips (incl. CAM's hidden Q5 neighborhood) are
+  // resolved + persisted by sendSurveyQuestion via nextQuestionToSend (spec 016 T007).
+  const { index: realNextIdx } = nextQuestionForCountry(surveyCountry, nextIdx, { country: surveyCountry })
+  if (realNextIdx <= questionCount) {
     await sendSurveyQuestion(to, nextIdx, lead.id)
     return
   }
@@ -184,23 +169,16 @@ export async function handleGeoConfirmCallback(
 
   const noField = parseGeoConfirmNo(callbackData)
   if (noField) {
-    // Q5 (neighborhood) is hidden from every user — only reachable here via a
-    // natural-language correction request (correction.ts) for a Guatemala zone that
-    // fuzzy-matched, never via the normal survey flow. Rejecting the guess must not
-    // re-ask the question itself; just drop it back to null and move on.
+    // A rejected `neighborhood` guess (only reachable via a natural-language correction
+    // for a Guatemala zone that fuzzy-matched, never the normal flow): drop it to null
+    // and advance — sendSurveyQuestion(→ nextQuestionToSend) re-skips a hidden Q5.
     if (noField === 'neighborhood') {
       await db
         .update(surveyProfiles)
         .set({ neighborhood: null })
         .where(eq(surveyProfiles.leadId, lead.id))
-      const skipIdx = 6
-      await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await db
-        .update(flowStates)
-        .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
-        .where(eq(flowStates.leadId, lead.id))
       await sendText(lead, 'Entendido, seguimos.')
-      await sendSurveyQuestion(lead, skipIdx, lead.id)
+      await sendSurveyQuestion(lead, 5, lead.id)
       return true
     }
     await sendText(lead, 'Ok, escríbelo de nuevo por favor.')

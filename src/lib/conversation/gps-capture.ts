@@ -114,6 +114,15 @@ async function setGpsState(
 export async function needsGpsCapture(lead: Lead): Promise<boolean> {
   if (lead.d3IsShopper !== true) return false
   if (lead.surveyQuestionIndex < 2) return false
+  // A room lead (spec 016) has its country pre-set and enters geo manually — no GPS
+  // gate. (research R4; also keeps the gate from firing at Q2, which the room already
+  // answered.)
+  const [profile] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  if (profile?.country) return false
   const { gpsGateStatus } = await getGpsState(lead.id)
   if (gpsGateStatus === 'done' || gpsGateStatus === 'skipped_manual') return false
   return true

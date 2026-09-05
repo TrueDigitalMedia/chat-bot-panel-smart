@@ -7,7 +7,7 @@ import { extractField } from '@/lib/ai/extract-survey-fields'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
-import { resolveSurveyQuestions, surveyQuestionCount } from '../survey-plan'
+import { resolveSurveyQuestions, surveyQuestionCount, nextQuestionForCountry } from '../survey-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
@@ -603,32 +603,21 @@ export async function handlePhase1(
   const { resumeAfterCorrection } = await import('../correction')
   const finalIdx = await resumeAfterCorrection(lead.id, nextIdx)
 
-  // Enter GPS gate before manual country questions
-  if (finalIdx === 2) {
+  // Resolve any skips (a room-pre-answered `country`, or a geo question this country
+  // doesn't ask — spec 016 T007) once, up front, so the GPS-gate / survey-complete
+  // branches below see the real next index. sendSurveyQuestion re-resolves + persists.
+  const { index: realIdx } = nextQuestionForCountry(surveyCountry, finalIdx, { country: surveyCountry })
+
+  // Enter GPS gate before the manual country questions — but not for a room lead whose
+  // country is already pre-answered (realIdx has skipped past 2; needsGpsCapture also
+  // returns false once country is set — gps-capture.ts).
+  if (realIdx === 2) {
     const { requestGps } = await import('../gps-capture')
-    await requestGps({ ...lead, surveyQuestionIndex: finalIdx })
+    await requestGps({ ...lead, surveyQuestionIndex: realIdx })
     return
   }
 
-  // Q5 (neighborhood) is hidden for countries whose CountryConfig doesn't name it (CAM —
-  // neighborhoodLabel: null); Ecuador (parroquia) and México (colonia) DO ask it, so only
-  // skip when the config says to. Mirrors geo/handle-confirm.ts's identical guard.
-  if (finalIdx === 5 && getCountryConfig(surveyCountry).geoHierarchy.neighborhoodLabel == null) {
-    await db
-      .update(surveyProfiles)
-      .set({ neighborhood: null })
-      .where(eq(surveyProfiles.leadId, lead.id))
-    const skipIdx = 6
-    await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-    await db
-      .update(flowStates)
-      .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
-      .where(eq(flowStates.leadId, lead.id))
-    await sendSurveyQuestion(to, skipIdx, lead.id)
-    return
-  }
-
-  if (finalIdx <= questionCount) {
+  if (realIdx <= questionCount) {
     await sendSurveyQuestion(to, finalIdx, lead.id)
     return
   }

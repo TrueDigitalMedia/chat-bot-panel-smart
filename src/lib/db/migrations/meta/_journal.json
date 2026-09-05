@@ -99,6 +99,13 @@
       "when": 1788537709411,
       "tag": "0029_ecuador_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789000000000,
+      "tag": "0030_web_chat_rooms",
+      "breakpoints": true
     }
   ]
 }

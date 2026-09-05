@@ -121,6 +121,10 @@ export const leads = pgTable(
      *  transition with no changed survey/ficha-hogar field still gets synced instead of being
      *  silently dropped as "nothing pending". */
     panelSmartSyncedLeadStatus: leadStatusEnum('panel_smart_synced_lead_status'),
+    /** How a web lead entered — 'web:room:Ecuador' | 'web:room:México' | null (generic
+     *  /chat, or any non-web channel). Set once, at lead creation, by the room bootstrap
+     *  handler (spec 016); never re-scoped. */
+    acquisitionSource: varchar('acquisition_source', { length: 40 }),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )

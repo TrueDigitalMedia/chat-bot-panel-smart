@@ -4,6 +4,7 @@ import { upsertLead } from '@/lib/db/leads'
 import { handlePhase1 } from '@/lib/conversation/phases/phase-1'
 import { generateCorrelationId } from '@/lib/correlation'
 import { fetchAllMessages, fetchLeadStatus, processChatTurn, toDTO } from '@/lib/web/process-turn'
+import { applyRoomParam } from '@/lib/web/room-bootstrap'
 import type { Lead } from '@/types/lead'
 
 // Rate limiting: same in-memory pattern as src/app/api/webhooks/telegram/route.ts —
@@ -31,7 +32,7 @@ async function resolveLead(): Promise<Lead> {
 }
 
 /** Bootstrap: resolve/create the lead, trigger the opening message on first-ever visit, return full history. */
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const lead = await resolveLead()
 
   if (!checkRateLimit(lead.channelUserId)) {
@@ -39,6 +40,9 @@ export async function GET(): Promise<NextResponse> {
   }
 
   const existing = await fetchAllMessages(lead.id)
+
+  // Apply ?room= BEFORE handlePhase1, so the survey later sees the pre-answered country.
+  await applyRoomParam(lead.id, lead.channelUserId, request.nextUrl.searchParams.get('room'), existing.length)
 
   // Only trigger the opening message when this lead has never exchanged a message —
   // prevents re-sending the opt-in on every reload (spec 012 US2, T013).
