@@ -279,15 +279,27 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     })
   }
 
-  // Ecuador's raw NSE point total (survey_profiles.nse_points, migration 0029) — CAM
-  // leads already send their point total via `score` above; `lead.score` stays null for
-  // Ecuador (its NSE level uses a different points scale, see ecuador-nse.ts), so without
-  // this Ecuador's underlying score would never reach TDM at all (spec 014 T038).
+  // Non-CAM raw NSE point total (survey_profiles.nse_points, migration 0029). CAM leads
+  // already send their point total via `score` above; `lead.score` stays null for Ecuador
+  // and México (their NSE levels use different point scales), so without this the
+  // underlying score would never reach TDM at all (spec 014 T038 / spec 015 T031).
   if (hasValue(profile?.nsePoints)) {
     responses.push({
       codigo_pregunta: 'nse_points',
-      pregunta: 'Puntaje NSE (Ecuador)',
+      pregunta: 'Puntaje NSE',
       respuesta: String(profile!.nsePoints),
+    })
+  }
+
+  // México captures a Código Postal (survey_profiles.scoring_answers_json.codigoPostal) —
+  // not a scoring variable, but part of the address, so it belongs in the sync (spec 015
+  // T031). Null/absent for every other country.
+  const codigoPostal = (profile?.scoringAnswersJson as Record<string, unknown> | null)?.codigoPostal
+  if (hasValue(codigoPostal)) {
+    responses.push({
+      codigo_pregunta: 'codigo_postal',
+      pregunta: 'Código Postal',
+      respuesta: String(codigoPostal),
     })
   }
 

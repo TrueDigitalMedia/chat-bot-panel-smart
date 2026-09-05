@@ -82,7 +82,7 @@ sensitive-industry screener (incl. clothing & footwear), and the respondent-prof
 - [X] T014 [US1] Add the Mexico `codigoPostal` free-text step to `mexicoConfig.scoringQuestions` after Colonia ("¿Cuál es tu código postal?", validate 5 digits); persist to `scoring_answers_json.codigoPostal`; `computeNse` ignores it
 - [X] T015 [US1] **REMOVED (T003a Option A — defer roster to a separate feature).** ~~Per-member phone/email — gated on T003a.** If T003a chose **Option A (defer)**: this task is removed; add a line to `plan.md` and spec Assumptions confirming per-member contact data is deferred to a separate "México ficha del hogar" feature; **nothing else to do**. If T003a chose **Option B**: apply migration `0016_mexico_household_members.sql` (add `survey_profiles.household_members jsonb`) to the live Neon branch in the same change as the `schema.ts` edit; add the minimal roster step (name the other adults) + a per-member phone/email capture when `country === 'México'`; persist to `household_members`; include the array in the `panel-smart` / TDM sync payload. Third-party-data handling per T046 / FR-022 / FR-024
 - [X] T016 [P] [US1] Update `src/lib/ai/extract-survey-fields.ts` with Mexico answer-option hints for the 6 NSE variables + screening options + CP (allowlist-validated on capture)
-- [ ] T017 [P] [US1] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 1) — Q2=México → screening + Phase-1 household-profile prompts/options equal the México questionnaire; sensitive-industry (e.g. "zapatos") → `not_qualified`; CAM/Ecuador conversations in parallel unaffected. If T003a chose Option B, also assert the roster step captures per-member phone/email.
+- [X] T017 [P] [US1] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 1) — Q2=México → screening + Phase-1 household-profile prompts/options equal the México questionnaire; sensitive-industry (e.g. "zapatos") → `not_qualified`; CAM/Ecuador conversations in parallel unaffected. If T003a chose Option B, also assert the roster step captures per-member phone/email.
 
 **Checkpoint**: A México lead is recognized and interviewed with México content through the Phase-1 profile (and the minimal roster, if T003a chose Option B).
 
@@ -100,7 +100,7 @@ municipio, an off-catalog address) each resolve to the expected region or are fl
 - [X] T020 [US2] Route `src/lib/conversation/gps-capture.ts` + `src/lib/geo/handle-confirm.ts` region resolution through `getCountryConfig(country).resolveNseRegion(...)` for México (already generic after feature 014 T027 — verify, no new branch); set `in_quota_geo = nseRegion != null`
 - [X] T021 [US2] Emit the `geo_resolve` structured log for México (`lead_id, country, estado, municipio, codigo_postal, matched_region|null`)
 - [X] T022 [P] [US2] Unit test `tests/unit/mexico-nse-catalog.test.ts` — the vector table in `contracts/mexico-geo-catalog.md` plus an off-catalog address → `null`; assemble a ≥30-address fixture across AMCM/Centro/one other region toward SC-003
-- [ ] T023 [US2] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 2) — `Distrito Federal / Iztapalapa` → `nse_region = 'AMCM'`, `in_quota_geo = true`; off-catalog municipio → `in_quota_geo = false`, `nse_region = null`
+- [X] T023 [US2] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 2) — `Distrito Federal / Iztapalapa` → `nse_region = 'AMCM'`, `in_quota_geo = true`; off-catalog municipio → `in_quota_geo = false`, `nse_region = null`
 
 **Checkpoint**: Mexico geography produces a Kantar region (or a clean out-of-quota flag).
 
@@ -118,7 +118,7 @@ match the transcribed tables.
 - [X] T025 [US3] Set `mexicoConfig.computeNse` to adapt `computeMexicoNse` output to `NseResult` (already has `nseLevels` from T005)
 - [X] T026 [US3] Confirm the survey-completion block (refactored in feature 014 T013) writes, for México: 6 raw answers + `codigoPostal` to `survey_profiles.scoring_answers_json`, `nse_points` = total, `bedrooms` mirrored to its typed column, `quota_segment` = level, `score` = null; emit `nse_score` log with per-variable `contributions`
 - [X] T027 [P] [US3] Unit test `tests/unit/mexico-nse.test.ts` — the 10-row vector table in `contracts/mexico-nse-scoring.md` (workbook 105 → D+; each cutoff boundary 99/100, 140/141, 167/168, 201/202; all-missing → 0/"D/E") plus ≥20 constructed households toward SC-002
-- [ ] T028 [US3] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 3) — survey shows the 6 Mexico NSE questions (not CAM/Ecuador); at completion `leads.nse_points` set, `leads.quota_segment ∈ {AB,C+,C,D+,D/E}`, `leads.score` null; worked-example inputs → `nse_points = 105`, `quota_segment = 'D+'`
+- [X] T028 [US3] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 3) — survey shows the 6 Mexico NSE questions (not CAM/Ecuador); at completion `leads.nse_points` set, `leads.quota_segment ∈ {AB,C+,C,D+,D/E}`, `leads.score` null; worked-example inputs → `nse_points = 105`, `quota_segment = 'D+'`
 
 **Checkpoint**: Mexico leads carry an auditable NSE points total and a level.
 
@@ -133,10 +133,10 @@ sync tagged México.
 pregnancy-or-baby-exception leads end to end; verify decision, lead status, and the country tag +
 CP on the sync record.
 
-- [ ] T029 [P] [US4] Add a Mexico quota-config seed/fixture (`src/lib/db/seed/mexico-quota-example.ts` or a test fixture) with `quota_targets` rows (`country='México'`, nse ∈ {AB,C+,C,D+,D/E}, plus edad/integrantes) and `quota_region_caps` rows per Kantar region
-- [ ] T030 [US4] Add `tests/unit/quota-mexico.test.ts` covering `checkQuotaAvailability` for `country='México'`: NSE-dimension match, region-cap block, pregnancy/baby-under-36-months exception attribution (no engine code change expected)
-- [ ] T031 [US4] Ensure `panel-smart` / TDM sync snapshot includes `country`, `nse_region`, `nse_points`, NSE `level`, and `codigoPostal` for México leads (extend the synced-answers builder in `src/lib/panel-smart/` / `src/lib/tdm-registration/` if needed)
-- [ ] T032 [US4] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 4) — open target → `lead_status='link_sent'` + Phase 2 starts; cap reached → `quota_exhausted`; `has_baby_under_3=true` + cap reached → `link_sent`; accepted lead's sync record shows `country='México'` + region + level + CP
+- [X] T029 [P] [US4] Add a Mexico quota-config seed/fixture (`src/lib/db/seed/mexico-quota-example.ts` or a test fixture) with `quota_targets` rows (`country='México'`, nse ∈ {AB,C+,C,D+,D/E}, plus edad/integrantes) and `quota_region_caps` rows per Kantar region
+- [X] T030 [US4] Add `tests/unit/quota-mexico.test.ts` covering `checkQuotaAvailability` for `country='México'`: NSE-dimension match, region-cap block, pregnancy/baby-under-36-months exception attribution (no engine code change expected)
+- [X] T031 [US4] Ensure `panel-smart` / TDM sync snapshot includes `country`, `nse_region`, `nse_points`, NSE `level`, and `codigoPostal` for México leads (extend the synced-answers builder in `src/lib/panel-smart/` / `src/lib/tdm-registration/` if needed)
+- [X] T032 [US4] E2E test `tests/e2e/mexico-onboarding.spec.ts` (part 4) — open target → `lead_status='link_sent'` + Phase 2 starts; cap reached → `quota_exhausted`; `has_baby_under_3=true` + cap reached → `link_sent`; accepted lead's sync record shows `country='México'` + region + level + CP
 
 **Checkpoint**: Full Mexico funnel from message to registration works.
 
@@ -149,10 +149,10 @@ CP on the sync record.
 **Independent Test**: In `/admin/quotas` select México → Kantar regions + {AB,C+,C,D+,D/E} offered;
 create a target + cap; `/admin/leads` filters by México and its regions.
 
-- [ ] T033 [US5] Update `listCatalogCountries` / `listNseRegionsForCountry` (used by `src/app/admin/quotas/page.tsx`) to include México + its Kantar regions from `data/geo/mexico-nse-regions.json` (same code path extended in feature 014 T040)
-- [ ] T034 [US5] Confirm the admin NSE-dimension option list (sourced from `getCountryConfig(country).nseLevels` per feature 014 T041) shows AB / C+ / C / D+ / D/E for México in `new-quota-target-row.tsx` + `quota-filters-form.tsx`
-- [ ] T035 [P] [US5] Confirm `src/app/admin/leads` country + region filters render México (add to any hardcoded country list found)
-- [ ] T036 [P] [US5] E2E/integration test `tests/e2e/admin-mexico-quotas.spec.ts` — select México in the quota screen, region dropdown = Kantar regions, NSE = {AB,C+,C,D+,D/E}, create + persist a target and a region cap; leads filter by México
+- [X] T033 [US5] Update `listCatalogCountries` / `listNseRegionsForCountry` (used by `src/app/admin/quotas/page.tsx`) to include México + its Kantar regions from `data/geo/mexico-nse-regions.json` (same code path extended in feature 014 T040)
+- [X] T034 [US5] Confirm the admin NSE-dimension option list (sourced from `getCountryConfig(country).nseLevels` per feature 014 T041) shows AB / C+ / C / D+ / D/E for México in `new-quota-target-row.tsx` + `quota-filters-form.tsx`
+- [X] T035 [P] [US5] Confirm `src/app/admin/leads` country + region filters render México (add to any hardcoded country list found)
+- [X] T036 [P] [US5] E2E/integration test `tests/e2e/admin-mexico-quotas.spec.ts` — select México in the quota screen, region dropdown = Kantar regions, NSE = {AB,C+,C,D+,D/E}, create + persist a target and a region cap; leads filter by México
 
 **Checkpoint**: Research team can operate Mexico quotas unaided (SC-005).
 

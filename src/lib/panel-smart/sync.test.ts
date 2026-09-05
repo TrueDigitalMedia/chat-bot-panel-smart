@@ -348,7 +348,7 @@ describe('previewPanelSmartSync', () => {
 
     expect(preview.payload?.responses).toContainEqual({
       codigo_pregunta: 'nse_points',
-      pregunta: 'Puntaje NSE (Ecuador)',
+      pregunta: 'Puntaje NSE',
       respuesta: '58',
     })
     expect(preview.payload?.responses).toContainEqual({
@@ -369,5 +369,46 @@ describe('previewPanelSmartSync', () => {
     const preview = await previewPanelSmartSync('lead-1', { force: true })
 
     expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'nse_points')).toBe(false)
+  })
+
+  // Spec 015 T031 — a México lead's Código Postal (scoring_answers_json.codigoPostal)
+  // reaches TDM in the answers sync.
+  it('includes codigo_postal in the synced answers for a México lead', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(
+        selectChain([{ ...LEAD_ROW, score: null, quotaSegment: 'D+', panelSmartSyncedAnswersJson: { country: 'México' } }]),
+      )
+      .mockReturnValueOnce(
+        selectChain([
+          { ...PROFILE_ROW, country: 'México', nseRegion: 'AMCM', nsePoints: 105, scoringAnswersJson: { codigoPostal: '06700', educationHoh: 'Primaria completa' } },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'codigo_postal',
+      pregunta: 'Código Postal',
+      respuesta: '06700',
+    })
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'nse_points',
+      pregunta: 'Puntaje NSE',
+      respuesta: '105',
+    })
+  })
+
+  it('omits codigo_postal for a non-México lead (no codigoPostal in scoring_answers_json)', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([{ ...PROFILE_ROW, scoringAnswersJson: null }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'codigo_postal')).toBe(false)
   })
 })
