@@ -127,11 +127,11 @@ describe('importQuotaTargetsFromWorkbook — per-dimension layout (spec 011)', (
 
   it('reports an unrecognized country (sheet) in unmatched, without importing anything from it', async () => {
     const buf = buildWorkbook({
-      México: [...HONDURAS_HEADER_ROWS, ['', 'Norte / México', 0, 0, 0, 10, '', 0, 0, 0, 0, 0, 0]],
+      Brasil: [...HONDURAS_HEADER_ROWS, ['', 'Norte / Brasil', 0, 0, 0, 10, '', 0, 0, 0, 0, 0, 0]],
     })
     const result = await importQuotaTargetsFromWorkbook(buf)
     expect(result.imported).toBe(0)
-    expect(result.unmatched).toEqual([{ row: 'México', reason: 'country_not_recognized' }])
+    expect(result.unmatched).toEqual([{ row: 'Brasil', reason: 'country_not_recognized' }])
   })
 
   it('reports an unrecognized region in unmatched, without upserting anything for that row', async () => {

@@ -168,3 +168,49 @@ describe('getCountryConfig — Ecuador', () => {
     expect(CAM_COUNTRY_NAMES as readonly string[]).not.toContain('Ecuador')
   })
 })
+
+describe('getCountryConfig — México (spec 015)', () => {
+  it('resolves a distinct CountryConfig with the 5 AMAI NSE levels', () => {
+    const cfg = getCountryConfig('México')
+    expect(cfg.country).toBe('México')
+    expect(cfg.nseLevels).toEqual(['AB', 'C+', 'C', 'D+', 'D/E'])
+  })
+
+  it('has its own geoHierarchy — colonia is a real (non-hidden) Q5', () => {
+    expect(getCountryConfig('México').geoHierarchy).toEqual({
+      stateProvinceLabel: 'estado',
+      municipalityLabel: 'municipio o alcaldía',
+      neighborhoodLabel: 'colonia',
+    })
+  })
+
+  it('has a non-empty sensitive-industry screening question', () => {
+    expect(getCountryConfig('México').screeningIndustries.length).toBeGreaterThan(0)
+  })
+
+  it('validatePhone strips 52 / trailing-1 / leading-0 and returns E.164 +52XXXXXXXXXX', () => {
+    const cfg = getCountryConfig('México')
+    expect(cfg.validatePhone('+525512345678')).toEqual({ ok: true, normalized: '+525512345678' })
+    expect(cfg.validatePhone('5215512345678')).toEqual({ ok: true, normalized: '+525512345678' }) // old 1-prefix
+    expect(cfg.validatePhone('05512345678')).toEqual({ ok: true, normalized: '+525512345678' }) // single leading 0
+    expect(cfg.validatePhone('5512345678')).toEqual({ ok: true, normalized: '+525512345678' })
+    expect(cfg.validatePhone('12345').ok).toBe(false)
+  })
+
+  it('lists the Kantar regions from the catalog', () => {
+    const regions = getCountryConfig('México').listNseRegions()
+    expect(regions.length).toBeGreaterThan(0)
+    expect(regions).toContain('AMCM')
+  })
+
+  it('isSupportedCountry is true for México; getCountryConfig(unknown) still falls back to CAM', () => {
+    expect(isSupportedCountry('México')).toBe(true)
+    expect(getCountryConfig('Narnia').country).toBe('Guatemala')
+  })
+
+  it('registering México did not change the CAM or Ecuador resolved question lists', () => {
+    // Guard: CAM stays 19, Ecuador stays 25 (spec 015 T008 / SC-004)
+    expect(resolveSurveyQuestions('Guatemala').length).toBe(19)
+    expect(resolveSurveyQuestions('Ecuador').length).toBe(25)
+  })
+})

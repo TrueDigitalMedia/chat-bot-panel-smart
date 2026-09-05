@@ -165,11 +165,31 @@ See [research.md](./research.md). Open items resolved there:
 `.specify/scripts/bash/`; nothing to update. The "country config, not country branches" rule and the
 `src/lib/countries/` registry are already the standing convention from feature 014.
 
+### Household roster (T003a spike — DECIDED: Option A, defer)
+
+Confirmed against the codebase: `ficha_hogar_profiles` is a single respondent-only row (7 questions
+in `src/lib/conversation/ficha-hogar-questions.ts`, unique on `lead_id`); `survey_profiles` is also
+one row per lead. **No per-member data model exists today for any country.** The México questionnaire's
+§2.3.9–2.3.12 per-member capture (names of household individuals, and per adult member:
+relationship / sex / DOB / personal phone / personal email) is a full household roster — its own
+feature ("México ficha del hogar"), not part of the socioeconomic-survey onboarding this spec covers.
+
+**Decision (Option A): defer.** 015 captures respondent-level data only. FR-003's per-member clause is
+dropped for this feature. Consequences:
+
+- 015 stays **migration-free** (no `0016_mexico_household_members.sql`; reuses the `0029` columns).
+- **T015 is removed** — there is no roster step and no `household_members` store in 015.
+- **T046** (Phase 9) records "member contact data deferred to a separate feature; no third-party PII
+  collected in 015" and is otherwise a no-op.
+- The spec Assumptions already note Phase-4 "ficha del hogar" content is out of scope; this extends
+  that to the per-member roster and its contact data.
+
 ### Post-design Constitution re-check
 
 Unchanged — all five principles still PASS. Mexico introduces no new abstraction, no new country
 branch outside `getCountryConfig()`, reuses feature 014's observability, and leaves CAM/RD and Ecuador
-code paths untouched.
+code paths untouched. With Option A there is no third-party PII and no new LLM free-text field beyond
+street address + Código Postal (both allowlist/regex-validated on capture).
 
 ## Complexity Tracking
 

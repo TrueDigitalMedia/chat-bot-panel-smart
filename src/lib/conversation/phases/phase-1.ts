@@ -74,6 +74,7 @@ const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
  * are real columns shared across countries, so they're NOT in this set.
  */
 const NON_COLUMN_SCORING_FIELDS = new Set([
+  // Ecuador
   'healthInsurancePsh',
   'monthlyIncome',
   'dwellingFinishes',
@@ -82,6 +83,13 @@ const NON_COLUMN_SCORING_FIELDS = new Set([
   'occupationHead',
   'occupationAma',
   'internetAccess',
+  // México (bedrooms/householdSize/conflictOfInterest/isPregnant/hasBabyUnder3 are real
+  // columns; vehicleCount is shared with Ecuador above)
+  'educationHoh',
+  'fullBathrooms',
+  'homeInternet',
+  'workers14Plus',
+  'codigoPostal',
 ])
 
 /**
@@ -428,6 +436,9 @@ export async function handlePhase1(
         // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
         console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
         fieldValue = messageText.trim()
+      } else if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
+        // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
+        fieldValue = messageText.trim()
       } else {
         console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
         const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
@@ -599,9 +610,10 @@ export async function handlePhase1(
     return
   }
 
-  // Q5 (neighborhood) is hidden from every user — same "always null, skip to Q6" rule
-  // as the GPS path (gps-capture.ts's applyAllowlistAfterConfirm).
-  if (finalIdx === 5) {
+  // Q5 (neighborhood) is hidden for countries whose CountryConfig doesn't name it (CAM —
+  // neighborhoodLabel: null); Ecuador (parroquia) and México (colonia) DO ask it, so only
+  // skip when the config says to. Mirrors geo/handle-confirm.ts's identical guard.
+  if (finalIdx === 5 && getCountryConfig(surveyCountry).geoHierarchy.neighborhoodLabel == null) {
     await db
       .update(surveyProfiles)
       .set({ neighborhood: null })

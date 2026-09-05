@@ -61,6 +61,7 @@ export const SHARED_PREFIX: SurveyQuestion[] = [
         { text: 'Panamá', callback_data: 'country:Panamá' },
         { text: 'Ecuador', callback_data: 'country:Ecuador' },
       ],
+      [{ text: 'México', callback_data: 'country:México' }],
     ],
   },
   {

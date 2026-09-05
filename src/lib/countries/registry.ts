@@ -5,6 +5,7 @@
  */
 import { makeCamConfig } from './cam'
 import { ecuadorConfig } from './ecuador'
+import { mexicoConfig } from './mexico'
 import { normalizeGeoKey } from '@/lib/geo/cam-nse-catalog'
 import type { CountryConfig } from './types'
 
@@ -33,13 +34,14 @@ const defaultCamConfig = makeCamConfig('Guatemala')
 export function getCountryConfig(country: string | null | undefined): CountryConfig {
   if (!country) return defaultCamConfig
   if (country === 'Ecuador') return ecuadorConfig
+  if (country === 'México') return mexicoConfig
   return camConfigs.get(country) ?? defaultCamConfig
 }
 
 /** True when `country` resolves to a real (non-fallback) CountryConfig. */
 export function isSupportedCountry(country: string | null | undefined): boolean {
   if (!country) return false
-  return country === 'Ecuador' || camConfigs.has(country)
+  return country === 'Ecuador' || country === 'México' || camConfigs.has(country)
 }
 
 /**
@@ -48,7 +50,7 @@ export function isSupportedCountry(country: string | null | undefined): boolean 
  * dropdowns) without itself branching on country names (Principle V).
  */
 export function listSupportedCountries(): string[] {
-  return [...CAM_COUNTRY_NAMES, 'Ecuador']
+  return [...CAM_COUNTRY_NAMES, 'Ecuador', 'México']
 }
 
 /** Every valid `nse_region` for `country`, via that country's own CountryConfig. */

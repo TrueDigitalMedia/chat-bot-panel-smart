@@ -331,6 +331,7 @@ async function applyAllowlistAfterConfirm(
       // GPS path never captures a parroquia (proposal is department/municipality only),
       // so Guayaquil/Quito GPS hits resolve via the cantón-only fallback — logged as null.
       neighborhood: null,
+      codigo_postal: null,
       matched_region: nseRegion,
     }),
   )
@@ -381,10 +382,11 @@ export async function applyManualMunicipalityAllowlist(
   },
 ): Promise<{ nseRegion: string | null }> {
   const [manualProfile] = await db
-    .select({ neighborhood: surveyProfiles.neighborhood })
+    .select({ neighborhood: surveyProfiles.neighborhood, scoringAnswersJson: surveyProfiles.scoringAnswersJson })
     .from(surveyProfiles)
     .where(eq(surveyProfiles.leadId, lead.id))
     .limit(1)
+  const codigoPostal = (manualProfile?.scoringAnswersJson as Record<string, unknown> | null)?.codigoPostal ?? null
   const nseRegion = getCountryConfig(opts.country).resolveNseRegion({
     stateProvince: opts.stateProvince,
     municipality: opts.municipality,
@@ -401,6 +403,8 @@ export async function applyManualMunicipalityAllowlist(
       // Ecuador's Q5 (parroquia) is a real answer that can change the resolved region
       // (Guayaquil/Quito split); null for CAM, where Q5 is hidden.
       neighborhood: manualProfile?.neighborhood ?? null,
+      // México captures a Código Postal (geo fallback — spec 015 T021); null elsewhere.
+      codigo_postal: codigoPostal,
       matched_region: nseRegion,
     }),
   )

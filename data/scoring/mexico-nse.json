@@ -1,0 +1,31 @@
+{
+  "version": "docs/mexico/Muestra Regiones NSE Mexico.xlsx",
+  "variables": {
+    "educationHoh": {
+      "Sin instrucción escolar": 0,
+      "Alfabetizado sin escuela formal": 0,
+      "Primaria incompleta": 6,
+      "Primaria completa": 11,
+      "Secundaria incompleta": 12,
+      "Secundaria completa": 18,
+      "Prepa/Bachillerato/Carrera incompleta": 23,
+      "Prepa/Bachillerato/Carrera completa": 27,
+      "Licenciatura incompleta": 36,
+      "Licenciatura completa": 59,
+      "Posgrado incompleto": 85,
+      "Posgrado completo": 85
+    },
+    "fullBathrooms": { "0": 0, "1": 24, "2 o más": 47 },
+    "vehicleCount": { "0": 0, "1": 22, "2 o más": 43 },
+    "homeInternet": { "No tiene": 0, "Sí tiene": 32 },
+    "workers14Plus": { "0": 0, "1": 15, "2": 31, "3": 46, "4 o más": 61 },
+    "bedrooms": { "0": 0, "1": 8, "2": 16, "3": 24, "4 o más": 32 }
+  },
+  "levelCutoffs": [
+    { "maxPoints": 99, "level": "D/E" },
+    { "maxPoints": 140, "level": "D+" },
+    { "maxPoints": 167, "level": "C" },
+    { "maxPoints": 201, "level": "C+" },
+    { "maxPoints": 9999, "level": "AB" }
+  ]
+}

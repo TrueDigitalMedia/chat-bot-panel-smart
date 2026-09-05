@@ -66,6 +66,37 @@ describe('resolveSurveyQuestions / surveyQuestionCount — Ecuador', () => {
   })
 })
 
+describe('resolveSurveyQuestions / surveyQuestionCount — México (spec 015)', () => {
+  const questions = resolveSurveyQuestions('México')
+
+  it('resolves prefix (8) + México scoring block (11) + suffix (4) = 23', () => {
+    expect(questions.length).toBe(23)
+    expect(surveyQuestionCount('México')).toBe(23)
+  })
+
+  it('places the 11 México-specific scoring fields between prefix and suffix, in spec order', () => {
+    expect(questions.slice(8, 19).map((q) => q.fieldName)).toEqual([
+      'conflictOfInterest',
+      'educationHoh',
+      'fullBathrooms',
+      'vehicleCount',
+      'homeInternet',
+      'workers14Plus',
+      'bedrooms',
+      'householdSize',
+      'isPregnant',
+      'hasBabyUnder3',
+      'codigoPostal',
+    ])
+  })
+
+  it('shares the prefix and suffix with CAM; colonia (Q5) is a real field like Ecuador', () => {
+    const camPrefix = resolveSurveyQuestions('Guatemala').slice(0, 8).map((q) => q.fieldName)
+    expect(questions.slice(0, 8).map((q) => q.fieldName)).toEqual(camPrefix)
+    expect(questions[4].fieldName).toBe('neighborhood')
+  })
+})
+
 describe('resolveSurveyQuestions — cross-country isolation', () => {
   it('Ecuador and CAM question counts differ, and neither list contains the other’s exclusive fields', () => {
     const ecuador = resolveSurveyQuestions('Ecuador').map((q) => q.fieldName)
@@ -76,5 +107,17 @@ describe('resolveSurveyQuestions — cross-country isolation', () => {
     expect(ecuador).not.toContain('cars')
     expect(ecuador).not.toContain('domesticHelp')
     expect(ecuador).not.toContain('bedrooms')
+  })
+
+  it('México shares no exclusive scoring field with Ecuador, and CAM has none of México’s', () => {
+    const mexico = resolveSurveyQuestions('México').map((q) => q.fieldName)
+    const ecuador = resolveSurveyQuestions('Ecuador').map((q) => q.fieldName)
+    const cam = resolveSurveyQuestions('Honduras').map((q) => q.fieldName)
+    expect(mexico).toContain('educationHoh')
+    expect(ecuador).not.toContain('educationHoh')
+    expect(cam).not.toContain('educationHoh')
+    expect(cam).not.toContain('codigoPostal')
+    expect(mexico).not.toContain('healthInsurancePsh') // Ecuador-only
+    expect(mexico).not.toContain('cars') // CAM-only
   })
 })

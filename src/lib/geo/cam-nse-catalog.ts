@@ -44,6 +44,9 @@ export function canonicalCountry(raw: string): string | null {
     rd: 'Rep. Dominicana',
     ecuador: 'Ecuador',
     ec: 'Ecuador',
+    mexico: 'México',
+    mx: 'México',
+    'estados unidos mexicanos': 'México',
   }
   // Exact survey names
   for (const name of Object.keys(catalog.countries)) {
