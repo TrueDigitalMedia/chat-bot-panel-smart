@@ -17,6 +17,7 @@ Constitution v1.2.0 **Principle V — Country-Scoped Recruitment Configuration**
 | `registry.ts` | `getCountryConfig()` — the sole country-name switch. Also `isSupportedCountry()`, `listSupportedCountries()`, `listNseRegionsForSupportedCountry()`, `canonicalNseRegionForSupportedCountry()` for admin tooling that needs to enumerate/canonicalize across every country. |
 | `cam.ts` | `makeCamConfig(country)` — a factory returning one `CountryConfig` for any of the 7 CAM/RD markets (Guatemala, Honduras, El Salvador, Nicaragua, Costa Rica, Rep. Dominicana, Panamá). Wraps the pre-existing SCL-CAM scoring / geo / question code **unchanged**. |
 | `ecuador.ts` | `ecuadorConfig` — Ecuador's questionnaire block, 8-variable NSE scoring, geo hierarchy, phone rule, and conflict-of-interest screening. |
+| `mexico.ts` | `mexicoConfig` — México's AMAI-style 6-variable NSE instrument (`educationHoh`, `fullBathrooms`, `vehicleCount`, `homeInternet`, `workers14Plus`, `bedrooms`; 5-band level AB/C+/C/D+/D/E), the 12 Kantar regions (`estado \| municipio` lookup, `mexico-nse-catalog.ts`), a Código-Postal step (geo fallback, not scored), the broadened conflict-of-interest list (adds ropa/zapatos), and the 52/1-prefix/0 phone rule. The per-household-member roster (questionnaire §2.3.9–2.3.12) is deferred — see `specs/015-mexico-onboarding/plan.md` "Household roster". |
 
 ## `CountryConfig` surface
 

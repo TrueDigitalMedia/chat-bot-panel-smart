@@ -1,12 +1,11 @@
 # Quickstart: Validating Mexico Onboarding
 
-Prerequisites: repo installed (`npm install`), `.env` with a Neon dev branch, **feature 014's
-migration `0015` applied** (Mexico adds no migration of its own — see research R0).
+Prerequisites: repo installed (`npm install`), `.env` with a Neon dev branch, **feature 014's migration `0029_ecuador_onboarding.sql` applied** (México adds no migration of its own — see research R0).
 
 ## 1. Schema check (no migration)
 
 ```bash
-npm run db:check              # drizzle: schema.ts matches DB; scoring_answers_json + nse_points present
+npm run db:generate           # drizzle-kit: no new migration => schema.ts matches DB (conflict_of_interest / scoring_answers_json / nse_points present)
 ```
 
 ## 2. Unit tests
@@ -24,8 +23,9 @@ scores are unchanged after adding México.
 ## 3. CAM + Ecuador regression (zero-diff gate — SC-004, FR-016)
 
 ```bash
-npx vitest run                       # full unit suite
-npx playwright test tests/e2e        # existing CAM + Ecuador E2E flows
+npx vitest run                       # full unit suite (currently 631 tests)
+npm run test:regression              # CAM golden-master (needs POSTGRES_URL); asserts the only snapshot diff is the new "country:México" picker button
+npx playwright test tests/e2e        # existing CAM + Ecuador E2E flows (dev server on :3000)
 ```
 
 Expected: no failures, no snapshot diffs in any CAM or Ecuador questionnaire / scoring / quota test.
@@ -33,10 +33,16 @@ Expected: no failures, no snapshot diffs in any CAM or Ecuador questionnaire / s
 ## 4. Mexico happy path (E2E)
 
 ```bash
+npm run db:seed:mexico-quota-example   # open quota_targets + caps for all 12 Kantar regions
+npx next dev -p 3000                    # separate terminal
 npx playwright test tests/e2e/mexico-onboarding.spec.ts
 ```
 
-Scenario asserted:
+Parts 1–4 drive the México conversation through the live Telegram webhook and assert every turn is
+accepted without an unhandled crash. The downstream decision values below are asserted in the unit
+suites (`mexico-nse*.test.ts`, `quota-mexico.test.ts`), **not** through the live webhook — its
+outbound Telegram sends 400 ("chat not found") for a synthetic chat id and abort each turn before the
+decision runs (same structural limit as every e2e spec here):
 1. Lead starts, answers Q2 country = **México**.
 2. Geo questions use "estado / municipio o alcaldía / colonia" wording plus a "código postal" step;
    answers `Distrito Federal / Iztapalapa` resolve to `nse_region = "AMCM"`, `in_quota_geo = true`.
@@ -58,7 +64,8 @@ npm run dev
 #   → region dropdown lists the Kantar regions from mexico-nse-regions.json
 #   → NSE dimension offers AB / C+ / C / D+ / D/E
 #   create a target + a region cap, confirm persistence
-# /admin/leads → filter country = México → only México leads; region filter = México regions
+# /admin/dashboard → filter country = México → region filter offers the México regions
+#   (covered by tests/e2e/admin-mexico-quotas.spec.ts — needs a dev server on :3000 + ADMIN_PASSWORD)
 ```
 
 ## 6. Observability checks (Principle II)
@@ -70,10 +77,13 @@ grep '"event":"quota_check"'  dev.log | jq 'select(.country=="México")'
 ```
 
 Expected: `nse_score` shows `points`, `level`, per-variable `contributions`; `geo_resolve` shows
-estado/municipio/CP and `matched_region`; `quota_check` shows the matched dimension.
+`state_province` / `municipality` / `codigo_postal` and `matched_region`; `quota_check` shows the matched dimension.
 
 ## 7. Downstream sync
 
 Confirm the accepted México lead's Panel Smart / TDM synced-answers snapshot carries
-`country = "México"`, `nse_region`, the NSE `level`, and `codigoPostal` (SC-006). If the Mexico roster
-flow was in scope, confirm per-member `personalPhone` / `personalEmail` are included.
+`country = "México"` (generic survey-field diff), `nse_region`, `nse_points` (`codigo_pregunta:
+'nse_points'`), the NSE `level` (`quota_segment`), and `codigo_postal` (SC-006); the
+registration-code request carries `pais_codigo: 'MX'`. Asserted in `src/lib/panel-smart/sync.test.ts`
+and `src/lib/tdm-registration/build-request.test.ts`. (The per-member roster is deferred — T003a
+Option A — so there is no per-member contact data in 015.)

@@ -110,9 +110,9 @@ describe('buildRegistrationCodeRequest', () => {
   })
 
   it('sets pais_codigo: null for an unrecognized country without throwing', () => {
-    const payload = buildRegistrationCodeRequest(baseLead(), baseProfile({ country: 'México' }))
+    const payload = buildRegistrationCodeRequest(baseLead(), baseProfile({ country: 'Brasil' }))
     expect(payload.pais_codigo).toBeNull()
-    expect(payload.pais_residencia).toBe('México')
+    expect(payload.pais_residencia).toBe('Brasil')
   })
 
   // Spec 014 T038 — an Ecuador lead's registration request must carry a real pais_codigo,
@@ -125,5 +125,14 @@ describe('buildRegistrationCodeRequest', () => {
     expect(payload.pais_codigo).toBe('EC')
     expect(payload.pais_residencia).toBe('Ecuador')
     expect(payload.region).toBe('Cuenca')
+  })
+
+  it('maps México to pais_codigo "MX" (spec 015)', () => {
+    const payload = buildRegistrationCodeRequest(
+      baseLead({ quotaSegment: 'D+', score: null }),
+      baseProfile({ country: 'México', nseRegion: 'AMCM', nsePoints: 105 }),
+    )
+    expect(payload.pais_codigo).toBe('MX')
+    expect(payload.pais_residencia).toBe('México')
   })
 })

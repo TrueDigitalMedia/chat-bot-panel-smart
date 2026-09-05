@@ -15,7 +15,7 @@ describe('countryCodeFor', () => {
   it('returns null and warns for an unrecognized name, without throwing', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(countryCodeFor('República Dominicana')).toBeNull()
-    expect(countryCodeFor('México')).toBeNull()
+    expect(countryCodeFor('Brasil')).toBeNull()
     expect(warnSpy).toHaveBeenCalledTimes(2)
     warnSpy.mockRestore()
   })

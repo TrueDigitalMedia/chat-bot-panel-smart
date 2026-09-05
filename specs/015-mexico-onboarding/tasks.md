@@ -160,11 +160,11 @@ create a target + cap; `/admin/leads` filters by México and its regions.
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T037 [P] Update `specs/015-mexico-onboarding/quickstart.md` commands if any script names differ from the repo
-- [ ] T038 [P] Run `npx vitest run` + `npx playwright test` + `npm run test:regression` full suites; confirm SC-004 zero-diff (unit + CAM golden-master snapshots, CAM + Ecuador) and all new Mexico tests green
-- [ ] T039 [P] Add a Mexico row to `docs/countries.md` (created in feature 014 T046) — AMAI 6-variable instrument, Kantar regions, "México" canonical name
-- [ ] T040 Verify the `nse_score` / `geo_resolve` / `quota_check` logs for a México run against `quickstart.md` §6 (Principle II gate)
-- [ ] T041 Self-review against constitution v1.2.0 Constitution Check in `plan.md` — confirm Mexico added zero country-name branches outside `getCountryConfig`
+- [X] T037 [P] Update `specs/015-mexico-onboarding/quickstart.md` commands if any script names differ from the repo
+- [X] T038 [P] Run `npx vitest run` + `npx playwright test` + `npm run test:regression` full suites; confirm SC-004 zero-diff (unit + CAM golden-master snapshots, CAM + Ecuador) and all new Mexico tests green
+- [X] T039 [P] Add a Mexico row to `docs/countries.md` (created in feature 014 T046) — AMAI 6-variable instrument, Kantar regions, "México" canonical name
+- [X] T040 Verify the `nse_score` / `geo_resolve` / `quota_check` logs for a México run against `quickstart.md` §6 (Principle II gate)
+- [X] T041 Self-review against constitution v1.2.0 Constitution Check in `plan.md` — confirm Mexico added zero country-name branches outside `getCountryConfig`
 
 ---
 
