@@ -12,6 +12,7 @@ const COUNTRY_CODES: Record<string, string> = {
   'Costa Rica': 'CR',
   'Rep. Dominicana': 'DO',
   Panamá: 'PA',
+  Ecuador: 'EC',
 }
 
 /** Returns null (never throws) for an unrecognized name — logged so it's never silent. */

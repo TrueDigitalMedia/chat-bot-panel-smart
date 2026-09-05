@@ -279,6 +279,18 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     })
   }
 
+  // Ecuador's raw NSE point total (survey_profiles.nse_points, migration 0029) — CAM
+  // leads already send their point total via `score` above; `lead.score` stays null for
+  // Ecuador (its NSE level uses a different points scale, see ecuador-nse.ts), so without
+  // this Ecuador's underlying score would never reach TDM at all (spec 014 T038).
+  if (hasValue(profile?.nsePoints)) {
+    responses.push({
+      codigo_pregunta: 'nse_points',
+      pregunta: 'Puntaje NSE (Ecuador)',
+      respuesta: String(profile!.nsePoints),
+    })
+  }
+
   return { status: 'ok', lead, pending, payload: { lead_id: leadId, responses } }
 }
 

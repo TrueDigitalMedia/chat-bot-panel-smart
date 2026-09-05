@@ -324,4 +324,50 @@ describe('previewPanelSmartSync', () => {
 
     expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'nse_region')).toBe(false)
   })
+
+  // Spec 014 T038 — an Ecuador lead's NSE point total (survey_profiles.nse_points) must
+  // reach TDM; `score`/`quota_segment` alone aren't enough since Ecuador leads never get
+  // a `leads.score` (that column stays the SCL-CAM point scale — see phase-1.ts).
+  it('includes nse_points in the synced answers for an Ecuador lead', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...LEAD_ROW,
+            score: null,
+            quotaSegment: 'C',
+            panelSmartSyncedAnswersJson: { fullName: 'Ana López', country: 'Ecuador' },
+          },
+        ]),
+      )
+      .mockReturnValueOnce(selectChain([{ ...PROFILE_ROW, country: 'Ecuador', nseRegion: 'Cuenca', nsePoints: 58 }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'nse_points',
+      pregunta: 'Puntaje NSE (Ecuador)',
+      respuesta: '58',
+    })
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'quota_segment',
+      pregunta: 'Segmento de Cupo (NSE)',
+      respuesta: 'C',
+    })
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'score')).toBe(false)
+  })
+
+  it('omits nse_points when the lead has no NSE points recorded (e.g. a CAM lead)', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([{ ...PROFILE_ROW, nsePoints: null }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'nse_points')).toBe(false)
+  })
 })

@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:seed:faqs": "tsx --env-file=.env src/lib/db/seed/faqs.ts",
     "db:seed:evals": "tsx --env-file=.env src/lib/db/seed/eval-fixtures.ts",
+    "db:seed:ecuador-quota-example": "tsx --env-file=.env src/lib/db/seed/ecuador-quota-example.ts",
     "eval:backfill": "tsx --env-file=.env src/lib/eval/run-backfill.ts"
   },
   "dependencies": {

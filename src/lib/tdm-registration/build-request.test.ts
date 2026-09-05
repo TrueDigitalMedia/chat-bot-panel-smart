@@ -63,6 +63,9 @@ function baseProfile(overrides: Partial<SurveyProfile> = {}): SurveyProfile {
     age: 33,
     isPregnant: false,
     hasBabyUnder3: false,
+    conflictOfInterest: null,
+    scoringAnswersJson: null,
+    nsePoints: null,
     ...overrides,
   }
 }
@@ -110,5 +113,17 @@ describe('buildRegistrationCodeRequest', () => {
     const payload = buildRegistrationCodeRequest(baseLead(), baseProfile({ country: 'México' }))
     expect(payload.pais_codigo).toBeNull()
     expect(payload.pais_residencia).toBe('México')
+  })
+
+  // Spec 014 T038 — an Ecuador lead's registration request must carry a real pais_codigo,
+  // not the null a missing COUNTRY_CODES entry would silently produce.
+  it('maps Ecuador to pais_codigo "EC"', () => {
+    const payload = buildRegistrationCodeRequest(
+      baseLead({ quotaSegment: 'C', score: null }),
+      baseProfile({ country: 'Ecuador', nseRegion: 'Cuenca', nsePoints: 58 }),
+    )
+    expect(payload.pais_codigo).toBe('EC')
+    expect(payload.pais_residencia).toBe('Ecuador')
+    expect(payload.region).toBe('Cuenca')
   })
 })
