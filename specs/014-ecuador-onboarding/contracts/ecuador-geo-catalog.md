@@ -72,5 +72,9 @@ export function lookupEcuadorNseRegion(
 
 ## Phone
 
-`getCountryConfig("Ecuador").validatePhone`: strip non-digits; drop leading `593` or a single leading
-`0`; require exactly 10 digits (3 area + 7 local); `normalized` = the 10-digit string.
+`getCountryConfig("Ecuador").validatePhone`: strip non-digits; drop a leading `593` and/or a single
+leading `0`; require exactly 9 national digits (2-digit area/carrier + 7-digit local — a `09XXXXXXXX`
+mobile or `0X XXXXXXX` landline lands here as 9 after the `0` is stripped). `normalized` is E.164
+`+593XXXXXXXXX`, matching `leads.phoneNumber`'s stored shape everywhere else (and the CAM config's own
+`validatePhone`, which likewise returns `+<digits>`). Applied post-country-selection in `phase-1.ts`
+via `getCountryConfig(country).validatePhone` — see T021/T048.

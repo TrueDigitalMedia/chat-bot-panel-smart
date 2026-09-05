@@ -144,7 +144,12 @@ function camComputeNse(answers: Record<string, unknown>): NseResult {
 
 function camValidatePhone(raw: string): { ok: boolean; normalized: string | null } {
   const digits = raw.replace(/\D/g, '')
-  return digits.length >= 8 ? { ok: true, normalized: digits } : { ok: false, normalized: null }
+  if (digits.length < 8) return { ok: false, normalized: null }
+  // Mirror normalizePhone (@/lib/phone): keep E.164 "+" form when a country code is
+  // present, so a phone re-validated through this config keeps the exact shape it had
+  // when phone-capture.ts first stored it (regression-guarded — see tests/regression).
+  const normalized = raw.trim().startsWith('+') || digits.length >= 10 ? `+${digits}` : digits
+  return { ok: true, normalized }
 }
 
 /** No Phase-1 sensitive-industry screening exists for CAM today — unchanged. */

@@ -233,11 +233,12 @@ function ecuadorValidatePhone(raw: string): { ok: boolean; normalized: string | 
   let digits = raw.replace(/\D/g, '')
   if (digits.startsWith('593')) digits = digits.slice(3)
   if (digits.startsWith('0')) digits = digits.slice(1)
-  // A stripped leading '0' can leave 9 digits for a correctly-formatted 10-digit input
-  // (e.g. "0987654321" -> "987654321"); accept both the 10-digit and 9-after-strip cases,
-  // normalizing to 10 digits with the conventional leading 0 restored for the 9-digit case.
-  if (digits.length === 9) digits = `0${digits}`
-  return digits.length === 10 ? { ok: true, normalized: digits } : { ok: false, normalized: null }
+  // After stripping the 593 country code and/or a single leading 0, a valid Ecuador
+  // number is exactly 9 digits (2-digit area/carrier + 7-digit local); a 10-digit input
+  // that still has its leading 0 lands here as 9 too. Anything else is invalid.
+  if (digits.length !== 9) return { ok: false, normalized: null }
+  // Return E.164, matching leads.phoneNumber's stored shape everywhere else (+<digits>).
+  return { ok: true, normalized: `+593${digits}` }
 }
 
 export const ecuadorConfig: CountryConfig = {

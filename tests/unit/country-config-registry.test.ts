@@ -112,6 +112,14 @@ describe('getCountryConfig — CAM/RD countries', () => {
     }
   })
 
+  it('camConfig.validatePhone keeps an already-E.164 number byte-identical (so phase-1 re-validation never rewrites it)', () => {
+    const cfg = getCountryConfig('Panamá')
+    expect(cfg.validatePhone('+50761234567')).toEqual({ ok: true, normalized: '+50761234567' })
+    // adds the "+" for a bare international-length number, like normalizePhone
+    expect(cfg.validatePhone('50761234567')).toEqual({ ok: true, normalized: '+50761234567' })
+    expect(cfg.validatePhone('123').ok).toBe(false)
+  })
+
   it('isSupportedCountry is true for every CAM/RD name and Ecuador, false otherwise', () => {
     for (const name of CAM_COUNTRY_NAMES) {
       expect(isSupportedCountry(name)).toBe(true)
@@ -142,6 +150,18 @@ describe('getCountryConfig — Ecuador', () => {
   it('has a non-empty sensitive-industry screening question (unlike every CAM/RD country)', () => {
     const cfg = getCountryConfig('Ecuador')
     expect(cfg.screeningIndustries.length).toBeGreaterThan(0)
+  })
+
+  it('validatePhone strips 593/leading-0 and returns E.164 +593XXXXXXXXX', () => {
+    const cfg = getCountryConfig('Ecuador')
+    expect(cfg.validatePhone('+593987654321')).toEqual({ ok: true, normalized: '+593987654321' })
+    expect(cfg.validatePhone('0987654321')).toEqual({ ok: true, normalized: '+593987654321' })
+    expect(cfg.validatePhone('987654321')).toEqual({ ok: true, normalized: '+593987654321' })
+    expect(cfg.validatePhone('12345').ok).toBe(false)
+  })
+
+  it('lists exactly the 12 known Ecuador NSE regions', () => {
+    expect(getCountryConfig('Ecuador').listNseRegions().length).toBe(12)
   })
 
   it('is not present in the CAM/RD name list (no country-name collision)', () => {

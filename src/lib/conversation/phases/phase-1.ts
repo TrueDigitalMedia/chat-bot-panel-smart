@@ -9,7 +9,6 @@ import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
 import { resolveSurveyQuestions, surveyQuestionCount } from '../survey-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
-import { ecuadorConfig } from '@/lib/countries/ecuador'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
 import {
   validateGuatemalaGeoField,
@@ -512,27 +511,28 @@ export async function handlePhase1(
   }
 
   // T021: phone capture (phone-capture.ts) runs before country is known, so it can only
-  // apply the generic CAM-shaped validator (normalizePhone). Once country is answered
-  // as Ecuador, re-validate/re-normalize the already-captured phone through
-  // ecuadorConfig.validatePhone — strips a 593/leading-0 prefix and requires exactly 10
-  // digits. CAM/RD countries are intentionally excluded: their phoneNumber is already in
-  // normalizePhone's E.164 form, and camValidatePhone (a plain digit-strip with no `+`)
-  // would silently regress it — see tests/regression (C1's phoneNumber diff caught this
-  // exact mistake in an earlier version of this block). Only rewrites on a successful
-  // re-normalization; an Ecuador-invalid number is left as originally captured rather
-  // than blocking a lead that's already well into the survey (no re-ask flow exists here).
-  if (question.fieldName === 'country' && fieldValue === 'Ecuador' && lead.phoneNumber) {
-    const revalidated = ecuadorConfig.validatePhone(lead.phoneNumber)
-    if (revalidated.ok && revalidated.normalized) {
-      // Ecuador's validator returns 10 local digits (leading 0 restored, e.g.
-      // "0987654321") — re-attach the country code so leads.phoneNumber stays E.164,
-      // matching normalizePhone's own output format used everywhere else downstream.
-      const e164 = `+593${revalidated.normalized.replace(/^0/, '')}`
-      if (e164 !== lead.phoneNumber) {
-        await db.update(leads).set({ phoneNumber: e164, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      }
-    } else {
-      console.warn('[phase-1] phone failed Ecuador-specific re-validation', { leadId: lead.id })
+  // apply the generic normalizePhone. Once country is answered, re-validate the
+  // already-captured phone through that country's own CountryConfig.validatePhone (e.g.
+  // Ecuador strips a 593/leading-0 prefix and requires a 9-digit national number) and
+  // rewrite only if it produces a different E.164 string. Every config's validatePhone
+  // returns normalizePhone-compatible "+<digits>" output, so a CAM lead whose phone is
+  // already correct re-validates to the same value and nothing is rewritten
+  // (regression-guarded — see tests/regression). Principle V: no country-name branch —
+  // this goes through the config like every other per-country behavior.
+  if (question.fieldName === 'country' && typeof fieldValue === 'string' && lead.phoneNumber) {
+    const revalidated = getCountryConfig(fieldValue).validatePhone(lead.phoneNumber)
+    if (revalidated.ok && revalidated.normalized && revalidated.normalized !== lead.phoneNumber) {
+      await db
+        .update(leads)
+        .set({ phoneNumber: revalidated.normalized, updatedAt: new Date() })
+        .where(eq(leads.id, lead.id))
+    } else if (!revalidated.ok) {
+      // Invalid for this country — leave it as originally captured rather than blocking a
+      // lead that's already well into the survey (no re-ask flow exists here).
+      console.warn('[phase-1] phone failed country-specific re-validation', {
+        leadId: lead.id,
+        country: fieldValue,
+      })
     }
   }
 

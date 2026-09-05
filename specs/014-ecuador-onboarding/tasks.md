@@ -163,11 +163,16 @@ a target + cap; `/admin/leads` filters by Ecuador and its regions.
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T044 [P] Update `quickstart.md` commands if any script names differ from the repo (`npm run db:migrate` / `db:check`)
-- [ ] T045 [P] Run `npx vitest run` + `npx playwright test` + `npm run test:regression` full suites; confirm SC-004 zero-diff (unit + CAM golden-master snapshots) and all new tests green
-- [ ] T046 [P] Add a short `docs/countries.md` (or section in an existing doc) describing the `src/lib/countries/` registry and the "country config, not country branches" rule, referencing constitution Principle V
-- [ ] T047 Verify the `nse_score` / `geo_resolve` / `quota_check` logs for an Ecuador run against `quickstart.md` §6 (Principle II gate)
-- [ ] T048 Self-review against constitution v1.2.0 Constitution Check in `plan.md` — confirm the only country-name branch is `getCountryConfig`
+- [X] T044 [P] Update `quickstart.md` commands if any script names differ from the repo (`npm run db:migrate` / `db:check`)
+  - Migration renumbered `0015`→`0029`; `db:check` (never a real script) → `db:generate` drift check; `/admin/leads` → `/admin/dashboard`; section 4 rewritten to describe the actual webhook-smoke scope + where the DB-decision assertions live; added `db:seed:ecuador-quota-example`.
+- [X] T045 [P] Run `npx vitest run` + `npx playwright test` + `npm run test:regression` full suites; confirm SC-004 zero-diff (unit + CAM golden-master snapshots) and all new tests green
+  - 509/509 unit; CAM regression **zero snapshot diff**; Playwright 34/36 (the 2 failures are pre-existing `web-chat.spec.ts` greeting-copy drift, unchanged on HEAD, unrelated). SC-004 gate met.
+- [X] T046 [P] Add a short `docs/countries.md` (or section in an existing doc) describing the `src/lib/countries/` registry and the "country config, not country branches" rule, referencing constitution Principle V
+  - `docs/countries.md`: the 4 files, the `CountryConfig` surface, `survey-plan.ts` assembly + byte-identical-CAM guard, an "adding a country" checklist, and the two documented pre-existing Principle V deviations.
+- [X] T047 Verify the `nse_score` / `geo_resolve` / `quota_check` logs for an Ecuador run against `quickstart.md` §6 (Principle II gate)
+  - `nse_score` (`ecuador-nse.ts`) and `quota_check` (`quota.ts`) already matched §6. `geo_resolve` (`gps-capture.ts`, both paths) was missing `neighborhood` — added it (the parroquia drives the Guayaquil/Quito region split); §6 updated to match.
+- [X] T048 Self-review against constitution v1.2.0 Constitution Check in `plan.md` — confirm the only country-name branch is `getCountryConfig`
+  - Swept `src/**` for country-name equality checks. Fixed the one new deviation: `phase-1.ts`'s phone re-validation now calls `getCountryConfig(country).validatePhone` generically (both configs' `validatePhone` now return E.164 `+<digits>`, so a correct CAM phone re-validates to itself — regression-guarded). Two pre-existing deviations (`isGuatemala` geo gates; `makeCamConfig`'s geoHierarchy name switch) documented in `docs/countries.md` and the `plan.md` Constitution Check, tracked for follow-up — neither introduced here, both covered by the CAM regression suite.
 
 ---
 

@@ -328,6 +328,9 @@ async function applyAllowlistAfterConfirm(
       country,
       state_province: proposal.stateProvince,
       municipality: proposal.municipality,
+      // GPS path never captures a parroquia (proposal is department/municipality only),
+      // so Guayaquil/Quito GPS hits resolve via the cantón-only fallback — logged as null.
+      neighborhood: null,
       matched_region: nseRegion,
     }),
   )
@@ -395,6 +398,9 @@ export async function applyManualMunicipalityAllowlist(
       country: opts.country,
       state_province: opts.stateProvince,
       municipality: opts.municipality,
+      // Ecuador's Q5 (parroquia) is a real answer that can change the resolved region
+      // (Guayaquil/Quito split); null for CAM, where Q5 is hidden.
+      neighborhood: manualProfile?.neighborhood ?? null,
       matched_region: nseRegion,
     }),
   )
