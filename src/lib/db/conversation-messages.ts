@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, ne } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, isNull, ne } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
@@ -159,6 +159,8 @@ export type ConversationListItem = {
   createdAt: Date
   fullName: string | null
   country: string | null
+  /** 'web:room:Ecuador' | 'web:room:México' | null — how a web lead entered (spec 016). */
+  acquisitionSource: string | null
   lastMessage: string | null
   lastMessageAt: Date | null
   messageCount: number
@@ -169,6 +171,8 @@ export type ConversationListItem = {
 
 export interface ListConversationsOptions {
   status?: LeadStatus
+  /** 'web:room:Ecuador' | 'web:room:México' | 'generic' (web, no room) — spec 016 T021. */
+  acquisitionSource?: string
   limit?: number
   offset?: number
 }
@@ -180,6 +184,11 @@ export async function listConversations(
 
   const conditions = []
   if (opts.status) conditions.push(eq(leads.leadStatus, opts.status))
+  if (opts.acquisitionSource === 'generic') {
+    conditions.push(and(eq(leads.channel, 'web'), isNull(leads.acquisitionSource)))
+  } else if (opts.acquisitionSource) {
+    conditions.push(eq(leads.acquisitionSource, opts.acquisitionSource))
+  }
 
   // Fetch one extra row to detect whether a next page exists, without a separate
   // COUNT(*) query — sliced back down to `limit` before any of the per-lead lookups
@@ -197,6 +206,7 @@ export async function listConversations(
       surveyQuestionIndex: leads.surveyQuestionIndex,
       lastActivityAt: leads.lastActivityAt,
       createdAt: leads.createdAt,
+      acquisitionSource: leads.acquisitionSource,
       fullName: surveyProfiles.fullName,
       country: surveyProfiles.country,
     })

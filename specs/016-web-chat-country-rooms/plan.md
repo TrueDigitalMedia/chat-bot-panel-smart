@@ -76,6 +76,21 @@ Constitution v1.2.0.
 | IV. Flexible Quota Eligibility | PASS — untouched. Room leads reach the quota engine with a country + NSE level exactly as a self-selected lead would. |
 | V. Country-Scoped Recruitment Configuration | PASS — the slug→country map is one small registry; no `if (country===…)` added to shared paths. Room leads run the standard `getCountryConfig(country)` flow. Bare `/chat` regression + CAM golden-master prove nothing else moved. |
 
+**T026 self-review (post-implementation):**
+- **Principle V** — the only new country-name branch is `resolveRoom` in
+  `src/lib/web/chat-rooms.ts` (a 2-entry slug→country map). `applyRoomParam` and the
+  room page call `getCountryConfig` / `isSupportedCountry`, never `if (country === …)`.
+  `nextQuestionToSend` is a pure function of the (unchanged) resolved list + geo labels.
+- **Principle II** — `web_room_entry` is logged in all three outcomes (unit-asserted in
+  `chat-web-room-param.test.ts`) with a **hashed** session id; `leads.acquisition_source`
+  is surfaced + filterable in `/admin/conversations` (T021).
+- **No-op for existing flows (FR-012 / SC-005)** — the CAM golden-master suite shows the
+  only snapshot change is the new `acquisition_source: null` column (no transcript / index
+  / scoring diff); the bare-`/chat` "still asks country" path is E2E-verified
+  (`chat-country-room.spec.ts`); the 4 copy-pasted `neighborhood` skips are now one call.
+- Retired 4 duplicated skips → one `nextQuestionToSend`; a latent phase-1.ts bug
+  (`if (finalIdx === 5)` unconditional) is gone as a side effect.
+
 No violations. Complexity Tracking not required.
 
 ## Project Structure

@@ -1,13 +1,13 @@
 # Quickstart: Validating Web Chat Country Rooms
 
 Prerequisites: `npm install`; `.env` with `POSTGRES_URL` (dev branch) and ideally `APP_BASE_URL`;
-**features 014 + 015 merged**; migration `0017` applied.
+**features 014 + 015 merged**; migration `0030` applied.
 
 ## 1. Migration
 
 ```bash
-npm run db:migrate        # applies 0017_web_chat_rooms.sql
-npm run db:check          # leads.acquisition_source present
+npm run db:migrate        # applies 0030_web_chat_rooms.sql
+npm run db:generate       # drizzle-kit: no new migration => schema.ts matches DB (leads.acquisition_source present)
 ```
 
 ## 2. Unit tests
