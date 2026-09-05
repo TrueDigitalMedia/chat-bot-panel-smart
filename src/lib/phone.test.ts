@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBsuidChannelUserId, normalizePhone } from './phone'
+import { isBsuidChannelUserId, isValidRegistrationPhone, normalizePhone } from './phone'
 
 describe('isBsuidChannelUserId', () => {
   it('flags Meta Business-Scoped User IDs', () => {
@@ -14,7 +14,23 @@ describe('isBsuidChannelUserId', () => {
 })
 
 describe('normalizePhone regression: a BSUID must never look like a phone', () => {
-  it('would mangle a BSUID if fed one — hence the isBsuidChannelUserId guard upstream', () => {
-    expect(normalizePhone('+DO.929750206851603')).toBe('+929750206851603')
+  it('rejects a BSUID digit-string fed in by mistake (15+ digits exceeds the cap)', () => {
+    expect(normalizePhone('+DO.929750206851603')).toBeNull()
+  })
+
+  it('still accepts a real long-ish number within the 14-digit cap', () => {
+    expect(normalizePhone('+50412345678')).toBe('+50412345678')
+  })
+})
+
+describe('isValidRegistrationPhone', () => {
+  it('accepts a real E.164 number', () => {
+    expect(isValidRegistrationPhone('+18095551234')).toBe(true)
+  })
+
+  it('rejects a null, a BSUID, and a BSUID-derived fake', () => {
+    expect(isValidRegistrationPhone(null)).toBe(false)
+    expect(isValidRegistrationPhone('DO.929750206851603')).toBe(false)
+    expect(isValidRegistrationPhone('+929750206851603')).toBe(false) // 15 digits, the pre-fix fake
   })
 })
