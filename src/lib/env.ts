@@ -28,6 +28,12 @@ const envSchema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().min(1).optional(),
   WHATSAPP_APP_SECRET: z.string().min(1).optional(),
   WHATSAPP_GRAPH_VERSION: z.string().min(1).optional(),
+  /** JSON map of Meta phone_number_id → recruitment country, e.g.
+   *  {"109...":"Ecuador","550...":"México"}. A phone_number_id absent from the map
+   *  (incl. the shared/default WHATSAPP_PHONE_NUMBER_ID) is the generic number that
+   *  still asks the country question. Parsed by src/lib/whatsapp/number-registry.ts
+   *  (not by zod) so a bad value degrades gracefully instead of blocking boot. */
+  WHATSAPP_NUMBER_MAP: z.string().optional(),
 
   // Twilio WhatsApp (alternative)
   TWILIO_ACCOUNT_SID: z.string().min(1).optional(),

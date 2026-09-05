@@ -26,11 +26,12 @@ function logSendFailure(fn: string, channelUserId: string, err: unknown): void {
 export async function sendWhatsAppText(
   channelUserId: string,
   text: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
       ? twilio.sendTwilioText(channelUserId, text)
-      : meta.sendMetaText(channelUserId, text))
+      : meta.sendMetaText(channelUserId, text, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppText', channelUserId, err)
     return undefined
@@ -41,11 +42,12 @@ export async function sendWhatsAppVideo(
   channelUserId: string,
   videoUrl: string,
   caption?: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
       ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption)
-      : meta.sendMetaVideo(channelUserId, videoUrl, caption))
+      : meta.sendMetaVideo(channelUserId, videoUrl, caption, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppVideo', channelUserId, err)
     return undefined
@@ -56,11 +58,12 @@ export async function sendWhatsAppKeyboard(
   channelUserId: string,
   text: string,
   buttons: InlineKeyboardButton[][],
+  fromPhoneNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
       ? twilio.sendTwilioKeyboard(channelUserId, text, buttons)
-      : meta.sendMetaKeyboard(channelUserId, text, buttons))
+      : meta.sendMetaKeyboard(channelUserId, text, buttons, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
     return { sid: undefined, choices: {} }
@@ -77,6 +80,7 @@ export async function sendWhatsAppTemplateOrKeyboard(
   fallbackText: string,
   buttons: InlineKeyboardButton[][],
   contentVariables?: Record<string, string>,
+  fromPhoneNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   if (getWhatsAppProvider() === 'twilio') {
     const template = await getApprovedTemplate(logicalId).catch(() => undefined)
@@ -91,7 +95,7 @@ export async function sendWhatsAppTemplateOrKeyboard(
       }
     }
   }
-  return sendWhatsAppKeyboard(channelUserId, fallbackText, buttons)
+  return sendWhatsAppKeyboard(channelUserId, fallbackText, buttons, fromPhoneNumberId)
 }
 
 /** Text-only counterpart of sendWhatsAppTemplateOrKeyboard, for templates with no buttons. */
@@ -100,6 +104,7 @@ export async function sendWhatsAppTemplateOrText(
   logicalId: string,
   fallbackText: string,
   contentVariables?: Record<string, string>,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   if (getWhatsAppProvider() === 'twilio') {
     const template = await getApprovedTemplate(logicalId).catch(() => undefined)
@@ -112,5 +117,5 @@ export async function sendWhatsAppTemplateOrText(
       }
     }
   }
-  return sendWhatsAppText(channelUserId, fallbackText)
+  return sendWhatsAppText(channelUserId, fallbackText, fromPhoneNumberId)
 }

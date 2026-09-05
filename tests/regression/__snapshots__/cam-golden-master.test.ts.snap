@@ -26,6 +26,7 @@ exports[`CAM regression — golden master (pre/post 014 + 015) > C1 — full qua
     "statusReason": "survey_complete_quota_available",
     "surveyQuestionIndex": 20,
     "tdmRegistrationCode": null,
+    "whatsappPhoneNumberId": null,
   },
   "surveyProfile": {
     "age": 34,
@@ -340,6 +341,7 @@ exports[`CAM regression — golden master (pre/post 014 + 015) > C4 — decline 
     "statusReason": "d1_decline",
     "surveyQuestionIndex": 0,
     "tdmRegistrationCode": null,
+    "whatsappPhoneNumberId": null,
   },
   "surveyProfile": {
     "age": null,

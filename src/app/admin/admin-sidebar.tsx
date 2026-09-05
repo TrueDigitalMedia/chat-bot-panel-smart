@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, BookOpen, History, DoorOpen } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, BookOpen, History, DoorOpen, Phone } from 'lucide-react'
 import { logout } from '@/lib/auth/actions'
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { label: 'Cuotas de reclutamiento', href: '/admin/quotas', icon: ClipboardList },
   { label: 'Dashboard de leads', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Salas de chat', href: '/admin/rooms', icon: DoorOpen },
+  { label: 'Números WhatsApp', href: '/admin/whatsapp-numbers', icon: Phone },
   { label: 'Historial de sincronización', href: '/admin/sync-history', icon: History },
   { label: 'Wiki del sistema', href: '/admin/wiki', icon: BookOpen },
 ] as const

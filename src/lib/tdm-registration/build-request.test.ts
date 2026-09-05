@@ -32,6 +32,8 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     panelSmartLastSyncAt: null,
     panelSmartSyncedAnswersJson: null,
     panelSmartSyncedLeadStatus: null,
+    acquisitionSource: null,
+    whatsappPhoneNumberId: null,
     ...overrides,
   }
 }

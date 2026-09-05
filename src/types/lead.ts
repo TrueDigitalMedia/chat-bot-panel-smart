@@ -44,6 +44,11 @@ export interface Lead {
   panelSmartLastSyncAt: Date | null
   panelSmartSyncedAnswersJson: Record<string, unknown> | null
   panelSmartSyncedLeadStatus: LeadStatus | null
+  /** How a web lead entered — 'web:room:<country>' | 'whatsapp:number:<country>' | null (spec 016/017). */
+  acquisitionSource: string | null
+  /** Meta phone_number_id this WhatsApp lead is bound to — the number the bot replies from (spec 017).
+   *  Null for non-WhatsApp / pre-017 leads → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
+  whatsappPhoneNumberId: string | null
 }
 
 export interface SurveyProfile {

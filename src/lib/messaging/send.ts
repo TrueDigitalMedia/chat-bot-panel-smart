@@ -23,6 +23,22 @@ function leadIdOf(to: ChannelRecipient): string | undefined {
   return typeof maybe.id === 'string' ? maybe.id : undefined
 }
 
+/**
+ * spec 017 — the WhatsApp business number to send from for this recipient. When the
+ * recipient carries no bound number (legacy lead, or a bare channelUserId recipient),
+ * returns undefined so the provider falls back to the shared default, and logs it once.
+ */
+function waFrom(to: ChannelRecipient): string | undefined {
+  if (to.channel !== 'whatsapp') return undefined
+  const id = to.whatsappPhoneNumberId ?? undefined
+  if (!id) {
+    console.info(
+      JSON.stringify({ event: 'whatsapp_from_fallback', lead_id: leadIdOf(to) ?? null }),
+    )
+  }
+  return id
+}
+
 // Generic enough to trail any statement or question (a re-asked gate, a resent survey
 // question, a repeated support redirect) without reading oddly — indexed by how many
 // consecutive times the same message has gone out, capped at the last entry.
@@ -127,7 +143,7 @@ export async function sendText(
       await telegram.sendText(BigInt(to.channelUserId), outText)
       break
     case 'whatsapp':
-      await whatsapp.sendWhatsAppText(to.channelUserId, outText)
+      await whatsapp.sendWhatsAppText(to.channelUserId, outText, waFrom(to))
       break
     case 'web':
       // No external SDK to push to — the message is "delivered" by persisting it below;
@@ -152,7 +168,7 @@ export async function sendVideo(
       await telegram.sendVideo(BigInt(to.channelUserId), video, caption)
       break
     case 'whatsapp':
-      await whatsapp.sendWhatsAppVideo(to.channelUserId, video, caption)
+      await whatsapp.sendWhatsAppVideo(to.channelUserId, video, caption, waFrom(to))
       break
     case 'web':
       // See sendText — persisted below, no external push needed (research.md R2/R7).
@@ -189,6 +205,7 @@ export async function sendInlineKeyboard(
         to.channelUserId,
         outText,
         buttons,
+        waFrom(to),
       )
       const leadId = leadIdOf(to)
       if (leadId) await setPendingWaChoices(leadId, choices)
@@ -242,6 +259,7 @@ export async function sendTemplateOrKeyboard(
         outText,
         buttons,
         opts?.contentVariables,
+        waFrom(to),
       )
       const leadId = leadIdOf(to)
       if (leadId) await setPendingWaChoices(leadId, choices)
@@ -282,7 +300,7 @@ export async function sendTemplateOrText(
       await telegram.sendText(BigInt(to.channelUserId), outText)
       break
     case 'whatsapp':
-      await whatsapp.sendWhatsAppTemplateOrText(to.channelUserId, logicalId, outText, opts?.contentVariables)
+      await whatsapp.sendWhatsAppTemplateOrText(to.channelUserId, logicalId, outText, opts?.contentVariables, waFrom(to))
       break
     case 'web':
       break
@@ -316,7 +334,7 @@ export async function sendPhoneRequest(to: ChannelRecipient): Promise<void> {
       // Same "type it" prompt as the non-Telegram branch above — no native contact-share UI.
       break
     case 'whatsapp':
-      await whatsapp.sendWhatsAppText(to.channelUserId, prompt)
+      await whatsapp.sendWhatsAppText(to.channelUserId, prompt, waFrom(to))
       break
     default: {
       const _exhaustive: never = to.channel

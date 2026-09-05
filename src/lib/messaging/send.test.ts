@@ -157,6 +157,7 @@ describe('sendPhoneRequest', () => {
     expect(whatsappSendText).toHaveBeenCalledWith(
       'DO.1393047009463368',
       expect.stringContaining('número de teléfono'),
+      undefined, // spec 017 — no bound number on this bare recipient → provider fallback
     )
     expect(logConversationMessage).toHaveBeenCalledWith(
       expect.objectContaining({ contentType: 'keyboard', meta: expect.objectContaining({ type: 'contact_request' }) }),

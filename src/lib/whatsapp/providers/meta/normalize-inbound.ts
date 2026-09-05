@@ -6,11 +6,20 @@ export interface MetaWebhookPayload {
   entry?: Array<{
     changes?: Array<{
       value?: {
+        /** Identifies which of the WABA's business numbers this change is about (spec 017). */
+        metadata?: { phone_number_id?: string; display_phone_number?: string }
         messages?: Array<MetaInboundMessage>
         contacts?: Array<{ wa_id?: string; profile?: { name?: string } }>
       }
     }>
   }>
+}
+
+/** One inbound message plus the business number it was sent to (spec 017). */
+export interface MetaInboundEnvelope {
+  message: MetaInboundMessage
+  phoneNumberId?: string
+  displayPhoneNumber?: string
 }
 
 interface MetaInboundMessage {
@@ -28,12 +37,14 @@ interface MetaInboundMessage {
   button?: { payload?: string; text?: string }
 }
 
-export function extractMetaMessages(payload: MetaWebhookPayload): MetaInboundMessage[] {
-  const out: MetaInboundMessage[] = []
+export function extractMetaMessages(payload: MetaWebhookPayload): MetaInboundEnvelope[] {
+  const out: MetaInboundEnvelope[] = []
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      const phoneNumberId = change.value?.metadata?.phone_number_id
+      const displayPhoneNumber = change.value?.metadata?.display_phone_number
       for (const msg of change.value?.messages ?? []) {
-        out.push(msg)
+        out.push({ message: msg, phoneNumberId, displayPhoneNumber })
       }
     }
   }
@@ -47,6 +58,7 @@ export function extractMetaMessages(payload: MetaWebhookPayload): MetaInboundMes
 export function normalizeMetaInbound(
   message: MetaInboundMessage,
   pendingChoices?: Record<string, string> | null,
+  phoneNumberId?: string,
 ): ChannelInbound | null {
   const from = message.from
   if (!from) return null
@@ -91,5 +103,6 @@ export function normalizeMetaInbound(
     text: callbackData ? '' : text,
     callbackData,
     location,
+    whatsappPhoneNumberId: phoneNumberId,
   }
 }

@@ -8,10 +8,16 @@ export function requireMeta(): void {
   }
 }
 
-export function graphMessagesUrl(): string {
+/**
+ * @param fromPhoneNumberId spec 017 — the business number to send from. Omit / undefined
+ * ⇒ the shared default (`WHATSAPP_PHONE_NUMBER_ID`); callers that resolved "no bound
+ * number" log `whatsapp_from_fallback` themselves.
+ */
+export function graphMessagesUrl(fromPhoneNumberId?: string): string {
   requireMeta()
   const version = env.WHATSAPP_GRAPH_VERSION ?? 'v21.0'
-  return `https://graph.facebook.com/${version}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`
+  const numberId = fromPhoneNumberId ?? env.WHATSAPP_PHONE_NUMBER_ID
+  return `https://graph.facebook.com/${version}/${numberId}/messages`
 }
 
 // Meta error codes that specifically signal a policy/quality-rating risk (as opposed to
@@ -24,9 +30,12 @@ const POLICY_RISK_ERROR_CODES: Record<number, string> = {
   130472: 'business_eligibility_or_experiment_restriction',
 }
 
-export async function graphSend(payload: Record<string, unknown>): Promise<string | undefined> {
+export async function graphSend(
+  payload: Record<string, unknown>,
+  fromPhoneNumberId?: string,
+): Promise<string | undefined> {
   requireMeta()
-  const res = await fetch(graphMessagesUrl(), {
+  const res = await fetch(graphMessagesUrl(fromPhoneNumberId), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.WHATSAPP_ACCESS_TOKEN}`,

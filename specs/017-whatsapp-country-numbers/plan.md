@@ -199,6 +199,37 @@ Unchanged — all five principles PASS. The number→country map is a single reg
 observability events and the bind-once / no-re-scope guarantees are designed in (Principle II); no
 new credentials, tables, or LLM surface (Principle III / I).
 
+### T036 self-review (post-implementation)
+
+- **Principle V** — the only new country/number switch is `src/lib/whatsapp/number-registry.ts`
+  (`countryForPhoneNumberId` / `inboundNumberOutcome`, backed by `WHATSAPP_NUMBER_MAP`).
+  `handle-inbound.ts` and `number-scope.ts` call `countryForPhoneNumberId` / `isSupportedCountry` /
+  `getCountryConfig`, never `if (id === …)` or `if (country === …)`. The country-question skip and
+  manual-geo path are feature 016's existing helpers, unchanged — `number-scope.ts` only writes the
+  pre-answered `country` field, exactly as 016's `room-bootstrap.ts` does.
+- **Principle II** — `whatsapp_inbound_number` (outcome in every branch), `whatsapp_number_scope_applied`,
+  `whatsapp_inbound_number_mismatch`, `whatsapp_from_fallback`, and a `phone_number_id` field on every
+  `[whatsapp:meta:out]` log are emitted and unit-asserted (`whatsapp-country-scope.test.ts`,
+  `whatsapp-outbound-from-number.test.ts`, `whatsapp-number-registry.test.ts`). `leads.acquisition_source`
+  is filterable in `/admin/conversations` (T030/T031) and the numbers are visible on
+  `/admin/whatsapp-numbers` (T028).
+- **No-op for existing flows (FR-015 / SC-005)** — the CAM Telegram golden-master shows the only
+  snapshot change is the new `whatsappPhoneNumberId: null` column (no transcript / index / scoring
+  diff), re-pinned via `test:regression:update`; `graphMessagesUrl()` with no argument is
+  byte-identical to before; `messaging/send.ts` Telegram/web branches are untouched; `tsc` clean;
+  full unit suite green (689 tests).
+- **Shared WABA (FR-009 / FR-010)** — no per-number secret/token/verify-token; one shared
+  `WHATSAPP_APP_SECRET` verifies every payload (`whatsapp-inbound-number-attribution.test.ts`); no
+  `whatsapp_templates` schema change.
+
+### Remaining (not blocking merge of the functional change; tracked in tasks.md)
+
+T011 + T015/T019/T027/T027a — the dedicated WhatsApp golden-master harness under
+`tests/regression/whatsapp/` and its per-number URL fixtures. T020 / T032 — webhook-smoke and admin
+Playwright E2E. T034 — runbook/health surface. T037 — quickstart drift check. The CAM Telegram
+golden-master (re-pinned) already proves the shared-number path is unchanged; the outbound
+from-number threading is covered by unit tests in the interim.
+
 ## Complexity Tracking
 
 Not required — no constitution violations.

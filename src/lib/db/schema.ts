@@ -125,6 +125,11 @@ export const leads = pgTable(
      *  /chat, or any non-web channel). Set once, at lead creation, by the room bootstrap
      *  handler (spec 016); never re-scoped. */
     acquisitionSource: varchar('acquisition_source', { length: 40 }),
+    /** Meta phone_number_id of the WhatsApp business number this lead's conversation is
+     *  bound to — the number the bot replies from (spec 017). Set once, at lead creation,
+     *  from the inbound webhook's value.metadata.phone_number_id; never re-bound. Null for
+     *  non-WhatsApp leads and pre-017 rows → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
+    whatsappPhoneNumberId: varchar('whatsapp_phone_number_id', { length: 40 }),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )

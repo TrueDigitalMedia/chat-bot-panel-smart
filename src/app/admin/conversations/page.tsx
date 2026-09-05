@@ -38,17 +38,22 @@ interface SearchParams {
   page?: string
 }
 
-// spec 016 T021 — filter web leads by which chat room they came from.
+// spec 016 T021 / spec 017 T030 — filter leads by acquisition source (web room or WhatsApp number).
 const SOURCE_FILTERS = [
   { value: 'web:room:Ecuador', label: 'Sala: Ecuador' },
   { value: 'web:room:México', label: 'Sala: México' },
   { value: 'generic', label: 'Web genérico (sin sala)' },
+  { value: 'whatsapp:number:Ecuador', label: 'WhatsApp: Ecuador' },
+  { value: 'whatsapp:number:México', label: 'WhatsApp: México' },
+  { value: 'whatsapp-generic', label: 'WhatsApp genérico (número CAM)' },
 ] as const
 
 function roomLabel(source: string | null): string | null {
   if (!source) return null
   if (source === 'web:room:Ecuador') return 'Sala EC'
   if (source === 'web:room:México') return 'Sala MX'
+  if (source === 'whatsapp:number:Ecuador') return 'WA EC'
+  if (source === 'whatsapp:number:México') return 'WA MX'
   return source
 }
 

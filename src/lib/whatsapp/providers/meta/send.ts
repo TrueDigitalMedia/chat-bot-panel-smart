@@ -12,18 +12,22 @@ function truncate(s: string, max: number): string {
 export async function sendMetaText(
   channelUserId: string,
   text: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   requireMeta()
   const to = toMetaRecipient(channelUserId)
-  console.info('[whatsapp:meta:out]', { to, type: 'text', len: text.length })
+  console.info('[whatsapp:meta:out]', { to, type: 'text', len: text.length, phone_number_id: fromPhoneNumberId })
   try {
-    const id = await graphSend({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'text',
-      text: { body: text },
-    })
-    console.info('[whatsapp:meta:out] ok', { to, id })
+    const id = await graphSend(
+      {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'text',
+        text: { body: text },
+      },
+      fromPhoneNumberId,
+    )
+    console.info('[whatsapp:meta:out] ok', { to, id, phone_number_id: fromPhoneNumberId })
     return id
   } catch (err) {
     console.error('[whatsapp:meta:out] error', {
@@ -38,27 +42,31 @@ export async function sendMetaVideo(
   channelUserId: string,
   videoUrl: string,
   caption?: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   requireMeta()
   const to = toMetaRecipient(channelUserId)
-  console.info('[whatsapp:meta:out]', { to, type: 'video', videoUrl })
+  console.info('[whatsapp:meta:out]', { to, type: 'video', videoUrl, phone_number_id: fromPhoneNumberId })
   try {
-    const id = await graphSend({
-      messaging_product: 'whatsapp',
-      to,
-      type: 'video',
-      video: {
-        link: videoUrl,
-        caption: caption ? truncate(caption, 1024) : undefined,
+    const id = await graphSend(
+      {
+        messaging_product: 'whatsapp',
+        to,
+        type: 'video',
+        video: {
+          link: videoUrl,
+          caption: caption ? truncate(caption, 1024) : undefined,
+        },
       },
-    })
-    console.info('[whatsapp:meta:out] ok', { to, id })
+      fromPhoneNumberId,
+    )
+    console.info('[whatsapp:meta:out] ok', { to, id, phone_number_id: fromPhoneNumberId })
     return id
   } catch (err) {
     console.warn('[whatsapp:meta:out] video failed — link fallback', {
       error: err instanceof Error ? err.message : String(err),
     })
-    return sendMetaText(channelUserId, caption ? `${caption}\n${videoUrl}` : videoUrl)
+    return sendMetaText(channelUserId, caption ? `${caption}\n${videoUrl}` : videoUrl, fromPhoneNumberId)
   }
 }
 
@@ -69,6 +77,7 @@ export async function sendMetaKeyboard(
   channelUserId: string,
   text: string,
   buttons: InlineKeyboardButton[][],
+  fromPhoneNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   const flat = buttons.flat()
   const { choices } = buildNumberedChoices(buttons)
@@ -94,8 +103,8 @@ export async function sendMetaKeyboard(
             })),
           },
         },
-      })
-      console.info('[whatsapp:meta:out] ok', { to, type: 'button', id, n: flat.length })
+      }, fromPhoneNumberId)
+      console.info('[whatsapp:meta:out] ok', { to, type: 'button', id, n: flat.length, phone_number_id: fromPhoneNumberId })
       return { sid: id, choices }
     }
 
@@ -120,20 +129,20 @@ export async function sendMetaKeyboard(
             ],
           },
         },
-      })
-      console.info('[whatsapp:meta:out] ok', { to, type: 'list', id, n: flat.length })
+      }, fromPhoneNumberId)
+      console.info('[whatsapp:meta:out] ok', { to, type: 'list', id, n: flat.length, phone_number_id: fromPhoneNumberId })
       return { sid: id, choices }
     }
 
     const { bodySuffix } = buildNumberedChoices(buttons)
-    const sid = await sendMetaText(channelUserId, `${text}${bodySuffix}`)
+    const sid = await sendMetaText(channelUserId, `${text}${bodySuffix}`, fromPhoneNumberId)
     return { sid, choices }
   } catch (err) {
     console.warn('[whatsapp:meta:out] interactive failed — numbered fallback', {
       error: err instanceof Error ? err.message : String(err),
     })
     const { bodySuffix } = buildNumberedChoices(buttons)
-    const sid = await sendMetaText(channelUserId, `${text}${bodySuffix}`)
+    const sid = await sendMetaText(channelUserId, `${text}${bodySuffix}`, fromPhoneNumberId)
     return { sid, choices }
   }
 }

@@ -7,6 +7,7 @@ const {
   routeMessage,
   getPendingWaChoices,
   clearPendingWaChoices,
+  applyNumberScope,
 } = vi.hoisted(() => ({
   upsertLead: vi.fn(),
   logConversationMessage: vi.fn(),
@@ -14,12 +15,19 @@ const {
   routeMessage: vi.fn(),
   getPendingWaChoices: vi.fn(),
   clearPendingWaChoices: vi.fn(),
+  applyNumberScope: vi.fn(),
 }))
 
 vi.mock('@/lib/db/leads', () => ({ upsertLead }))
 vi.mock('@/lib/db/conversation-messages', () => ({ logConversationMessage, wasProviderMessageAlreadyProcessed }))
 vi.mock('@/lib/conversation/flow-router', () => ({ routeMessage }))
 vi.mock('@/lib/whatsapp/pending-choices', () => ({ getPendingWaChoices, clearPendingWaChoices }))
+vi.mock('@/lib/whatsapp/number-scope', () => ({ applyNumberScope }))
+vi.mock('@/lib/db/client', () => ({
+  db: {
+    select: () => ({ from: () => ({ where: () => Promise.resolve([{ n: 0 }]) }) }),
+  },
+}))
 
 import { processWhatsAppInbound } from './handle-inbound'
 import type { ChannelInbound } from '@/types/channel'
@@ -35,6 +43,7 @@ beforeEach(() => {
   wasProviderMessageAlreadyProcessed.mockResolvedValue(false)
   logConversationMessage.mockResolvedValue(undefined)
   routeMessage.mockResolvedValue(undefined)
+  applyNumberScope.mockResolvedValue({ outcome: 'generic', country: null })
 })
 
 describe('processWhatsAppInbound — webhook redelivery idempotency', () => {

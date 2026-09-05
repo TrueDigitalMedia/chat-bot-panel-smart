@@ -12,6 +12,7 @@ import {
 import { toE164 } from '@/lib/whatsapp/phone'
 import { getPendingWaChoices } from '@/lib/whatsapp/pending-choices'
 import { processWhatsAppInbound } from '@/lib/whatsapp/handle-inbound'
+import { countryForPhoneNumberId, inboundNumberOutcome } from '@/lib/whatsapp/number-registry'
 import { upsertLead } from '@/lib/db/leads'
 import { verifyTwilioSignature, resolveTwilioWebhookUrl } from '@/lib/whatsapp/verify'
 
@@ -74,15 +75,28 @@ async function handleMetaPost(request: NextRequest): Promise<NextResponse> {
 
   after(async () => {
     try {
-      const messages = extractMetaMessages(payload)
-      for (const message of messages) {
+      const envelopes = extractMetaMessages(payload)
+      for (const { message, phoneNumberId, displayPhoneNumber } of envelopes) {
         const from = message.from
         if (!from) continue
-        const lead = await upsertLead('whatsapp', toE164(from))
+        console.info(
+          JSON.stringify({
+            event: 'whatsapp_inbound_number',
+            phone_number_id: phoneNumberId ?? null,
+            display_phone_number: displayPhoneNumber ?? null,
+            resolved_country: countryForPhoneNumberId(phoneNumberId),
+            outcome: inboundNumberOutcome(phoneNumberId),
+          }),
+        )
+        const lead = await upsertLead('whatsapp', toE164(from), undefined, { phoneNumberId })
         const pending = await getPendingWaChoices(lead.id)
-        const inbound = normalizeMetaInbound(message, pending)
+        const inbound = normalizeMetaInbound(message, pending, phoneNumberId)
         if (!inbound) continue
-        await processWhatsAppInbound(inbound, { messageId: message.id, provider: 'meta' })
+        await processWhatsAppInbound(inbound, {
+          messageId: message.id,
+          provider: 'meta',
+          phoneNumberId,
+        })
       }
     } catch (err) {
       console.error('[webhook/whatsapp:meta] Processing error:', err)

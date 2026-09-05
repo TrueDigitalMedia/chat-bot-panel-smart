@@ -186,6 +186,9 @@ export async function listConversations(
   if (opts.status) conditions.push(eq(leads.leadStatus, opts.status))
   if (opts.acquisitionSource === 'generic') {
     conditions.push(and(eq(leads.channel, 'web'), isNull(leads.acquisitionSource)))
+  } else if (opts.acquisitionSource === 'whatsapp-generic') {
+    // spec 017 — WhatsApp leads on the shared/CAM number (no per-country acquisition source).
+    conditions.push(and(eq(leads.channel, 'whatsapp'), isNull(leads.acquisitionSource)))
   } else if (opts.acquisitionSource) {
     conditions.push(eq(leads.acquisitionSource, opts.acquisitionSource))
   }
