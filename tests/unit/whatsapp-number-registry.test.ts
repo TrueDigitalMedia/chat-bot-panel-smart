@@ -3,9 +3,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // env.ts validates eagerly — stub it. The registry parses WHATSAPP_NUMBER_MAP at module
 // load, so each case sets the map then re-imports the module.
 const { envMock } = vi.hoisted(() => ({
-  envMock: {} as { WHATSAPP_NUMBER_MAP?: string; WHATSAPP_PHONE_NUMBER_ID?: string },
+  envMock: {} as {
+    WHATSAPP_NUMBER_MAP?: string
+    WHATSAPP_PHONE_NUMBER_ID?: string
+    WHATSAPP_PROVIDER?: string
+    TWILIO_WHATSAPP_FROM?: string
+  },
 }))
-vi.mock('@/lib/env', () => ({ env: envMock }))
+vi.mock('@/lib/env', () => ({
+  env: envMock,
+  isMetaWhatsAppConfigured: () => true,
+  isTwilioConfigured: () => true,
+}))
 
 const EC_ID = '100000000000001'
 const MX_ID = '100000000000002'
@@ -14,6 +23,8 @@ const CAM_ID = '100000000000009'
 async function loadRegistry(map: string | undefined, defaultId: string | undefined = CAM_ID) {
   envMock.WHATSAPP_NUMBER_MAP = map
   envMock.WHATSAPP_PHONE_NUMBER_ID = defaultId
+  envMock.WHATSAPP_PROVIDER = 'meta'
+  delete envMock.TWILIO_WHATSAPP_FROM
   vi.resetModules()
   return import('@/lib/whatsapp/number-registry')
 }
@@ -90,6 +101,24 @@ describe('inboundNumberOutcome', () => {
     expect(inboundNumberOutcome(CAM_ID)).toBe('generic')
     expect(inboundNumberOutcome(undefined)).toBe('generic')
     expect(inboundNumberOutcome('777')).toBe('unknown_number')
+  })
+})
+
+describe('Twilio provider — sender id is the E.164 business number', () => {
+  it('defaultSenderId is TWILIO_WHATSAPP_FROM stripped to E.164; map keyed by E.164', async () => {
+    envMock.WHATSAPP_NUMBER_MAP = JSON.stringify({ '+593111': 'Ecuador' })
+    envMock.WHATSAPP_PROVIDER = 'twilio'
+    envMock.TWILIO_WHATSAPP_FROM = 'whatsapp:+50250000000'
+    envMock.WHATSAPP_PHONE_NUMBER_ID = undefined
+    vi.resetModules()
+    const { defaultSenderId, countryForSenderId, inboundNumberOutcome } = await import(
+      '@/lib/whatsapp/number-registry'
+    )
+    expect(defaultSenderId()).toBe('+50250000000')
+    expect(countryForSenderId('+593111')).toBe('Ecuador')
+    expect(inboundNumberOutcome('+593111')).toBe('scoped')
+    expect(inboundNumberOutcome('+50250000000')).toBe('generic')
+    expect(inboundNumberOutcome('+521999')).toBe('unknown_number')
   })
 })
 

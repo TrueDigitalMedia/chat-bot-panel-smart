@@ -324,8 +324,11 @@ makes it routable inbound and selectable outbound.
   numbers, verifying them, registering them on the WABA, display-name approval) is an operational
   task done in the Meta console, not code; this feature consumes the resulting number identities via
   configuration.
-- No change to the Twilio WhatsApp provider path; this feature targets the Meta Cloud API provider
-  that is in use.
+- Both WhatsApp providers are supported. The "business number identity" is provider-specific — a
+  Meta `phone_number_id`, or a Twilio business number in E.164 (from the inbound webhook's `To`) —
+  but the country map, scoping, outbound from-number selection, and fallback behave identically. A
+  deployment runs one provider (`WHATSAPP_PROVIDER`), so `WHATSAPP_NUMBER_MAP` only ever holds one
+  kind of key.
 
 ## Dependencies
 

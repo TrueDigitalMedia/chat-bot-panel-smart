@@ -1,4 +1,5 @@
 import { listWhatsAppNumbers } from '@/lib/whatsapp/number-registry'
+import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
 import { env } from '@/lib/env'
 
 // Spec 017 US4 — read-only view of the configured WhatsApp business numbers (all under
@@ -17,6 +18,10 @@ const metaCache = new Map<string, { at: number; value: NumberMeta }>()
 const TTL_MS = 5 * 60 * 1000
 
 async function fetchNumberMeta(phoneNumberId: string): Promise<NumberMeta> {
+  // messaging_limit_tier / quality_rating are a Meta Graph concept — Twilio does not
+  // expose an equivalent to the app, so the tier columns just show "no disponible".
+  if (getWhatsAppProvider() !== 'meta') return {}
+
   const cached = metaCache.get(phoneNumberId)
   if (cached && Date.now() - cached.at < TTL_MS) return cached.value
 
@@ -54,10 +59,11 @@ export default async function AdminWhatsAppNumbersPage() {
     <div className="p-6">
       <h1 className="text-lg font-semibold">Números de WhatsApp por país</h1>
       <p className="text-muted-foreground mt-1 text-sm">
-        Todos los números viven bajo la misma cuenta de WhatsApp Business (WABA compartida): un solo
-        token, un solo secreto de firma y un mismo inventario de plantillas aprobadas. Un mensaje que
-        llega a un número con país asignado queda marcado con ese país y no se le pregunta «¿En qué
-        país…?». El número «genérico» sigue preguntando. Se configuran con <code>WHATSAPP_NUMBER_MAP</code>.
+        Todos los números viven bajo la misma cuenta ({getWhatsAppProvider() === 'twilio' ? 'proyecto Twilio' : 'WABA de Meta'}):
+        un solo token, un solo secreto de firma y un mismo inventario de plantillas aprobadas. Un
+        mensaje que llega a un número con país asignado queda marcado con ese país y no se le pregunta
+        «¿En qué país…?». El número «genérico» sigue preguntando. Se configuran con
+        {' '}<code>WHATSAPP_NUMBER_MAP</code>.
       </p>
 
       <table className="mt-4 w-full max-w-3xl text-sm">

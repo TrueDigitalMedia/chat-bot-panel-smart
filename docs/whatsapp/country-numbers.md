@@ -1,32 +1,49 @@
 # WhatsApp per-country numbers (spec 017)
 
 Ecuador and Mexico each have a dedicated WhatsApp business number, distinct from the shared
-CAM number. All numbers live under **one shared Meta WhatsApp Business Account (WABA)** and
-one Meta app.
+CAM number. All numbers live under **one shared account** — a Meta WABA, or a Twilio project,
+depending on `WHATSAPP_PROVIDER`. Both providers are supported.
+
+## Provider — how a number is identified
+
+| | Meta (`WHATSAPP_PROVIDER=meta`) | Twilio (`WHATSAPP_PROVIDER=twilio`) |
+|---|---|---|
+| Sender id (map key, `leads.whatsapp_phone_number_id`) | `phone_number_id` | business number in **E.164** (`+593…`) |
+| Inbound: how we learn it | `entry[].changes[].value.metadata.phone_number_id` | webhook form field `To` (`whatsapp:+E164`, stripped) |
+| Outbound: how it's selected | `graph.facebook.com/<version>/<phone_number_id>/messages` | Twilio `messages.create({ from: 'whatsapp:+E164' })` |
+| Shared default sender | `WHATSAPP_PHONE_NUMBER_ID` | `TWILIO_WHATSAPP_FROM` |
+| Messaging-tier column in admin | Graph `messaging_limit_tier` / `quality_rating` | not exposed → "no disponible" |
+
+Everything else (country scoping, acquisition source, no-re-scope guarantee, outbound
+fallback + logging) is identical across providers.
 
 ## What is shared vs. per-number
 
 | Shared (one value for all numbers) | Per-number |
 |---|---|
-| `WHATSAPP_ACCESS_TOKEN` | `phone_number_id` (Meta) |
-| `WHATSAPP_APP_SECRET` (webhook signature) | local display number |
-| `WHATSAPP_VERIFY_TOKEN` | Meta messaging limit / quality rating (ramp-up is per number) |
-| webhook subscription (`/api/webhooks/whatsapp`) | which recruitment country it is scoped to |
-| approved message-template inventory (`whatsapp_templates`) | |
+| API credentials (`WHATSAPP_ACCESS_TOKEN` / `TWILIO_ACCOUNT_SID`+`TWILIO_AUTH_TOKEN`) | sender id (`phone_number_id` or E.164) |
+| webhook signature secret (`WHATSAPP_APP_SECRET` / Twilio auth token) | local display number |
+| verify token / webhook subscription (`/api/webhooks/whatsapp`) | messaging limit / quality rating (Meta only; ramp-up is per number) |
+| approved message-template inventory (`whatsapp_templates`) | which recruitment country it is scoped to |
 
-Because the WABA is shared, one approved template set serves every number and there is **no
+The account is shared, so one approved template set serves every number and there is **no
 per-number credential or per-country template row**.
 
 ## Configuration — `WHATSAPP_NUMBER_MAP`
 
-JSON map of `phone_number_id` → country, parsed by `src/lib/whatsapp/number-registry.ts`:
+JSON map of sender-id → country, parsed by `src/lib/whatsapp/number-registry.ts`. The key
+is a `phone_number_id` (Meta) or an E.164 number (Twilio) — see the table above.
 
 ```
+# Meta
 WHATSAPP_NUMBER_MAP={"<phone_number_id_EC>":"Ecuador","<phone_number_id_MX>":"México"}
+# Twilio
+WHATSAPP_NUMBER_MAP={"+593999999999":"Ecuador","+521999999999":"México"}
 ```
 
-- A `phone_number_id` **not** in the map (including `WHATSAPP_PHONE_NUMBER_ID`, the shared
-  CAM number) is the *generic* number: it still asks "¿En qué país te encuentras?".
+- A sender id **not** in the map (including the shared default — `WHATSAPP_PHONE_NUMBER_ID`
+  for Meta, `TWILIO_WHATSAPP_FROM` for Twilio) is the *generic* number: it still asks
+  "¿En qué país te encuentras?".
 - Country values are validated against the `CountryConfig` registry. An unknown or
   not-yet-configured country is dropped with a `whatsapp_number_map_bad_country` warning and
   that id behaves as generic.
@@ -37,7 +54,8 @@ WHATSAPP_NUMBER_MAP={"<phone_number_id_EC>":"Ecuador","<phone_number_id_MX>":"M�
 
 ## Behavior
 
-**Inbound** — the webhook reads `entry[].changes[].value.metadata.phone_number_id` and:
+**Inbound** — the webhook derives the sender id (Meta: `value.metadata.phone_number_id`;
+Twilio: form field `To`) and:
 - binds the lead to that number at creation (`leads.whatsapp_phone_number_id`, set once,
   never re-bound);
 - for a brand-new conversation on a country-scoped number, pre-sets
@@ -49,27 +67,30 @@ WHATSAPP_NUMBER_MAP={"<phone_number_id_EC>":"Ecuador","<phone_number_id_MX>":"M�
 
 **Outbound** — every send (live replies and background jobs: re-engage, code / link
 delivery, freeze/timeout) goes from `lead.whatsapp_phone_number_id`, threaded through
-`messaging/send.ts` → `whatsapp/send.ts` → `providers/meta/send.ts` →
-`graphMessagesUrl(phoneNumberId)`. No bound number ⇒ falls back to
-`WHATSAPP_PHONE_NUMBER_ID` and logs `whatsapp_from_fallback`. There is **no** automatic
-failover to another number (Meta requires replying on the same number the customer used).
+`messaging/send.ts` → `whatsapp/send.ts` → the active provider
+(`graphMessagesUrl(phoneNumberId)` for Meta, `messages.create({ from })` for Twilio).
+No bound number ⇒ falls back to the shared default and logs `whatsapp_from_fallback`.
+There is **no** automatic failover to another number (both providers require replying on
+the same number the customer used).
 
 ## Adding a number later
 
-1. Provision + verify the number in Meta Business Manager, register it on the shared WABA,
-   get its display name approved.
-2. Add `"<new_phone_number_id>":"<Country>"` to `WHATSAPP_NUMBER_MAP` and redeploy.
+1. Provision + verify the number: Meta Business Manager (register on the shared WABA,
+   approve the display name), or the Twilio console (add a WhatsApp sender to the project).
+2. Add `"<sender_id>":"<Country>"` to `WHATSAPP_NUMBER_MAP` and redeploy — `sender_id` is
+   the `phone_number_id` (Meta) or the E.164 number (Twilio).
 3. Nothing else — no code change, no migration. Confirm on `/admin/whatsapp-numbers`.
 
 ## Ramp-up
 
-Meta messaging limits (1K → 10K → 100K → unlimited) and the quality rating are **per
-number**. Run the phased ramp-up for each new number independently; the current tier is
-shown on `/admin/whatsapp-numbers` when Meta exposes it to the app.
+Messaging limits and quality rating are **per number**. Meta exposes the tier
+(1K → 10K → 100K → unlimited) on `/admin/whatsapp-numbers`; Twilio does not expose an
+equivalent to the app. Run the phased ramp-up for each new number independently either way.
 
 ## Observability
 
-`whatsapp_inbound_number` (per message: `phone_number_id`, `display_phone_number`,
-`resolved_country`, `outcome` ∈ `scoped|generic|unknown_number`),
+`whatsapp_inbound_number` (per message: `phone_number_id` = sender id, `display_phone_number`,
+`resolved_country`, `outcome` ∈ `scoped|generic|unknown_number`, `provider`),
 `whatsapp_number_scope_applied` (brand-new scoped lead), `whatsapp_inbound_number_mismatch`,
-`whatsapp_from_fallback`, and a `phone_number_id` field on every `[whatsapp:meta:out]` log.
+`whatsapp_from_fallback`, and a `from` / `phone_number_id` field on every
+`[whatsapp:*:out]` log.

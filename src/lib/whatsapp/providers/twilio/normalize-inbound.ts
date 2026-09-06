@@ -10,6 +10,8 @@ export type TwilioWhatsAppForm = Record<string, string>
 export function normalizeTwilioInbound(
   form: TwilioWhatsAppForm,
   pendingChoices?: Record<string, string> | null,
+  /** spec 017 — E.164 of our business number the user messaged (Twilio `To`, stripped). */
+  toNumberId?: string,
 ): ChannelInbound {
   const from = form.From || form.from || ''
   const channelUserId = stripWhatsAppAddress(from)
@@ -47,5 +49,6 @@ export function normalizeTwilioInbound(
     text: callbackData ? '' : body,
     callbackData,
     location,
+    whatsappPhoneNumberId: toNumberId,
   }
 }

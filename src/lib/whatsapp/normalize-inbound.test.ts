@@ -41,6 +41,21 @@ describe('whatsapp normalize-inbound twilio', () => {
     })
     expect(inbound.location).toEqual({ latitude: 14.63, longitude: -90.6 })
   })
+
+  it('spec 017 — carries the business number the user messaged (whatsappPhoneNumberId)', () => {
+    const inbound = normalizeTwilioInbound(
+      { From: 'whatsapp:+593999', To: 'whatsapp:+593111', Body: 'hola', MessageSid: 'SM3' },
+      null,
+      '+593111',
+    )
+    expect(inbound.channelUserId).toBe('+593999')
+    expect(inbound.whatsappPhoneNumberId).toBe('+593111')
+  })
+
+  it('spec 017 — whatsappPhoneNumberId is undefined when no To id is passed', () => {
+    const inbound = normalizeTwilioInbound({ From: 'whatsapp:+593999', Body: 'x', MessageSid: 'SM4' })
+    expect(inbound.whatsappPhoneNumberId).toBeUndefined()
+  })
 })
 
 describe('whatsapp normalize-inbound meta', () => {

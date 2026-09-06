@@ -27,16 +27,27 @@ function toWhatsAppAddress(channelUserId: string): string {
   return e164.startsWith('whatsapp:') ? e164 : `whatsapp:${e164}`
 }
 
+/** spec 017 — the `from` WhatsApp address: the lead's bound business number when set,
+ *  else the shared default `TWILIO_WHATSAPP_FROM`. `fromNumberId` is E.164 (or already a
+ *  `whatsapp:` address). */
+function fromAddress(fromNumberId?: string): string {
+  if (!fromNumberId) return env.TWILIO_WHATSAPP_FROM!
+  const raw = fromNumberId.trim()
+  return raw.toLowerCase().startsWith('whatsapp:') ? raw : `whatsapp:${raw}`
+}
+
 export async function sendTwilioText(
   channelUserId: string,
   text: string,
+  fromNumberId?: string,
 ): Promise<string | undefined> {
   requireTwilio()
   const to = toWhatsAppAddress(channelUserId)
-  console.info('[whatsapp:twilio:out]', { to, type: 'text', len: text.length })
+  const from = fromAddress(fromNumberId)
+  console.info('[whatsapp:twilio:out]', { to, from, type: 'text', len: text.length })
   try {
     const msg = await client().messages.create({
-      from: env.TWILIO_WHATSAPP_FROM!,
+      from,
       to,
       body: text,
     })
@@ -55,13 +66,15 @@ export async function sendTwilioVideo(
   channelUserId: string,
   videoUrl: string,
   caption?: string,
+  fromNumberId?: string,
 ): Promise<string | undefined> {
   requireTwilio()
   const to = toWhatsAppAddress(channelUserId)
-  console.info('[whatsapp:twilio:out]', { to, type: 'media', videoUrl })
+  const from = fromAddress(fromNumberId)
+  console.info('[whatsapp:twilio:out]', { to, from, type: 'media', videoUrl })
   try {
     const msg = await client().messages.create({
-      from: env.TWILIO_WHATSAPP_FROM!,
+      from,
       to,
       body: caption || undefined,
       mediaUrl: [videoUrl],
@@ -75,6 +88,7 @@ export async function sendTwilioVideo(
     return sendTwilioText(
       channelUserId,
       caption ? `${caption}\n${videoUrl}` : videoUrl,
+      fromNumberId,
     )
   }
 }
@@ -86,14 +100,16 @@ export async function sendTwilioTemplate(
   channelUserId: string,
   contentSid: string,
   contentVariables?: Record<string, string>,
+  fromNumberId?: string,
 ): Promise<string | undefined> {
   requireTwilio()
   const to = toWhatsAppAddress(channelUserId)
-  console.info('[whatsapp:twilio:out]', { to, type: 'template', contentSid })
+  const from = fromAddress(fromNumberId)
+  console.info('[whatsapp:twilio:out]', { to, from, type: 'template', contentSid })
   const msg = await client().messages.create({
     contentSid,
     contentVariables: contentVariables ? JSON.stringify(contentVariables) : undefined,
-    from: env.TWILIO_WHATSAPP_FROM!,
+    from,
     to,
   })
   console.info('[whatsapp:twilio:out] ok', { to, sid: msg.sid, contentSid, template: true })
@@ -104,10 +120,12 @@ export async function sendTwilioKeyboard(
   channelUserId: string,
   text: string,
   buttons: InlineKeyboardButton[][],
+  fromNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   const flat = flattenButtons(buttons)
   const { choices } = buildNumberedChoices(buttons)
   const to = toWhatsAppAddress(channelUserId)
+  const from = fromAddress(fromNumberId)
 
   try {
     requireTwilio()
@@ -120,13 +138,13 @@ export async function sendTwilioKeyboard(
       console.info('[whatsapp:twilio:out]', { to, type: 'list-picker', contentSid, n: flat.length })
     } else {
       const { bodySuffix } = buildNumberedChoices(buttons)
-      const sid = await sendTwilioText(channelUserId, `${text}${bodySuffix}`)
+      const sid = await sendTwilioText(channelUserId, `${text}${bodySuffix}`, fromNumberId)
       return { sid, choices }
     }
 
     const msg = await client().messages.create({
       contentSid,
-      from: env.TWILIO_WHATSAPP_FROM!,
+      from,
       to,
     })
     console.info('[whatsapp:twilio:out] ok', { to, sid: msg.sid, contentSid })
@@ -136,7 +154,7 @@ export async function sendTwilioKeyboard(
       error: err instanceof Error ? err.message : String(err),
     })
     const { bodySuffix } = buildNumberedChoices(buttons)
-    const sid = await sendTwilioText(channelUserId, `${text}${bodySuffix}`)
+    const sid = await sendTwilioText(channelUserId, `${text}${bodySuffix}`, fromNumberId)
     return { sid, choices }
   }
 }

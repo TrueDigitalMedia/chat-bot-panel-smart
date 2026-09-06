@@ -30,7 +30,7 @@ export async function sendWhatsAppText(
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioText(channelUserId, text)
+      ? twilio.sendTwilioText(channelUserId, text, fromPhoneNumberId)
       : meta.sendMetaText(channelUserId, text, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppText', channelUserId, err)
@@ -46,7 +46,7 @@ export async function sendWhatsAppVideo(
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption)
+      ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption, fromPhoneNumberId)
       : meta.sendMetaVideo(channelUserId, videoUrl, caption, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppVideo', channelUserId, err)
@@ -62,7 +62,7 @@ export async function sendWhatsAppKeyboard(
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioKeyboard(channelUserId, text, buttons)
+      ? twilio.sendTwilioKeyboard(channelUserId, text, buttons, fromPhoneNumberId)
       : meta.sendMetaKeyboard(channelUserId, text, buttons, fromPhoneNumberId))
   } catch (err) {
     logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
@@ -87,7 +87,7 @@ export async function sendWhatsAppTemplateOrKeyboard(
     if (template) {
       try {
         const { choices } = buildNumberedChoices(buttons)
-        const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+        const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
         return { sid, choices }
       } catch (err) {
         logSendFailure('sendWhatsAppTemplateOrKeyboard', channelUserId, err)
@@ -110,7 +110,7 @@ export async function sendWhatsAppTemplateOrText(
     const template = await getApprovedTemplate(logicalId).catch(() => undefined)
     if (template) {
       try {
-        return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+        return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
       } catch (err) {
         logSendFailure('sendWhatsAppTemplateOrText', channelUserId, err)
         // Fall through to the free-text path below.
