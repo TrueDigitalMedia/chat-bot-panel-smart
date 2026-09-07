@@ -85,6 +85,13 @@ async function dedupeRepeat(leadId: string | undefined, text: string): Promise<D
   if (!last || lastBase !== text) {
     return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: false }
   }
+  // Identical text within a few seconds of the last one is never a legitimate re-ask
+  // (the user hasn't had time to read + reply) — it's two near-simultaneous turns both
+  // landing on the same prompt (a rapid double-message, a correction-flow rewind
+  // racing a callback). Suppress it outright, regardless of the consecutive-run count.
+  if (Date.now() - new Date(last.createdAt).getTime() < 4000) {
+    return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: true }
+  }
   const dedupeIndex = ((last.meta?.dedupeIndex as number | undefined) ?? 0) + 1
   if (dedupeIndex >= MAX_CONSECUTIVE_REPEATS) {
     return { text, meta: { dedupeBase: text, dedupeIndex }, suppress: true }

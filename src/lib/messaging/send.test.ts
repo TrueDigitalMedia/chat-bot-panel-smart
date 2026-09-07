@@ -65,10 +65,21 @@ describe('sendText — never repeats the same message verbatim', () => {
     )
   })
 
+  it('suppresses an identical text sent again within a few seconds (rapid double-turn)', async () => {
+    getLastOutboundMessage.mockResolvedValue({
+      body: 'msg',
+      meta: { dedupeBase: 'msg', dedupeIndex: 0 },
+      createdAt: new Date(Date.now() - 800),
+    })
+    await sendText(makeRecipient(), 'msg')
+    expect(telegramSendText).not.toHaveBeenCalled()
+  })
+
   it('appends a nudge instead of repeating the exact same text a 2nd consecutive time', async () => {
     getLastOutboundMessage.mockResolvedValue({
       body: 'Aún estamos en el paso de registro. Confirma con un botón:',
       meta: { dedupeBase: 'Aún estamos en el paso de registro. Confirma con un botón:', dedupeIndex: 0 },
+      createdAt: new Date(Date.now() - 60_000), // a real re-ask, minutes later
     })
     const to = makeRecipient()
 
@@ -88,6 +99,7 @@ describe('sendText — never repeats the same message verbatim', () => {
     getLastOutboundMessage.mockResolvedValue({
       body: expect.anything(),
       meta: { dedupeBase: 'msg', dedupeIndex: 1 },
+      createdAt: new Date(Date.now() - 60_000),
     })
     const to = makeRecipient()
 
@@ -118,6 +130,7 @@ describe('sendText — never repeats the same message verbatim', () => {
     getLastOutboundMessage.mockResolvedValue({
       body: expect.anything(),
       meta: { dedupeBase: 'msg', dedupeIndex: 2 },
+      createdAt: new Date(Date.now() - 60_000),
     })
     const to = makeRecipient()
 
