@@ -6,6 +6,7 @@ import { validateGuatemalaGeoField } from '@/lib/geo/guatemala'
 import { BUTTON_FIELDS, FREE_TEXT_FIELDS, type SurveyFieldName } from '@/types/lead'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import { matchButtonChoice } from './match-button-choice'
+import { salvageEmail, isNoEmailAnswer, NO_EMAIL_HELP } from './email-answer'
 
 export type CaptureResult =
   | { ok: true; value: unknown; needsConfirmation?: boolean }
@@ -59,6 +60,14 @@ export async function captureSurveyFieldValue(
   ] as const
 
   let value: unknown = messageText.trim()
+
+  // Email: repair near-misses locally, same as phase-1. A real address is required —
+  // "no tengo correo" gets the how-to message, never a null value.
+  if (field === 'email') {
+    if (isNoEmailAnswer(messageText)) return { ok: false, message: NO_EMAIL_HELP }
+    const salvaged = salvageEmail(messageText)
+    if (salvaged) return { ok: true, value: salvaged }
+  }
 
   if ((extractable as readonly string[]).includes(field)) {
     const result = await extractField(field as Parameters<typeof extractField>[0], messageText, {

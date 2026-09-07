@@ -17,6 +17,7 @@ import {
 import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
+import { salvageEmail, isNoEmailAnswer, NO_EMAIL_HELP } from '../email-answer'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import { isMinorAge } from '../age-eligibility'
@@ -349,16 +350,22 @@ export async function handlePhase1(
       return
     }
 
-    console.info('[phase-1] extracting field', {
-      leadId: lead.id,
-      field: question.fieldName,
-      text: messageText.slice(0, 80),
-    })
-    const result = await extractField(
-      question.fieldName as Parameters<typeof extractField>[0],
-      messageText,
-      { leadId: lead.id },
-    )
+    // Email: repair near-miss addresses locally before the AI, and answer "no tengo
+    // correo" with a how-to-get-one message instead of looping "no te entendí". A real
+    // address is required — email is never stored null.
+    let emailResolved = false
+    if (question.fieldName === 'email') {
+      if (isNoEmailAnswer(messageText)) {
+        await sendText(to, NO_EMAIL_HELP)
+        await sendSurveyQuestion(to, idx, lead.id)
+        return
+      }
+      const salvaged = salvageEmail(messageText)
+      if (salvaged) {
+        fieldValue = salvaged
+        emailResolved = true
+      }
+    }
 
     // If AI fails on geo fields with real validation data, fall back to raw text
     // and let geo validation decide.
@@ -381,36 +388,45 @@ export async function handlePhase1(
     const hasGenericGeoValidation = isDeptOrMuni && country !== null && isSupportedGeoCountry(country)
     const hasGeoValidation = (isGeoField && isGuatemala) || hasGenericGeoValidation
 
-    if (!result.ok) {
-      // Check for a correction request BEFORE the geo raw-text fallback below — otherwise
-      // something like "seleccione mal el pais, puedo corregirlo" typed at a geo question
-      // would get forced through fuzzy department/municipality matching instead of ever
-      // being recognized as wanting to fix an earlier answer.
-      const { tryHandleCorrectionRequest } = await import('../correction')
-      if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
-        return
-      }
-      if (hasGeoValidation && messageText.trim().length >= 2) {
-        console.warn('[phase-1] extraction failed — using raw text for geo', {
-          leadId: lead.id,
-          field: question.fieldName,
-        })
-        fieldValue = messageText.trim()
-      } else if (question.fieldName === 'email' && /.+@.+\..+/.test(messageText.trim())) {
-        // A transient model failure (e.g. AI_NoObjectGeneratedError) must not reject a
-        // well-formed email — the schema's own check is z.string().email(), so a basic
-        // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
-        console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
-        fieldValue = messageText.trim()
+    // Skip AI extraction when the email special-case above already resolved a value
+    // (a repaired address, or an accepted "no tengo correo").
+    if (!emailResolved) {
+      console.info('[phase-1] extracting field', {
+        leadId: lead.id,
+        field: question.fieldName,
+        text: messageText.slice(0, 80),
+      })
+      const result = await extractField(
+        question.fieldName as Parameters<typeof extractField>[0],
+        messageText,
+        { leadId: lead.id },
+      )
+
+      if (!result.ok) {
+        // Check for a correction request BEFORE the geo raw-text fallback below — otherwise
+        // something like "seleccione mal el pais, puedo corregirlo" typed at a geo question
+        // would get forced through fuzzy department/municipality matching instead of ever
+        // being recognized as wanting to fix an earlier answer.
+        const { tryHandleCorrectionRequest } = await import('../correction')
+        if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
+          return
+        }
+        if (hasGeoValidation && messageText.trim().length >= 2) {
+          console.warn('[phase-1] extraction failed — using raw text for geo', {
+            leadId: lead.id,
+            field: question.fieldName,
+          })
+          fieldValue = messageText.trim()
+        } else {
+          console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
+          const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
+          const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
+          await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
+          return
+        }
       } else {
-        console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
-        const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-        const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
-        await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
-        return
+        fieldValue = result.value
       }
-    } else {
-      fieldValue = result.value
     }
 
     // Geo validation (departamento/provincia → municipio, + zona/barrio for Guatemala)
