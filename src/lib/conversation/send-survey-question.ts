@@ -11,7 +11,7 @@ export async function sendSurveyQuestion(
   to: ChannelRecipient,
   index: number,
   leadId?: string,
-  opts?: { retry?: boolean },
+  opts?: { retry?: boolean; leadIn?: string },
 ): Promise<void> {
   const q = SURVEY_QUESTIONS[index - 1]
   if (!q) return
@@ -57,7 +57,9 @@ export async function sendSurveyQuestion(
     }
   }
 
-  const outText = withRetryPrefix(text, opts?.retry)
+  // A custom lead-in (e.g. "Ok, volvamos a *Correo*.") or the standard "no te entendí"
+  // prefix — folded into the question so it's one message, not two.
+  const outText = opts?.leadIn ? `${opts.leadIn}\n\n${text}` : withRetryPrefix(text, opts?.retry)
   if (q.inputType === 'button' && q.buttons) {
     await sendInlineKeyboard(to, outText, q.buttons)
   } else if (q.inputType === 'free_text') {

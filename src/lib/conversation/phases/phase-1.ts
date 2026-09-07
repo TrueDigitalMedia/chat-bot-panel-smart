@@ -471,10 +471,6 @@ export async function handlePhase1(
       }
     }
 
-    // Confirm municipality echo (Q4) — only after exact accept
-    if (question.fieldName === 'municipality') {
-      await sendText(to, `He entendido que tu municipio es ${fieldValue}.`)
-    }
   }
 
   // Persist field and advance index

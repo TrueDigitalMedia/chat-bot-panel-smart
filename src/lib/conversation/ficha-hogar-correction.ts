@@ -109,8 +109,7 @@ export async function restartFichaHogarFromField(lead: Lead, field: FichaHogarFi
     })
     .where(eq(flowStates.leadId, lead.id))
 
-  await sendText(lead, `Ok, volvamos a "${FIELD_LABELS[field]}".`)
-  await sendFichaHogarQuestion(lead, idx)
+  await sendFichaHogarQuestion(lead, idx, { leadIn: `Ok, volvamos a "${FIELD_LABELS[field]}".` })
 }
 
 /**

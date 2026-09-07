@@ -25,11 +25,11 @@ const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
 export async function sendFichaHogarQuestion(
   to: ChannelRecipient,
   index: number,
-  opts?: { retry?: boolean },
+  opts?: { retry?: boolean; leadIn?: string },
 ): Promise<void> {
   const q = FICHA_HOGAR_QUESTIONS[index - 1]
   if (!q) return
-  const text = withRetryPrefix(q.text, opts?.retry)
+  const text = opts?.leadIn ? `${opts.leadIn}\n\n${q.text}` : withRetryPrefix(q.text, opts?.retry)
   if (q.inputType === 'button' && q.buttons) {
     await sendInlineKeyboard(to, text, q.buttons)
   } else {
