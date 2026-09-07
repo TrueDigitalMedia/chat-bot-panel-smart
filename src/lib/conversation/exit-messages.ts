@@ -15,12 +15,10 @@ export function supportRedirect(): string {
   return `Gracias por tu interés. En estos momentos no podemos continuar con tu registro.`
 }
 
-export const NOT_UNDERSTOOD_MESSAGE = 'No entendí lo que respondiste 🤔. Te vuelvo a preguntar:'
-
 /** Short lead-in prepended to the re-asked question when the previous answer didn't
- *  parse — replaces the old pattern of sending NOT_UNDERSTOOD_MESSAGE as its own
- *  message + re-sending the question (two messages per parse failure, ~1.2k/month).
- *  One message now, and less robotic. */
+ *  parse — replaces the old pattern of sending a standalone "no entendí" message +
+ *  re-sending the question (two messages per parse failure, ~1.2k/month). One message
+ *  now, and less robotic. */
 export const NOT_UNDERSTOOD_PREFIX = '🤔 No te entendí.'
 
 /** Prepends NOT_UNDERSTOOD_PREFIX to a question's text when `retry` is set. */

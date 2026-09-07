@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client'
 import { leads, surveyProfiles, fichaHogarProfiles } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard, sendVideo } from '@/lib/messaging/send'
-import { supportRedirect, EXIT_A, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
+import { supportRedirect, EXIT_A, withRetryPrefix } from '../exit-messages'
 import type { Lead } from '@/types/lead'
 import { FICHA_HOGAR_BUTTON_FIELDS } from '@/types/lead'
 import { generateObject } from 'ai'
@@ -22,13 +22,18 @@ import type { ChannelRecipient } from '@/types/channel'
 
 const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
 
-export async function sendFichaHogarQuestion(to: ChannelRecipient, index: number): Promise<void> {
+export async function sendFichaHogarQuestion(
+  to: ChannelRecipient,
+  index: number,
+  opts?: { retry?: boolean },
+): Promise<void> {
   const q = FICHA_HOGAR_QUESTIONS[index - 1]
   if (!q) return
+  const text = withRetryPrefix(q.text, opts?.retry)
   if (q.inputType === 'button' && q.buttons) {
-    await sendInlineKeyboard(to, q.text, q.buttons)
+    await sendInlineKeyboard(to, text, q.buttons)
   } else {
-    await sendText(to, q.text)
+    await sendText(to, text)
   }
 }
 
@@ -126,8 +131,7 @@ export async function handleFichaHogar(
         return
       }
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, { retry: !answered })
       return
     }
     const raw = resolvedCallback.split(':').slice(1).join(':')
@@ -137,8 +141,7 @@ export async function handleFichaHogar(
         : raw
   } else {
     if (!messageText.trim()) {
-      await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, { retry: true })
       return
     }
     const result = await extractField(
@@ -153,10 +156,7 @@ export async function handleFichaHogar(
       }
       const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
       const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
-      if (!answered) {
-        await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      }
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, { retry: !answered })
       return
     }
     fieldValue = result.value

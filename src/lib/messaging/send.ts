@@ -69,8 +69,8 @@ interface DedupeResult {
 /**
  * Never send the exact same text twice in a row to the same lead — many gates/questions
  * re-show byte-identical prompts when the user's reply didn't resolve to anything (see
- * flow-router.ts's waiting_for_code reminder, phase-1.ts's NOT_UNDERSTOOD_MESSAGE +
- * re-ask combo, survey question resends, etc.), which reads as broken/robotic.
+ * flow-router.ts's waiting_for_code reminder, the "no te entendí" + re-ask combo,
+ * survey question resends, etc.), which reads as broken/robotic.
  *
  * Tracks the repeat run via `meta.dedupeBase`/`dedupeIndex` on the previous message
  * rather than comparing raw bodies directly, so appending a nudge doesn't itself break
