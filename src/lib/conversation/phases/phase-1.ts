@@ -9,7 +9,8 @@ import { checkQuotaAvailability } from '@/lib/scoring/quota'
 import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
 import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
-import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
+import { EXIT_A, EXIT_B, EXIT_B_THANKS, withRetryPrefix } from '../exit-messages'
+import { isStalePassedGateCallback } from './stale-gate'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
@@ -127,6 +128,11 @@ export async function handlePhase1(
 ): Promise<void> {
   const to = lead
 
+  if (callbackData && isStalePassedGateCallback(lead, callbackData)) {
+    console.info('[phase-1] ignoring stale tap on an already-cleared gate', { leadId: lead.id, callbackData })
+    return
+  }
+
   // --- DECISION POINTS ---
 
   // Opt-in: initial enrollment gate, before D1 (spec 007)
@@ -162,8 +168,7 @@ export async function handlePhase1(
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendOptIn(to)
+      await sendOptIn(to, !answered)
     }
     return
   }
@@ -190,8 +195,7 @@ export async function handlePhase1(
       await sendText(to, EXIT_A)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendD1(to)
+      await sendD1(to, !answered)
     }
     return
   }
@@ -218,8 +222,7 @@ export async function handlePhase1(
       await sendD3(to)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendReEngagementConsent(to)
+      await sendReEngagementConsent(to, !answered)
     }
     return
   }
@@ -249,8 +252,7 @@ export async function handlePhase1(
       await sendText(to, EXIT_B)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, D3_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendD3(to)
+      await sendD3(to, !answered)
     }
     return
   }
@@ -318,8 +320,7 @@ export async function handlePhase1(
           { leadId: lead.id },
         )
         if (!result.ok) {
-          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-          await sendSurveyQuestion(to, idx, lead.id)
+          await sendSurveyQuestion(to, idx, lead.id, { retry: true })
           return
         }
         fieldValue = result.value
@@ -329,8 +330,7 @@ export async function handlePhase1(
           return
         }
         const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
-        if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-        await sendSurveyQuestion(to, idx, lead.id)
+        await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
         return
       }
     } else {
@@ -345,8 +345,7 @@ export async function handlePhase1(
   } else {
     // Free-text: ignore empty / stray button callbacks — just re-ask
     if (!messageText.trim()) {
-      await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendSurveyQuestion(to, idx, lead.id)
+      await sendSurveyQuestion(to, idx, lead.id, { retry: true })
       return
     }
 
@@ -407,10 +406,7 @@ export async function handlePhase1(
         console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
         const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
         const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
-        if (!answered) {
-          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-        }
-        await sendSurveyQuestion(to, idx, lead.id)
+        await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
         return
       }
     } else {
@@ -601,20 +597,20 @@ export async function handlePhase1(
 
 // --- Helpers ---
 
-async function sendOptIn(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, OPT_IN_TEXT, OPT_IN_BUTTONS)
+async function sendOptIn(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(OPT_IN_TEXT, retry), OPT_IN_BUTTONS)
 }
 
-async function sendD1(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, D1_TEXT, D1_BUTTONS)
+async function sendD1(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(D1_TEXT, retry), D1_BUTTONS)
 }
 
-async function sendReEngagementConsent(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, REENGAGEMENT_CONSENT_TEXT, REENGAGEMENT_CONSENT_BUTTONS)
+async function sendReEngagementConsent(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(REENGAGEMENT_CONSENT_TEXT, retry), REENGAGEMENT_CONSENT_BUTTONS)
 }
 
-async function sendD3(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, D3_TEXT, D3_BUTTONS)
+async function sendD3(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(D3_TEXT, retry), D3_BUTTONS)
 }
 
 // Re-export for callers that still import from phase-1

@@ -17,6 +17,17 @@ export function supportRedirect(): string {
 
 export const NOT_UNDERSTOOD_MESSAGE = 'No entendí lo que respondiste 🤔. Te vuelvo a preguntar:'
 
+/** Short lead-in prepended to the re-asked question when the previous answer didn't
+ *  parse — replaces the old pattern of sending NOT_UNDERSTOOD_MESSAGE as its own
+ *  message + re-sending the question (two messages per parse failure, ~1.2k/month).
+ *  One message now, and less robotic. */
+export const NOT_UNDERSTOOD_PREFIX = '🤔 No te entendí.'
+
+/** Prepends NOT_UNDERSTOOD_PREFIX to a question's text when `retry` is set. */
+export function withRetryPrefix(text: string, retry?: boolean): string {
+  return retry ? `${NOT_UNDERSTOOD_PREFIX}\n\n${text}` : text
+}
+
 /** Sent at most once to a lead who already opted out and keeps writing — a fixed line,
  *  never an AI-generated reply, so nothing the bot says after a STOP can read as
  *  reopening the conversation. Names the one way back in (see OPT_OUT_REENTRY_TEXT). */

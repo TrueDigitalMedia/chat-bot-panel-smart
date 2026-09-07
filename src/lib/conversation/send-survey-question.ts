@@ -3,6 +3,7 @@ import { db } from '@/lib/db/client'
 import { surveyProfiles, leads, flowStates } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { guatemalaQuestionText, type GeoField } from '@/lib/geo/guatemala'
+import { withRetryPrefix } from './exit-messages'
 import { SURVEY_QUESTIONS } from './survey-questions'
 import type { ChannelRecipient } from '@/types/channel'
 
@@ -10,6 +11,7 @@ export async function sendSurveyQuestion(
   to: ChannelRecipient,
   index: number,
   leadId?: string,
+  opts?: { retry?: boolean },
 ): Promise<void> {
   const q = SURVEY_QUESTIONS[index - 1]
   if (!q) return
@@ -30,7 +32,7 @@ export async function sendSurveyQuestion(
         .set({ surveyQuestionIndex: index + 1, updatedAt: new Date() })
         .where(eq(flowStates.leadId, leadId))
     }
-    await sendSurveyQuestion(to, index + 1, leadId)
+    await sendSurveyQuestion(to, index + 1, leadId, opts)
     return
   }
 
@@ -55,9 +57,10 @@ export async function sendSurveyQuestion(
     }
   }
 
+  const outText = withRetryPrefix(text, opts?.retry)
   if (q.inputType === 'button' && q.buttons) {
-    await sendInlineKeyboard(to, text, q.buttons)
+    await sendInlineKeyboard(to, outText, q.buttons)
   } else if (q.inputType === 'free_text') {
-    await sendText(to, text)
+    await sendText(to, outText)
   }
 }
