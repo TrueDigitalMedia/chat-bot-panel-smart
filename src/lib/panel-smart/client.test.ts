@@ -45,6 +45,29 @@ describe('syncToPanelSmart', () => {
     await expect(syncToPanelSmart({ lead_id: 'lead-1', responses: [] })).rejects.toThrow(
       /Panel Smart sync failed: 500/,
     )
+    expect(fetchMock).toHaveBeenCalledTimes(1) // a plain 500 is not retried
+  })
+
+  it('retries a MySQL deadlock (1213) then succeeds', async () => {
+    let n = 0
+    const fetchMock = vi.fn(async () => {
+      n++
+      return n < 3
+        ? new Response('{"message":"(1213, \'Deadlock found when trying to get lock\')"}', { status: 500 })
+        : new Response('{"success":true}', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(syncToPanelSmart({ lead_id: 'lead-1', responses: [] })).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives up after the deadlock retry budget', async () => {
+    const fetchMock = vi.fn(async () => new Response('{"message":"deadlock"}', { status: 500 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(syncToPanelSmart({ lead_id: 'lead-1', responses: [] })).rejects.toThrow(/Panel Smart sync failed/)
+    expect(fetchMock).toHaveBeenCalledTimes(3) // initial + 2 retries
   })
 })
 

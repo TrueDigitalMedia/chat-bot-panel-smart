@@ -2,10 +2,16 @@ import { env, isPanelSmartSyncConfigured } from '@/lib/env'
 import { getTdmAccessToken } from '@/lib/tdm-registration/oauth'
 import type { PanelSmartSyncPayload } from './types'
 
-// Same Azure Function App as TDM's /api/ai-lead (tdm-registration/client.ts measured ~6.4s
-// there) — matching its generous timeout since this is also called from a background job,
-// never a user-facing response. Increased to 30s due to occasional Panel Smart slowness.
-const DEFAULT_TIMEOUT_MS = 30000
+// Same Azure Function App as TDM's /api/ai-lead. Background job, never user-facing —
+// but a request that hasn't answered in 20s is the Panel Smart side overloaded /
+// deadlocking (see the 2026-09 audit: ~24% failure, minutes-long hangs at the old 30s),
+// and failing fast frees the serverless invocation. The sync is idempotent (diffs
+// against the last-sent snapshot) so a timed-out attempt just retries next transition.
+const DEFAULT_TIMEOUT_MS = 20000
+
+/** Retries a transient MySQL deadlock (error 1213) on the Panel Smart side, which the
+ *  2026-09 audit showed spiking under load. Everything else fails through immediately. */
+const DEADLOCK_RETRIES = 2
 
 export function requirePanelSmartSyncConfigured(): void {
   if (!isPanelSmartSyncConfigured()) {
@@ -29,21 +35,28 @@ export async function syncToPanelSmart(payload: PanelSmartSyncPayload): Promise<
     'Content-Type': 'application/json',
     Authorization: `Bearer ${accessToken}`,
   }
+  const body = JSON.stringify(payload)
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
-  try {
-    const res = await fetch(env.PANEL_SMART_SYNC_URL!, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+    try {
+      const res = await fetch(env.PANEL_SMART_SYNC_URL!, {
+        method: 'POST',
+        headers,
+        body,
+        signal: controller.signal,
+      })
+      if (res.ok) return
       const text = await res.text().catch(() => '')
+      const isDeadlock = res.status === 500 && /\b1213\b|deadlock/i.test(text)
+      if (isDeadlock && attempt < DEADLOCK_RETRIES) {
+        await new Promise((r) => setTimeout(r, 300 + attempt * 500))
+        continue
+      }
       throw new Error(`Panel Smart sync failed: ${res.status} ${text}`)
+    } finally {
+      clearTimeout(timeout)
     }
-  } finally {
-    clearTimeout(timeout)
   }
 }
