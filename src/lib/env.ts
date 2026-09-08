@@ -46,6 +46,8 @@ const envSchema = z.object({
   RE_ENGAGEMENT_TIMEOUT_OVERRIDE_SECONDS: z.coerce.number().optional(),
   RE_ENGAGEMENT_CADENCE_OVERRIDE_SECONDS: z.string().optional(),
   FORCE_EXTRACTION_ERROR: z.string().optional(),
+  /** Local diagnostic — logs expected-vs-received Twilio signature on validation failure. */
+  TWILIO_SIGNATURE_DEBUG: z.string().optional(),
 
   /** REGISTRATION_CODE_MOCK_ENABLED=true bypasses the TDM request entirely and delivers
    *  a mock code — the only way to test this flow locally without a real TDM endpoint. */
