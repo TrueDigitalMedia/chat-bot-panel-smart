@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { isTwilioConfigured } from '@/lib/env'
 import { verifyTwilioSignature, resolveTwilioWebhookUrl } from '@/lib/whatsapp/verify'
-import { normalizeTwilioInbound } from '@/lib/whatsapp/normalize-inbound'
+import { normalizeTwilioInbound, stripWhatsAppAddress } from '@/lib/whatsapp/normalize-inbound'
 import { getPendingWaChoices } from '@/lib/whatsapp/pending-choices'
 import { processWhatsAppInbound } from '@/lib/whatsapp/handle-inbound'
+import { countryForSenderId, inboundNumberOutcome } from '@/lib/whatsapp/number-registry'
 import { upsertLead } from '@/lib/db/leads'
 
 /**
@@ -36,12 +37,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const from = params.From || ''
       if (!from) return
-      const lead = await upsertLead('whatsapp', from.replace(/^whatsapp:/i, '').trim())
+      // spec 017 — Twilio's `To` is which of our business numbers the user messaged.
+      const senderId = params.To ? stripWhatsAppAddress(params.To) : undefined
+      console.info(
+        JSON.stringify({
+          event: 'whatsapp_inbound_number',
+          phone_number_id: senderId ?? null,
+          display_phone_number: senderId ?? null,
+          resolved_country: countryForSenderId(senderId),
+          outcome: inboundNumberOutcome(senderId),
+          provider: 'twilio',
+        }),
+      )
+      const lead = await upsertLead(
+        'whatsapp',
+        from.replace(/^whatsapp:/i, '').trim(),
+        undefined,
+        { phoneNumberId: senderId },
+      )
       const pending = await getPendingWaChoices(lead.id)
-      const inbound = normalizeTwilioInbound(params, pending)
+      const inbound = normalizeTwilioInbound(params, pending, senderId)
       await processWhatsAppInbound(inbound, {
         messageSid: params.MessageSid,
         provider: 'twilio',
+        phoneNumberId: senderId,
         // Twilio's Business-Scoped User ID for this sender, present on every inbound
         // WhatsApp webhook since ~April 2026 regardless of whether the user has a
         // resolvable phone number (channelUserId already IS the BSUID when there's no
