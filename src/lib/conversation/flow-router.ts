@@ -26,6 +26,11 @@ const BUTTON_PREFIXES = [
   'domesticHelp:', 'shoppingFrequency:', 'contactChannel:', 'contactSchedule:',
   'isPregnant:', 'hasBabyUnder3:', 'householdSize:', 'bedrooms:',
   'correct:',
+  // Ecuador screening + NSE button questions (spec 014)
+  'conflictOfInterest:', 'healthInsurancePsh:', 'monthlyIncome:', 'dwellingFinishes:',
+  'floorMaterial:', 'vehicleCount:', 'occupationHead:', 'occupationAma:', 'internetAccess:',
+  // México NSE button questions (spec 015)
+  'educationHoh:', 'fullBathrooms:', 'homeInternet:', 'workers14Plus:',
 ]
 
 // The accept side of every decision gate whose decline can land a lead in

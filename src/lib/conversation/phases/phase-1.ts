@@ -67,6 +67,15 @@ const D3_BUTTONS: InlineKeyboardButton[][] = [
  * typed number outside the button range still has to work.
  */
 const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
+// Yes/No button questions whose callback payload is `<field>:true` / `<field>:false` —
+// the value must be parsed to a real boolean, not left as the string "true"/"false"
+// (the conflictOfInterest disqualify gate compares `fieldValue === true` in-memory).
+const BOOLEAN_BUTTON_FIELDS = new Set([
+  'domesticHelp',
+  'conflictOfInterest',
+  'isPregnant',
+  'hasBabyUnder3',
+])
 
 /**
  * Non-CAM NSE variables with no dedicated survey_profiles column — persisted into
@@ -369,7 +378,7 @@ export async function handlePhase1(
     } else {
       const raw = resolvedCallback.split(':').slice(1).join(':')
       fieldValue =
-        question.fieldName === 'domesticHelp'
+        BOOLEAN_BUTTON_FIELDS.has(question.fieldName)
           ? raw === 'true'
           : NUMERIC_BUTTON_FIELDS.has(question.fieldName)
             ? Number(raw)
