@@ -405,7 +405,11 @@ export async function tryHandleCorrectionRequest(
     }
     const captured = await captureSurveyFieldValue(lead.id, field, intent.value, undefined)
     if (!captured.ok) {
-      await sendText(lead, captured.message)
+      // Tag a geo rejection so phase-1's anti-loop hatch (hadRecentGeoReject) accepts the
+      // raw text if the user misses again after the survey restarts on this field.
+      const geoReject =
+        field === 'stateProvince' || field === 'municipality' ? { geoReject: field } : undefined
+      await sendText(lead, captured.message, geoReject)
       await restartSurveyFromField(lead, field)
       return true
     }

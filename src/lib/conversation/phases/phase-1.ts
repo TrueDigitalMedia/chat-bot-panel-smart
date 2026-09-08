@@ -5,7 +5,7 @@ import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
-import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
+import { hasSentOutboundMessage, hadRecentGeoReject } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
 import { resolveSurveyQuestions, surveyQuestionCount, nextQuestionForCountry } from '../survey-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
@@ -483,24 +483,37 @@ export async function handlePhase1(
             { stateProvince: profileForCountry?.stateProvince },
           )
       if (!geo.ok) {
-        await sendText(
-          to,
-          geo.message ?? 'No pude validar esa ubicación. ¿Puedes intentar de nuevo?',
-        )
-        await sendSurveyQuestion(to, idx, lead.id)
-        return
-      }
-      fieldValue = geo.canonical ?? fieldValue
+        // Second consecutive miss on this field → the location is likely just outside our
+        // sample catalog (spec 014: out-of-catalog is a valid "out of geo quota", the
+        // survey must continue). Accept the raw text and advance rather than hard-loop.
+        if (await hadRecentGeoReject(lead.id, question.fieldName)) {
+          console.warn('[phase-1] geo not in catalog after retry — accepting raw text', {
+            leadId: lead.id,
+            field: question.fieldName,
+          })
+          // fieldValue keeps its raw value; fall through to persist/advance.
+        } else {
+          await sendText(
+            to,
+            geo.message ?? 'No pude validar esa ubicación. ¿Puedes intentar de nuevo?',
+            { geoReject: question.fieldName },
+          )
+          await sendSurveyQuestion(to, idx, lead.id)
+          return
+        }
+      } else {
+        fieldValue = geo.canonical ?? fieldValue
 
-      // Fuzzy/typo match → ask before saving (exact names skip confirmation)
-      if (geo.needsConfirmation && geo.canonical) {
-        const { askGeoConfirmation } = await import('@/lib/geo/confirm')
-        await askGeoConfirmation(
-          to,
-          question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
-          geo.canonical,
-        )
-        return
+        // Fuzzy/typo match → ask before saving (exact names skip confirmation)
+        if (geo.needsConfirmation && geo.canonical) {
+          const { askGeoConfirmation } = await import('@/lib/geo/confirm')
+          await askGeoConfirmation(
+            to,
+            question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
+            geo.canonical,
+          )
+          return
+        }
       }
     }
 

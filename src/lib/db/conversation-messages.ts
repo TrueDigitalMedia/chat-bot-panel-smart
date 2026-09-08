@@ -88,6 +88,24 @@ export interface LastOutboundMessage {
   meta: Record<string, unknown> | null
 }
 
+/**
+ * True when one of the last few outbound messages was a geo-location rejection for this
+ * exact field (tagged `meta.geoReject`). Used to stop hard-looping a lead whose
+ * province/municipality isn't in our sample catalog: on the 2nd consecutive miss we
+ * accept their raw text and let the survey continue (spec 014 — out-of-catalog is a
+ * valid "out of geo quota", not a dead end). Looks at 3 messages because a rejection turn
+ * emits two (the "Ejemplos…" text + the re-asked question).
+ */
+export async function hadRecentGeoReject(leadId: string, field: string): Promise<boolean> {
+  const rows = await db
+    .select({ meta: conversationMessages.meta })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'out')))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(3)
+  return rows.some((r) => (r.meta as Record<string, unknown> | null)?.geoReject === field)
+}
+
 /** Most recent outbound message for a lead — used to detect an about-to-repeat
  *  verbatim re-prompt (e.g. the user's reply didn't advance the conversation and the
  *  same gate/question is about to be re-shown) so it can be varied instead. */
