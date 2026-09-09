@@ -1,6 +1,6 @@
 import { listQuotaProgress } from '@/lib/quotas/quota-progress'
 import { listRegionCaps } from '@/lib/quotas/region-caps'
-import { listCatalogCountries, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
+import { listSupportedCountries, listNseRegionsForSupportedCountry, getCountryConfig } from '@/lib/countries/registry'
 import { QuotaRowForm } from './quota-row-form'
 import { NewQuotaTargetRow } from './new-quota-target-row'
 import { ImportForm } from './import-form'
@@ -30,8 +30,13 @@ export default async function QuotasPage({
     }),
     listRegionCaps(),
   ])
-  const catalogCountries = listCatalogCountries()
-  const regionsByCountry = Object.fromEntries(catalogCountries.map((c) => [c, listNseRegionsForCountry(c)]))
+  const catalogCountries = listSupportedCountries()
+  const regionsByCountry = Object.fromEntries(
+    catalogCountries.map((c) => [c, [...listNseRegionsForSupportedCountry(c)]]),
+  )
+  const nseLevelsByCountry = Object.fromEntries(
+    catalogCountries.map((c) => [c, [...getCountryConfig(c).nseLevels]]),
+  )
 
   const summary = items.reduce(
     (acc, item) => {
@@ -96,7 +101,11 @@ export default async function QuotasPage({
         </div>
       </div>
 
-      <QuotaFiltersForm countries={catalogCountries} regionsByCountry={regionsByCountry} />
+      <QuotaFiltersForm
+        countries={catalogCountries}
+        regionsByCountry={regionsByCountry}
+        nseLevelsByCountry={nseLevelsByCountry}
+      />
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
@@ -114,7 +123,11 @@ export default async function QuotasPage({
             </tr>
           </thead>
           <tbody>
-            <NewQuotaTargetRow countries={catalogCountries} regionsByCountry={regionsByCountry} />
+            <NewQuotaTargetRow
+              countries={catalogCountries}
+              regionsByCountry={regionsByCountry}
+              nseLevelsByCountry={nseLevelsByCountry}
+            />
             {sorted.length === 0 ? (
               <tr>
                 <td colSpan={9} className={styles.empty}>

@@ -1,7 +1,11 @@
+import { and, count, eq } from 'drizzle-orm'
 import type { ChannelInbound } from '@/types/channel'
 import { upsertLead } from '@/lib/db/leads'
 import { logConversationMessage, wasProviderMessageAlreadyProcessed } from '@/lib/db/conversation-messages'
+import { db } from '@/lib/db/client'
+import { conversationMessages } from '@/lib/db/schema'
 import { routeMessage } from '@/lib/conversation/flow-router'
+import { applyNumberScope } from '@/lib/whatsapp/number-scope'
 import { generateCorrelationId } from '@/lib/correlation'
 import {
   clearPendingWaChoices,
@@ -27,7 +31,24 @@ export async function processWhatsAppInbound(
     return
   }
 
-  const lead = await upsertLead('whatsapp', inbound.channelUserId)
+  const lead = await upsertLead('whatsapp', inbound.channelUserId, undefined, {
+    phoneNumberId: inbound.whatsappPhoneNumberId,
+  })
+
+  // spec 017 — a brand-new conversation on a country-scoped business number is pre-set to
+  // that country here (before routeMessage), so the existing survey-plan skip logic
+  // (feature 016) never sends the "¿En qué país…?" question. Never re-scopes an existing
+  // lead. `country`-skip + manual-geo behavior is owned by feature 016 — nothing new here.
+  const [{ n: existingMessageCount } = { n: 0 }] = await db
+    .select({ n: count() })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, lead.id)))
+  await applyNumberScope(
+    lead.id,
+    inbound.whatsappPhoneNumberId,
+    lead.whatsappPhoneNumberId,
+    Number(existingMessageCount),
+  )
 
   const pending = await getPendingWaChoices(lead.id)
   let resolved = inbound

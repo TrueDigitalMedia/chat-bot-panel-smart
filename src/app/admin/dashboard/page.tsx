@@ -1,8 +1,7 @@
 import { listQuotaProgress, type QuotaProgress } from '@/lib/quotas/quota-progress'
 import { buildCountrySummary } from '@/lib/dashboard/country-summary'
 import { getConversionFunnel, countQualifiedLeadsTotal, countQualifiedLeadsByCountry } from '@/lib/dashboard/funnel'
-import { NSE_LEVELS } from '@/lib/quotas/quota-targets'
-import { listCatalogCountries, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
+import { listSupportedCountries, listNseRegionsForSupportedCountry, getCountryConfig } from '@/lib/countries/registry'
 import { isChannel } from '@/types/channel'
 import { FiltersForm } from './filters-form'
 import { RefreshPoller } from './refresh-poller'
@@ -72,9 +71,12 @@ export default async function DashboardPage({
   const qualifiedByCountry = await countQualifiedLeadsByCountry(qualifiedFilters)
   const countryChart = buildCountrySummary(items, qualifiedByCountry)
 
-  const catalogCountries = listCatalogCountries()
+  const catalogCountries = listSupportedCountries()
   const regionsByCountry = Object.fromEntries(
-    catalogCountries.map((c) => [c, listNseRegionsForCountry(c)]),
+    catalogCountries.map((c) => [c, [...listNseRegionsForSupportedCountry(c)]]),
+  )
+  const nseLevelsByCountry = Object.fromEntries(
+    catalogCountries.map((c) => [c, [...getCountryConfig(c).nseLevels]]),
   )
 
   const sortedByRegion = [...items].sort(
@@ -100,7 +102,11 @@ export default async function DashboardPage({
       </header>
 
       <div className={styles.section}>
-        <FiltersForm countries={catalogCountries} dimensionValues={NSE_LEVELS} regionsByCountry={regionsByCountry} />
+        <FiltersForm
+          countries={catalogCountries}
+          nseLevelsByCountry={nseLevelsByCountry}
+          regionsByCountry={regionsByCountry}
+        />
       </div>
 
       <div className={styles.section}>

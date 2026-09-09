@@ -90,6 +90,19 @@ describe('region-caps validation', () => {
     expect(lastUpdateSet).toMatchObject({ capCount: 40 })
     expect(lastUpdateSet!.updatedAt).toBeInstanceOf(Date)
   })
+
+  // Spec 014 US5 (T040): Ecuador region caps must validate against Ecuador's own catalog.
+  it('accepts a valid Ecuador region', async () => {
+    const { createRegionCap } = await import('@/lib/quotas/region-caps')
+    const row = await createRegionCap({ country: 'Ecuador', region: 'Cuenca', capCount: 25 })
+    expect(row).toMatchObject({ country: 'Ecuador', region: 'Cuenca', capCount: 25 })
+  })
+
+  it('rejects a region not valid for Ecuador (a CAM region name)', async () => {
+    const { createRegionCap } = await import('@/lib/quotas/region-caps')
+    const { QuotaTargetError } = await import('@/lib/quotas/quota-targets')
+    await expect(createRegionCap({ country: 'Ecuador', region: 'Centro I' })).rejects.toThrow(QuotaTargetError)
+  })
 })
 
 describe('getRegionCapProgress', () => {

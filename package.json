@@ -9,10 +9,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:regression": "vitest run --config vitest.regression.config.ts",
+    "test:regression:update": "vitest run --config vitest.regression.config.ts -u",
     "db:migrate": "tsx src/lib/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:seed:faqs": "tsx --env-file=.env src/lib/db/seed/faqs.ts",
     "db:seed:evals": "tsx --env-file=.env src/lib/db/seed/eval-fixtures.ts",
+    "db:seed:ecuador-quota-example": "tsx --env-file=.env src/lib/db/seed/ecuador-quota-example.ts",
+    "db:seed:mexico-quota-example": "tsx --env-file=.env src/lib/db/seed/mexico-quota-example.ts",
     "eval:backfill": "tsx --env-file=.env src/lib/eval/run-backfill.ts"
   },
   "dependencies": {

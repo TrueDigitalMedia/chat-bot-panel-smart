@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, ne } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, isNull, ne } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
@@ -89,6 +89,24 @@ export interface LastOutboundMessage {
   createdAt: Date
 }
 
+/**
+ * True when one of the last few outbound messages was a geo-location rejection for this
+ * exact field (tagged `meta.geoReject`). Used to stop hard-looping a lead whose
+ * province/municipality isn't in our sample catalog: on the 2nd consecutive miss we
+ * accept their raw text and let the survey continue (spec 014 — out-of-catalog is a
+ * valid "out of geo quota", not a dead end). Looks at 3 messages because a rejection turn
+ * emits two (the "Ejemplos…" text + the re-asked question).
+ */
+export async function hadRecentGeoReject(leadId: string, field: string): Promise<boolean> {
+  const rows = await db
+    .select({ meta: conversationMessages.meta })
+    .from(conversationMessages)
+    .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'out')))
+    .orderBy(desc(conversationMessages.createdAt))
+    .limit(3)
+  return rows.some((r) => (r.meta as Record<string, unknown> | null)?.geoReject === field)
+}
+
 /** Most recent outbound message for a lead — used to detect an about-to-repeat
  *  verbatim re-prompt (e.g. the user's reply didn't advance the conversation and the
  *  same gate/question is about to be re-shown) so it can be varied instead. */
@@ -164,6 +182,8 @@ export type ConversationListItem = {
   createdAt: Date
   fullName: string | null
   country: string | null
+  /** 'web:room:Ecuador' | 'web:room:México' | null — how a web lead entered (spec 016). */
+  acquisitionSource: string | null
   lastMessage: string | null
   lastMessageAt: Date | null
   messageCount: number
@@ -174,6 +194,8 @@ export type ConversationListItem = {
 
 export interface ListConversationsOptions {
   status?: LeadStatus
+  /** 'web:room:Ecuador' | 'web:room:México' | 'generic' (web, no room) — spec 016 T021. */
+  acquisitionSource?: string
   limit?: number
   offset?: number
 }
@@ -185,6 +207,14 @@ export async function listConversations(
 
   const conditions = []
   if (opts.status) conditions.push(eq(leads.leadStatus, opts.status))
+  if (opts.acquisitionSource === 'generic') {
+    conditions.push(and(eq(leads.channel, 'web'), isNull(leads.acquisitionSource)))
+  } else if (opts.acquisitionSource === 'whatsapp-generic') {
+    // spec 017 — WhatsApp leads on the shared/CAM number (no per-country acquisition source).
+    conditions.push(and(eq(leads.channel, 'whatsapp'), isNull(leads.acquisitionSource)))
+  } else if (opts.acquisitionSource) {
+    conditions.push(eq(leads.acquisitionSource, opts.acquisitionSource))
+  }
 
   // Fetch one extra row to detect whether a next page exists, without a separate
   // COUNT(*) query — sliced back down to `limit` before any of the per-lead lookups
@@ -202,6 +232,7 @@ export async function listConversations(
       surveyQuestionIndex: leads.surveyQuestionIndex,
       lastActivityAt: leads.lastActivityAt,
       createdAt: leads.createdAt,
+      acquisitionSource: leads.acquisitionSource,
       fullName: surveyProfiles.fullName,
       country: surveyProfiles.country,
     })

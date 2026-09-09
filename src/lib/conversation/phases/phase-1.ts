@@ -4,11 +4,11 @@ import { leads, surveyProfiles, flowStates } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { extractField } from '@/lib/ai/extract-survey-fields'
-import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
-import { hasSentOutboundMessage } from '@/lib/db/conversation-messages'
+import { hasSentOutboundMessage, hadRecentGeoReject } from '@/lib/db/conversation-messages'
 import { recordConsentEvent } from '@/lib/db/leads'
-import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from '../survey-questions'
+import { resolveSurveyQuestions, surveyQuestionCount, nextQuestionForCountry } from '../survey-plan'
+import { getCountryConfig } from '@/lib/countries/registry'
 import { EXIT_A, EXIT_B, EXIT_B_THANKS, withRetryPrefix } from '../exit-messages'
 import { isStalePassedGateCallback } from './stale-gate'
 import {
@@ -69,6 +69,38 @@ const D3_BUTTONS: InlineKeyboardButton[][] = [
  * typed number outside the button range still has to work.
  */
 const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
+// Yes/No button questions whose callback payload is `<field>:true` / `<field>:false` —
+// the value must be parsed to a real boolean, not left as the string "true"/"false"
+// (the conflictOfInterest disqualify gate compares `fieldValue === true` in-memory).
+const BOOLEAN_BUTTON_FIELDS = new Set([
+  'domesticHelp',
+  'conflictOfInterest',
+  'isPregnant',
+  'hasBabyUnder3',
+])
+
+/**
+ * Non-CAM NSE variables with no dedicated survey_profiles column — persisted into
+ * scoring_answers_json instead (spec 014 R6). educationPsh/householdSize/conflictOfInterest
+ * are real columns shared across countries, so they're NOT in this set.
+ */
+const NON_COLUMN_SCORING_FIELDS = new Set([
+  // Ecuador
+  'healthInsurancePsh',
+  'monthlyIncome',
+  'dwellingFinishes',
+  'floorMaterial',
+  'vehicleCount',
+  'occupationPsh',
+  'internetAccess',
+  // México (bedrooms/householdSize/conflictOfInterest/isPregnant/hasBabyUnder3 are real
+  // columns; vehicleCount is shared with Ecuador above)
+  'educationHoh',
+  'fullBathrooms',
+  'homeInternet',
+  'workers14Plus',
+  'codigoPostal',
+])
 
 /**
  * Decision-point gates (opt-in/D1/D2/D3) only ever expect a button tap — free text
@@ -274,12 +306,21 @@ export async function handlePhase1(
       .set({ surveyQuestionIndex: 1, updatedAt: new Date() })
       .where(eq(leads.id, lead.id))
   }
-  if (idx < 1 || idx > SURVEY_QUESTION_COUNT) {
+
+  const [surveyCountryRow] = await db
+    .select({ country: surveyProfiles.country, gender: surveyProfiles.gender })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const surveyCountry = surveyCountryRow?.country ?? null
+  const questionCount = surveyQuestionCount(surveyCountry)
+
+  if (idx < 1 || idx > questionCount) {
     console.warn('[phase-1] survey index out of range', { leadId: lead.id, idx })
     return
   }
 
-  const question = SURVEY_QUESTIONS[idx - 1]
+  const question = resolveSurveyQuestions(surveyCountry)[idx - 1]
   if (!question) return
 
   let fieldValue: unknown = null
@@ -337,7 +378,7 @@ export async function handlePhase1(
     } else {
       const raw = resolvedCallback.split(':').slice(1).join(':')
       fieldValue =
-        question.fieldName === 'domesticHelp'
+        BOOLEAN_BUTTON_FIELDS.has(question.fieldName)
           ? raw === 'true'
           : NUMERIC_BUTTON_FIELDS.has(question.fieldName)
             ? Number(raw)
@@ -417,6 +458,15 @@ export async function handlePhase1(
             field: question.fieldName,
           })
           fieldValue = messageText.trim()
+        } else if (question.fieldName === 'email' && /.+@.+\..+/.test(messageText.trim())) {
+          // A transient model failure (e.g. AI_NoObjectGeneratedError) must not reject a
+          // well-formed email — the schema's own check is z.string().email(), so a basic
+          // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
+          console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
+          fieldValue = messageText.trim()
+        } else if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
+          // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
+          fieldValue = messageText.trim()
         } else {
           console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
           const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
@@ -450,39 +500,101 @@ export async function handlePhase1(
             { stateProvince: profileForCountry?.stateProvince },
           )
       if (!geo.ok) {
-        await sendText(
-          to,
-          geo.message ?? 'No pude validar esa ubicación. ¿Puedes intentar de nuevo?',
-        )
-        await sendSurveyQuestion(to, idx, lead.id)
-        return
-      }
-      fieldValue = geo.canonical ?? fieldValue
+        // Second consecutive miss on this field → the location is likely just outside our
+        // sample catalog (spec 014: out-of-catalog is a valid "out of geo quota", the
+        // survey must continue). Accept the raw text and advance rather than hard-loop.
+        if (await hadRecentGeoReject(lead.id, question.fieldName)) {
+          console.warn('[phase-1] geo not in catalog after retry — accepting raw text', {
+            leadId: lead.id,
+            field: question.fieldName,
+          })
+          // fieldValue keeps its raw value; fall through to persist/advance.
+        } else {
+          await sendText(
+            to,
+            geo.message ?? 'No pude validar esa ubicación. ¿Puedes intentar de nuevo?',
+            { geoReject: question.fieldName },
+          )
+          await sendSurveyQuestion(to, idx, lead.id)
+          return
+        }
+      } else {
+        fieldValue = geo.canonical ?? fieldValue
 
-      // Fuzzy/typo match → ask before saving (exact names skip confirmation)
-      if (geo.needsConfirmation && geo.canonical) {
-        const { askGeoConfirmation } = await import('@/lib/geo/confirm')
-        await askGeoConfirmation(
-          to,
-          question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
-          geo.canonical,
-        )
-        return
+        // Fuzzy/typo match → ask before saving (exact names skip confirmation)
+        if (geo.needsConfirmation && geo.canonical) {
+          const { askGeoConfirmation } = await import('@/lib/geo/confirm')
+          await askGeoConfirmation(
+            to,
+            question.fieldName as 'stateProvince' | 'municipality' | 'neighborhood',
+            geo.canonical,
+          )
+          return
+        }
       }
     }
 
   }
 
-  // Persist field and advance index
-  await db
-    .update(surveyProfiles)
-    .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
-    .where(eq(surveyProfiles.leadId, lead.id))
+  // Persist field and advance index. Non-CAM NSE variables that have no dedicated
+  // survey_profiles column (Ecuador's healthInsurancePsh, monthlyIncome, ...) are merged
+  // into scoring_answers_json instead — see NON_COLUMN_SCORING_FIELDS.
+  if (NON_COLUMN_SCORING_FIELDS.has(question.fieldName)) {
+    const [existing] = await db
+      .select({ scoringAnswersJson: surveyProfiles.scoringAnswersJson })
+      .from(surveyProfiles)
+      .where(eq(surveyProfiles.leadId, lead.id))
+      .limit(1)
+    await db
+      .update(surveyProfiles)
+      .set({ scoringAnswersJson: { ...(existing?.scoringAnswersJson ?? {}), [question.fieldName]: fieldValue } })
+      .where(eq(surveyProfiles.leadId, lead.id))
+  } else {
+    await db
+      .update(surveyProfiles)
+      .set({ [question.fieldName]: fieldValue } as Record<string, unknown>)
+      .where(eq(surveyProfiles.leadId, lead.id))
+  }
+
+  // T021: phone capture (phone-capture.ts) runs before country is known, so it can only
+  // apply the generic normalizePhone. Once country is answered, re-validate the
+  // already-captured phone through that country's own CountryConfig.validatePhone (e.g.
+  // Ecuador strips a 593/leading-0 prefix and requires a 9-digit national number) and
+  // rewrite only if it produces a different E.164 string. Every config's validatePhone
+  // returns normalizePhone-compatible "+<digits>" output, so a CAM lead whose phone is
+  // already correct re-validates to the same value and nothing is rewritten
+  // (regression-guarded — see tests/regression). Principle V: no country-name branch —
+  // this goes through the config like every other per-country behavior.
+  if (question.fieldName === 'country' && typeof fieldValue === 'string' && lead.phoneNumber) {
+    const revalidated = getCountryConfig(fieldValue).validatePhone(lead.phoneNumber)
+    if (revalidated.ok && revalidated.normalized && revalidated.normalized !== lead.phoneNumber) {
+      await db
+        .update(leads)
+        .set({ phoneNumber: revalidated.normalized, updatedAt: new Date() })
+        .where(eq(leads.id, lead.id))
+    } else if (!revalidated.ok) {
+      // Invalid for this country — leave it as originally captured rather than blocking a
+      // lead that's already well into the survey (no re-ask flow exists here).
+      console.warn('[phase-1] phone failed country-specific re-validation', {
+        leadId: lead.id,
+        country: fieldValue,
+      })
+    }
+  }
 
   // Minors don't qualify as panelists — checked right after age is captured, before
   // advancing to the next question.
   if (question.fieldName === 'age' && typeof fieldValue === 'number' && isMinorAge(fieldValue)) {
     await transitionLead(lead.id, 'not_qualified', 'age_minor', correlationId)
+    await sendText(to, EXIT_A)
+    return
+  }
+
+  // Sensitive-industry screening — only reached for a country that puts `conflictOfInterest`
+  // in its Phase-1 scoringQuestions (México today). CAM never has it; Ecuador moved it to
+  // the Ficha Hogar (doc §4 Q1) — so for those two this branch is unreachable in Phase 1.
+  if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
+    await transitionLead(lead.id, 'not_qualified', 'sensitive_industry', correlationId)
     await sendText(to, EXIT_A)
     return
   }
@@ -526,31 +638,26 @@ export async function handlePhase1(
   const { resumeAfterCorrection } = await import('../correction')
   const finalIdx = await resumeAfterCorrection(lead.id, nextIdx)
 
-  // Enter GPS gate before manual country questions
-  if (finalIdx === 2) {
+  // Resolve any skips (a room-pre-answered `country`, or a geo question this country
+  // doesn't ask — spec 016 T007) once, up front, so the GPS-gate / survey-complete
+  // branches below see the real next index. sendSurveyQuestion re-resolves + persists.
+  const genderForSkip =
+    question.fieldName === 'gender' ? fieldValue : (surveyCountryRow?.gender ?? null)
+  const { index: realIdx } = nextQuestionForCountry(surveyCountry, finalIdx, {
+    country: surveyCountry,
+    gender: genderForSkip,
+  })
+
+  // Enter GPS gate before the manual country questions — but not for a room lead whose
+  // country is already pre-answered (realIdx has skipped past 2; needsGpsCapture also
+  // returns false once country is set — gps-capture.ts).
+  if (realIdx === 2) {
     const { requestGps } = await import('../gps-capture')
-    await requestGps({ ...lead, surveyQuestionIndex: finalIdx })
+    await requestGps({ ...lead, surveyQuestionIndex: realIdx })
     return
   }
 
-  // Q5 (neighborhood) is hidden from every user — same "always null, skip to Q6" rule
-  // as the GPS path (gps-capture.ts's applyAllowlistAfterConfirm).
-  if (finalIdx === 5) {
-    await db
-      .update(surveyProfiles)
-      .set({ neighborhood: null })
-      .where(eq(surveyProfiles.leadId, lead.id))
-    const skipIdx = 6
-    await db.update(leads).set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-    await db
-      .update(flowStates)
-      .set({ surveyQuestionIndex: skipIdx, updatedAt: new Date() })
-      .where(eq(flowStates.leadId, lead.id))
-    await sendSurveyQuestion(to, skipIdx, lead.id)
-    return
-  }
-
-  if (finalIdx <= SURVEY_QUESTION_COUNT) {
+  if (realIdx <= questionCount) {
     await sendSurveyQuestion(to, finalIdx, lead.id)
     return
   }
@@ -563,16 +670,42 @@ export async function handlePhase1(
 
   // Load scoring fields
   const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
-  const score = calculateScore({
+  const cfg = getCountryConfig(profile.country)
+  const answers: Record<string, unknown> = {
     educationPsh: profile.educationPsh,
     cars: profile.cars,
     domesticHelp: profile.domesticHelp,
     householdSize: profile.householdSize,
     bedrooms: profile.bedrooms,
-  })
-  const segment = getQuotaSegment(score)
+    ...(profile.scoringAnswersJson ?? {}),
+  }
+  const { points, level } = cfg.computeNse(answers)
+  const segment = level
+  // `score`/`quotaSegment` keep their CAM meaning (SCL-CAM score, Nivel 1-4) for CAM
+  // leads; non-CAM leads (Ecuador) leave `score` null and use `nsePoints` instead.
+  const isCam = cfg.nseLevels[0]?.startsWith('Nivel') ?? false
 
-  await db.update(leads).set({ score, quotaSegment: segment, updatedAt: new Date() }).where(eq(leads.id, lead.id))
+  await db
+    .update(leads)
+    .set({
+      score: isCam ? points : null,
+      quotaSegment: segment,
+      updatedAt: new Date(),
+    })
+    .where(eq(leads.id, lead.id))
+  await db
+    .update(surveyProfiles)
+    .set({ nsePoints: points })
+    .where(eq(surveyProfiles.leadId, lead.id))
+  console.info(
+    JSON.stringify({
+      event: 'nse_score_recorded',
+      lead_id: lead.id,
+      country: profile.country,
+      points,
+      level,
+    }),
+  )
 
   const quotaDecision = await checkQuotaAvailability({
     country: profile.country ?? '',

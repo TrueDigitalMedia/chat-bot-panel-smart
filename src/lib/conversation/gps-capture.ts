@@ -10,9 +10,9 @@ import { reverseGeocode, type PlaceProposal } from '@/lib/geo/reverse-geocode'
 import { askGpsConfirmation, GPS_YES, GPS_NO } from '@/lib/geo/gps-confirm'
 import {
   canonicalCountry,
-  lookupNseRegion,
   type GeoSource,
 } from '@/lib/geo/cam-nse-catalog'
+import { getCountryConfig } from '@/lib/countries/registry'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import { matchButtonChoice } from './match-button-choice'
 import { interpretButtonAnswer } from './interpret-button-answer'
@@ -114,6 +114,15 @@ async function setGpsState(
 export async function needsGpsCapture(lead: Lead): Promise<boolean> {
   if (lead.d3IsShopper !== true) return false
   if (lead.surveyQuestionIndex < 2) return false
+  // A room lead (spec 016) has its country pre-set and enters geo manually — no GPS
+  // gate. (research R4; also keeps the gate from firing at Q2, which the room already
+  // answered.)
+  const [profile] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  if (profile?.country) return false
   const { gpsGateStatus } = await getGpsState(lead.id)
   if (gpsGateStatus === 'done' || gpsGateStatus === 'skipped_manual') return false
   return true
@@ -314,22 +323,27 @@ async function applyAllowlistAfterConfirm(
   _correlationId: string,
 ): Promise<void> {
   const country = canonicalCountry(proposal.country) ?? proposal.country
-  const nseRegion = lookupNseRegion(country, proposal.stateProvince, proposal.municipality)
+  const nseRegion = getCountryConfig(country).resolveNseRegion({
+    stateProvince: proposal.stateProvince,
+    municipality: proposal.municipality,
+    neighborhood: null,
+  })
 
-  if (!nseRegion) {
-    console.info('[gps] nse_allowlist_miss', {
-      leadId: lead.id,
+  console.info(
+    JSON.stringify({
+      event: 'geo_resolve',
+      lead_id: lead.id,
+      path: 'gps',
       country,
-      stateProvince: proposal.stateProvince,
+      state_province: proposal.stateProvince,
       municipality: proposal.municipality,
-    })
-  } else {
-    console.info('[gps] nse_allowlist_hit', {
-      leadId: lead.id,
-      country,
-      nseRegion,
-    })
-  }
+      // GPS path never captures a parroquia (proposal is department/municipality only),
+      // so Guayaquil/Quito GPS hits resolve via the cantón-only fallback — logged as null.
+      neighborhood: null,
+      codigo_postal: null,
+      matched_region: nseRegion,
+    }),
+  )
 
   // Q5 (neighborhood) is never asked — recorded as null unconditionally, GPS-detected
   // value included, so it's silently hidden from every user regardless of channel.
@@ -376,15 +390,33 @@ export async function applyManualMunicipalityAllowlist(
     correlationId: string
   },
 ): Promise<{ nseRegion: string | null }> {
-  const nseRegion = lookupNseRegion(opts.country, opts.stateProvince, opts.municipality)
-  console.info(nseRegion ? '[gps] nse_allowlist_hit' : '[gps] nse_allowlist_miss', {
-    leadId: lead.id,
-    path: 'manual',
-    country: opts.country,
+  const [manualProfile] = await db
+    .select({ neighborhood: surveyProfiles.neighborhood, scoringAnswersJson: surveyProfiles.scoringAnswersJson })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const codigoPostal = (manualProfile?.scoringAnswersJson as Record<string, unknown> | null)?.codigoPostal ?? null
+  const nseRegion = getCountryConfig(opts.country).resolveNseRegion({
     stateProvince: opts.stateProvince,
     municipality: opts.municipality,
-    nseRegion,
+    neighborhood: manualProfile?.neighborhood ?? null,
   })
+  console.info(
+    JSON.stringify({
+      event: 'geo_resolve',
+      lead_id: lead.id,
+      path: 'manual',
+      country: opts.country,
+      state_province: opts.stateProvince,
+      municipality: opts.municipality,
+      // Ecuador's Q5 (parroquia) is a real answer that can change the resolved region
+      // (Guayaquil/Quito split); null for CAM, where Q5 is hidden.
+      neighborhood: manualProfile?.neighborhood ?? null,
+      // México captures a Código Postal (geo fallback — spec 015 T021); null elsewhere.
+      codigo_postal: codigoPostal,
+      matched_region: nseRegion,
+    }),
+  )
   await db
     .update(surveyProfiles)
     .set({

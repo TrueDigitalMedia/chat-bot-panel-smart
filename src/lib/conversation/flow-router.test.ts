@@ -116,6 +116,7 @@ vi.mock('./ficha-hogar-correction', () => ({
 }))
 vi.mock('./phases/phase-4', () => ({ handleFichaHogar }))
 vi.mock('./detect-decline-reversal', () => ({ detectDeclineReversalIntent }))
+vi.mock('@/lib/geo/handle-confirm', () => ({ handleGeoConfirmCallback: vi.fn().mockResolvedValue(false) }))
 
 import { routeMessage } from './flow-router'
 import type { Lead } from '@/types/lead'
@@ -153,6 +154,29 @@ beforeEach(() => {
   generateFreeTextReply.mockResolvedValue({ intent: 'needs_reply', reply: 'support redirect' })
   getLastOutboundMessage.mockResolvedValue(null)
   transitionLead.mockResolvedValue(undefined)
+})
+
+describe('routeMessage — Ecuador/México survey button callbacks route to phase-1 (spec 014/015)', () => {
+  it.each([
+    'conflictOfInterest:false',
+    'conflictOfInterest:true',
+    'healthInsurancePsh:Sí',
+    'monthlyIncome:Menos de 400',
+    'dwellingFinishes:Ladrillo',
+    'floorMaterial:Cerámica',
+    'vehicleCount:0',
+    'occupationPsh:Profesional',
+    'internetAccess:Internet Hogar contratado (Fibra Op)',
+    'educationHoh:Universidad',
+    'fullBathrooms:2 o más',
+    'homeInternet:Sí tiene',
+    'workers14Plus:1',
+  ])('%s → handlePhase1, not the AI out-of-flow handler', async (callbackData) => {
+    const lead = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+    await routeMessage(lead, makeInbound({ callbackData }), 'corr-1')
+    expect(handlePhase1).toHaveBeenCalledWith(lead, '', callbackData, 'corr-1')
+    expect(handleOutOfFlow).not.toHaveBeenCalled()
+  })
 })
 
 describe('routeMessage — recontact scheduling', () => {

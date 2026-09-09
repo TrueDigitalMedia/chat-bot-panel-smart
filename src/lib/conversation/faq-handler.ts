@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { flowStates } from '@/lib/db/schema'
+import { flowStates, surveyProfiles } from '@/lib/db/schema'
 import { getRecentMessages } from '@/lib/db/conversation-messages'
 import { sendText } from '@/lib/messaging/send'
 import { findFaq } from '@/lib/rag/search'
@@ -8,7 +8,7 @@ import { answerClarification } from '@/lib/rag/clarify'
 import { validateBotResponse, SAFE_FALLBACK } from '@/lib/ai/validate-output'
 import { supportRedirect } from './exit-messages'
 import { isTerminal } from '@/lib/state-machine/transitions'
-import { SURVEY_QUESTION_COUNT } from './survey-questions'
+import { surveyQuestionCount } from './survey-plan'
 import type { Lead, LeadStatus } from '@/types/lead'
 import type { ChannelRecipient } from '@/types/channel'
 
@@ -156,7 +156,12 @@ async function resendPendingQuestion(
   }
 
   // Survey question
-  if (questionIdx >= 1 && questionIdx <= SURVEY_QUESTION_COUNT) {
+  const [faqCountryRow] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  if (questionIdx >= 1 && questionIdx <= surveyQuestionCount(faqCountryRow?.country ?? null)) {
     const { sendSurveyQuestion } = await import('./send-survey-question')
     await sendSurveyQuestion(to, questionIdx, lead.id)
   }

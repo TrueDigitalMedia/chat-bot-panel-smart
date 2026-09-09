@@ -32,6 +32,8 @@ function baseLead(overrides: Partial<Lead> = {}): Lead {
     panelSmartLastSyncAt: null,
     panelSmartSyncedAnswersJson: null,
     panelSmartSyncedLeadStatus: null,
+    acquisitionSource: null,
+    whatsappPhoneNumberId: null,
     ...overrides,
   }
 }
@@ -63,6 +65,9 @@ function baseProfile(overrides: Partial<SurveyProfile> = {}): SurveyProfile {
     age: 33,
     isPregnant: false,
     hasBabyUnder3: false,
+    conflictOfInterest: null,
+    scoringAnswersJson: null,
+    nsePoints: null,
     ...overrides,
   }
 }
@@ -107,8 +112,29 @@ describe('buildRegistrationCodeRequest', () => {
   })
 
   it('sets pais_codigo: null for an unrecognized country without throwing', () => {
-    const payload = buildRegistrationCodeRequest(baseLead(), baseProfile({ country: 'México' }))
+    const payload = buildRegistrationCodeRequest(baseLead(), baseProfile({ country: 'Brasil' }))
     expect(payload.pais_codigo).toBeNull()
+    expect(payload.pais_residencia).toBe('Brasil')
+  })
+
+  // Spec 014 T038 — an Ecuador lead's registration request must carry a real pais_codigo,
+  // not the null a missing COUNTRY_CODES entry would silently produce.
+  it('maps Ecuador to pais_codigo "EC"', () => {
+    const payload = buildRegistrationCodeRequest(
+      baseLead({ quotaSegment: 'C', score: null }),
+      baseProfile({ country: 'Ecuador', nseRegion: 'Cuenca', nsePoints: 58 }),
+    )
+    expect(payload.pais_codigo).toBe('EC')
+    expect(payload.pais_residencia).toBe('Ecuador')
+    expect(payload.region).toBe('Cuenca')
+  })
+
+  it('maps México to pais_codigo "MX" (spec 015)', () => {
+    const payload = buildRegistrationCodeRequest(
+      baseLead({ quotaSegment: 'D+', score: null }),
+      baseProfile({ country: 'México', nseRegion: 'AMCM', nsePoints: 105 }),
+    )
+    expect(payload.pais_codigo).toBe('MX')
     expect(payload.pais_residencia).toBe('México')
   })
 })

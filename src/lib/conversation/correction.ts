@@ -15,7 +15,17 @@ import {
 } from './correction-fields'
 import { captureSurveyFieldValue } from './survey-capture'
 import { sendSurveyQuestion } from './send-survey-question'
-import { SURVEY_QUESTIONS, SURVEY_QUESTION_COUNT } from './survey-questions'
+import { resolveSurveyQuestions, surveyQuestionCount } from './survey-plan'
+
+/** Best-effort country lookup for the correction flow's index math (CAM fallback if unset). */
+async function correctionCountry(leadId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, leadId))
+    .limit(1)
+  return row?.country ?? null
+}
 import { generateCorrelationId } from '@/lib/correlation'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
@@ -151,7 +161,7 @@ export async function cancelCorrection(lead: Lead): Promise<void> {
 
   await sendText(lead, 'Corrección cancelada. Seguimos donde íbamos.')
   const idx = lead.surveyQuestionIndex
-  if (idx >= 1 && idx <= SURVEY_QUESTION_COUNT) {
+  if (idx >= 1 && idx <= surveyQuestionCount(await correctionCountry(lead.id))) {
     await sendSurveyQuestion(lead, idx, lead.id)
   }
 }
@@ -177,9 +187,12 @@ export async function applyFieldAndContinue(
   const patch: Record<string, unknown> = { [field]: value }
   for (const f of cascade) patch[f] = null
 
-  const fieldIdx = questionIndexForField(field)
+  const country = await correctionCountry(lead.id)
+  const fieldIdx = questionIndexForField(field, country)
   const nextIdx =
-    cascade.length > 0 ? questionIndexForField(cascade[0]!) : Math.min(fieldIdx + 1, SURVEY_QUESTION_COUNT)
+    cascade.length > 0
+      ? questionIndexForField(cascade[0]!, country)
+      : Math.min(fieldIdx + 1, surveyQuestionCount(country))
   const now = new Date()
   const resumeIdx = lead.surveyQuestionIndex > nextIdx ? lead.surveyQuestionIndex : null
 
@@ -280,10 +293,11 @@ export async function resumeAfterCorrection(leadId: string, nextIdx: number): Pr
 
   const [profile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, leadId)).limit(1)
   const rec = (profile ?? {}) as Record<string, unknown>
+  const resolvedQuestions = resolveSurveyQuestions(profile?.country ?? null)
 
   let idx = nextIdx
-  while (idx < resumeIdx && idx <= SURVEY_QUESTION_COUNT) {
-    const q = SURVEY_QUESTIONS[idx - 1]
+  while (idx < resumeIdx && idx <= resolvedQuestions.length) {
+    const q = resolvedQuestions[idx - 1]
     const v = q ? rec[q.fieldName] : undefined
     const filled = v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')
     if (!filled) return idx // gap to fill — correction stays in progress as-is
@@ -378,14 +392,21 @@ export async function tryHandleCorrectionRequest(
   // getFilledFieldsSummary above, i.e. already a SurveyFieldName.
   const field = intent.field as SurveyFieldName
   if (intent.value) {
-    const q = SURVEY_QUESTIONS.find((x) => x.fieldName === field)
+    // `field` here is always a fixed SurveyFieldName (shared prefix/suffix or CAM's own
+    // scoring fields) — its inputType is identical across countries, so the CAM-resolved
+    // list is a safe lookup regardless of this lead's actual country.
+    const q = resolveSurveyQuestions(null).find((x) => x.fieldName === field)
     if (q?.inputType === 'button') {
       await restartSurveyFromField(lead, field)
       return true
     }
     const captured = await captureSurveyFieldValue(lead.id, field, intent.value, undefined)
     if (!captured.ok) {
-      await sendText(lead, captured.message)
+      // Tag a geo rejection so phase-1's anti-loop hatch (hadRecentGeoReject) accepts the
+      // raw text if the user misses again after the survey restarts on this field.
+      const geoReject =
+        field === 'stateProvince' || field === 'municipality' ? { geoReject: field } : undefined
+      await sendText(lead, captured.message, geoReject)
       await restartSurveyFromField(lead, field)
       return true
     }

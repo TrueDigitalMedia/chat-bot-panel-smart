@@ -34,11 +34,12 @@ async function logSendFailure(fn: string, channelUserId: string, err: unknown): 
 export async function sendWhatsAppText(
   channelUserId: string,
   text: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioText(channelUserId, text)
-      : meta.sendMetaText(channelUserId, text))
+      ? twilio.sendTwilioText(channelUserId, text, fromPhoneNumberId)
+      : meta.sendMetaText(channelUserId, text, fromPhoneNumberId))
   } catch (err) {
     await logSendFailure('sendWhatsAppText', channelUserId, err)
     return undefined
@@ -49,11 +50,12 @@ export async function sendWhatsAppVideo(
   channelUserId: string,
   videoUrl: string,
   caption?: string,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption)
-      : meta.sendMetaVideo(channelUserId, videoUrl, caption))
+      ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption, fromPhoneNumberId)
+      : meta.sendMetaVideo(channelUserId, videoUrl, caption, fromPhoneNumberId))
   } catch (err) {
     await logSendFailure('sendWhatsAppVideo', channelUserId, err)
     return undefined
@@ -64,11 +66,12 @@ export async function sendWhatsAppKeyboard(
   channelUserId: string,
   text: string,
   buttons: InlineKeyboardButton[][],
+  fromPhoneNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   try {
     return await (getWhatsAppProvider() === 'twilio'
-      ? twilio.sendTwilioKeyboard(channelUserId, text, buttons)
-      : meta.sendMetaKeyboard(channelUserId, text, buttons))
+      ? twilio.sendTwilioKeyboard(channelUserId, text, buttons, fromPhoneNumberId)
+      : meta.sendMetaKeyboard(channelUserId, text, buttons, fromPhoneNumberId))
   } catch (err) {
     await logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
     return { sid: undefined, choices: {} }
@@ -85,13 +88,14 @@ export async function sendWhatsAppTemplateOrKeyboard(
   fallbackText: string,
   buttons: InlineKeyboardButton[][],
   contentVariables?: Record<string, string>,
+  fromPhoneNumberId?: string,
 ): Promise<{ sid?: string; choices: WaChoiceMap }> {
   if (getWhatsAppProvider() === 'twilio') {
     const template = await getApprovedTemplate(logicalId).catch(() => undefined)
     if (template) {
       try {
         const { choices } = buildNumberedChoices(buttons)
-        const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+        const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
         return { sid, choices }
       } catch (err) {
         await logSendFailure('sendWhatsAppTemplateOrKeyboard', channelUserId, err)
@@ -101,7 +105,7 @@ export async function sendWhatsAppTemplateOrKeyboard(
       }
     }
   }
-  return sendWhatsAppKeyboard(channelUserId, fallbackText, buttons)
+  return sendWhatsAppKeyboard(channelUserId, fallbackText, buttons, fromPhoneNumberId)
 }
 
 /** Text-only counterpart of sendWhatsAppTemplateOrKeyboard, for templates with no buttons. */
@@ -110,12 +114,13 @@ export async function sendWhatsAppTemplateOrText(
   logicalId: string,
   fallbackText: string,
   contentVariables?: Record<string, string>,
+  fromPhoneNumberId?: string,
 ): Promise<string | undefined> {
   if (getWhatsAppProvider() === 'twilio') {
     const template = await getApprovedTemplate(logicalId).catch(() => undefined)
     if (template) {
       try {
-        return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables)
+        return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
       } catch (err) {
         await logSendFailure('sendWhatsAppTemplateOrText', channelUserId, err)
         // An opt-out (21610) will bounce on the free-text path too — don't retry it.
@@ -124,5 +129,5 @@ export async function sendWhatsAppTemplateOrText(
       }
     }
   }
-  return sendWhatsAppText(channelUserId, fallbackText)
+  return sendWhatsAppText(channelUserId, fallbackText, fromPhoneNumberId)
 }

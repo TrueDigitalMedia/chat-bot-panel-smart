@@ -1,0 +1,3240 @@
+{
+  "version": "docs/mexico/Muestra Regiones NSE Mexico.xlsx",
+  "source": "Kantar región / INEGI estado-municipio",
+  "regions": [
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "AZCAPOTZALCO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "COYOACAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "CUAJIMALPA DE MORELOS"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "ALVARO OBREGON"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "TLALPAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "BENITO JUAREZ"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "MIGUEL HIDALGO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "ATIZAPAN DE ZARAGOZA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "HUIXQUILUCAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "CUAUHTEMOC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "LA MAGDALENA CONTRERAS"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "NAUCALPAN DE JUAREZ"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "IZTACALCO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "COACALCO DE BERRIOZABAL"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CUAUTITLAN IZCALLI"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "GUSTAVO A. MADERO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "IZTAPALAPA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "VENUSTIANO CARRANZA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CUAUTITLAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TECAMAC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TLALNEPANTLA DE BAZ"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TULTITLAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "ECATEPEC DE MORELOS"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "NEZAHUALCOYOTL"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEPOTZOTLAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TULTEPEC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "NICOLAS ROMERO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "TIZAYUCA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEOTIHUACAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "ACOLMAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "COYOTEPEC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "HUEHUETOCA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "MELCHOR OCAMPO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEOLOYUCAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEQUIXQUIAC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "ZUMPANGO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "TLAHUAC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "XOCHIMILCO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEXCOCO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "IXTAPALUCA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CHALCO"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CHICOLOAPAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CHIMALHUACAN"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "VALLE DE CHALCO SOLIDARIDAD"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "LA PAZ"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "Distrito Federal",
+      "municipio": "MILPA ALTA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "AMECAMECA"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CHICONCUAC"
+    },
+    {
+      "region": "AMCM",
+      "regionCode": "5",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TLALMANALCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "IXMIQUILPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "TULA DE ALLENDE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "YAUTEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "ZACATLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "LAS CHOAPAS"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "HUEJOTZINGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "ACATLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "ATOTONILCO DE TULA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "TANTOYUCA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "COSOLEACAQUE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "ARCELIA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "PUNGARABATO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "TELOLOAPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "TIXTLA DE GUERRERO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "TLAPA DE COMONFORT"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "HUEJUTLA DE REYES"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "ATLACOMULCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "METEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TEJUPILCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "NARANJOS AMATLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "CAMERINO Z. MENDOZA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "COATZINTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "FORTIN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "MISANTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "RIO BLANCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "CHILAPA DE ALVAREZ"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "OMETEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "ACTOPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "MIXQUIAHUALA DE JUAREZ"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "TEPEAPULCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "EMILIANO ZAPATA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "JOJUTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "TLAQUILTENANGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "ZACATEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Tlaxcala",
+      "municipio": "CHIAUTEMPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ALVARADO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "LA ANTIGUA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "BANDERILLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "CERRO AZUL"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "HUATUSCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "IXTACZOQUITLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ALAMO TEMAPACHE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "TIERRA BLANCA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "NANCHITAL DE LAZARO CARDENAS DEL RIO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "ATOYAC DE ALVAREZ"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "EDUARDO NERI"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "APAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "CAPULHUAC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "LERMA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "VALLE DE BRAVO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "CHALCHICOMULA DE SESMA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "IZUCAR DE MATAMOROS"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "XICOTEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Querétaro",
+      "municipio": "TEQUISQUIAPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Tlaxcala",
+      "municipio": "CONTLA DE JUAN CUAMATZI"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Tlaxcala",
+      "municipio": "PAPALOTLA DE XICOHTENCATL"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Tlaxcala",
+      "municipio": "ZACATELCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ALTOTONGA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "CATEMACO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "COSAMALOAPAN DE CARPIO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "JALTIPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "LERDO DE TEJADA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "AGUA DULCE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Guerrero",
+      "municipio": "PETATLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "CUAUTEPEC DE HINOJOSA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "TEPEJI DEL RIO DE OCAMPO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Hidalgo",
+      "municipio": "ZACUALTIPAN DE ANGELES"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "OCOYOACAC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "TENANGO DEL VALLE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "México",
+      "municipio": "XONACATLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "PUENTE DE IXTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Morelos",
+      "municipio": "XOCHITEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "ACATZINGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "AJALPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "CHIGNAHUAPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "TECAMACHALCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Puebla",
+      "municipio": "TEPEACA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Tlaxcala",
+      "municipio": "CALPULALPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ISLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "XICO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "PEROTE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "TLAPACOYAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "CARLOS A. CARRILLO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "NOGALES"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "1",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "PANUCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "SAN MARTIN TEXMELUCAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "SAN ANDRES TUXTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Tlaxcala",
+      "municipio": "SAN PABLO DEL MONTE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Tlaxcala",
+      "municipio": "APIZACO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Querétaro",
+      "municipio": "CORREGIDORA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "BOCA DEL RIO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Guerrero",
+      "municipio": "IGUALA DE LA INDEPENDENCIA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Guerrero",
+      "municipio": "ZIHUATANEJO DE AZUETA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Guerrero",
+      "municipio": "TAXCO DE ALARCON"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Hidalgo",
+      "municipio": "TULANCINGO DE BRAVO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "México",
+      "municipio": "SAN MATEO ATENCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "México",
+      "municipio": "ZINACANTEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Morelos",
+      "municipio": "TEMIXCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "ATLIXCO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "HUAUCHINANGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "TEZIUTLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Querétaro",
+      "municipio": "SAN JUAN DEL RIO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Tlaxcala",
+      "municipio": "HUAMANTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Tlaxcala",
+      "municipio": "VILLA VICENTE GUERRERO/SAN PABLO DEL MONTE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ACAYUCAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "COATEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "CORDOBA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "MARTINEZ DE LA TORRE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "MINATITLAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "PAPANTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "ACAJETE"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "CUAUTLANCINGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "SAN ANDRES CHOLULA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "SAN PEDRO CHOLULA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "2",
+      "estado": "Puebla",
+      "municipio": "AMOZOC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "COATZACOALCOS"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Hidalgo",
+      "municipio": "PACHUCA DE SOTO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Tlaxcala",
+      "municipio": "TLAXCALA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "ORIZABA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Morelos",
+      "municipio": "CUAUTLA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Guerrero",
+      "municipio": "CHILPANCINGO DE LOS BRAVO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Morelos",
+      "municipio": "JIUTEPEC"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "POZA RICA DE HIDALGO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Puebla",
+      "municipio": "TEHUACAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "3",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "TUXPAN"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "México",
+      "municipio": "TOLUCA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "Morelos",
+      "municipio": "CUERNAVACA"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "Guerrero",
+      "municipio": "ACAPULCO DE JUAREZ"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "Querétaro",
+      "municipio": "QUERETARO"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "VERACRUZ"
+    },
+    {
+      "region": "CENTRO",
+      "regionCode": "4",
+      "estrato": "4",
+      "estado": "Veracruz de Ignacio de la Llave",
+      "municipio": "XALAPA"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "GUADALAJARA"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "GUADALAJARA - ZONA 1"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "ZAPOPAN"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "GUADALAJARA - ZONA 2"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "TONALA"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "SAN PEDRO TLAQUEPAQUE"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "TLAJOMULCO DE ZUÑIGA"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "EL SALTO"
+    },
+    {
+      "region": "GUADALAJARA",
+      "regionCode": "8",
+      "estrato": "5",
+      "estado": "Jalisco",
+      "municipio": "IXTLAHUACAN DE LOS MEMBRILLOS"
+    },
+    {
+      "region": "LEON",
+      "regionCode": "10",
+      "estrato": "4",
+      "estado": "Guanajuato",
+      "municipio": "LEON"
+    },
+    {
+      "region": "LEON",
+      "regionCode": "10",
+      "estrato": "4",
+      "estado": "Guanajuato",
+      "municipio": "SILAO"
+    },
+    {
+      "region": "MERIDA",
+      "regionCode": "12",
+      "estrato": "4",
+      "estado": "Yucatán",
+      "municipio": "MERIDA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "MONTERREY"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "MONTERREY - ZONA 1 (Totalizador)"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "SAN PEDRO GARZA GARCIA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "SANTA CATARINA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "MONTERREY - ZONA 2 (Totalizador)"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "SAN NICOLAS DE LOS GARZA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "APODACA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "GUADALUPE"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "GENERAL ESCOBEDO"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "SANTIAGO"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "SALINAS VICTORIA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "GARCIA"
+    },
+    {
+      "region": "MONTERREY",
+      "regionCode": "7",
+      "estrato": "5",
+      "estado": "Nuevo León",
+      "municipio": "JUAREZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "FRANCISCO I. MADERO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "SAN JUAN DE SABINAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "ALLENDE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Tamaulipas",
+      "municipio": "ALTAMIRA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Nuevo León",
+      "municipio": "CIENEGA DE FLORES"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "SAN PEDRO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Chihuahua",
+      "municipio": "CAMARGO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Chihuahua",
+      "municipio": "JIMENEZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "San Luis Potosí",
+      "municipio": "TAMAZUNCHALE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Tamaulipas",
+      "municipio": "MIGUEL ALEMAN"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "JEREZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "OJOCALIENTE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "RIO GRANDE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "PARRAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "SAN BUENAVENTURA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Durango",
+      "municipio": "SANTIAGO PAPASQUIARO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Nuevo León",
+      "municipio": "MONTEMORELOS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Tamaulipas",
+      "municipio": "VALLE HERMOSO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "SOMBRERETE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "CASTAÑOS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Chihuahua",
+      "municipio": "MEOQUI"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Nuevo León",
+      "municipio": "SABINAS HIDALGO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "San Luis Potosí",
+      "municipio": "CIUDAD FERNANDEZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Tamaulipas",
+      "municipio": "SAN FERNANDO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "CALERA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Zacatecas",
+      "municipio": "LORETO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "MUZQUIZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "NAVA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Chihuahua",
+      "municipio": "ALDAMA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Chihuahua",
+      "municipio": "OJINAGA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Durango",
+      "municipio": "PUEBLO NUEVO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Nuevo León",
+      "municipio": "ALLENDE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "Nuevo León",
+      "municipio": "GENERAL ZUAZUA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "1",
+      "estado": "San Luis Potosí",
+      "municipio": "EBANO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "PIEDRAS NEGRAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Chihuahua",
+      "municipio": "CUAUHTEMOC"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Durango",
+      "municipio": "LERDO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "San Luis Potosí",
+      "municipio": "CIUDAD VALLES"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "RAMOS ARIZPE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Tamaulipas",
+      "municipio": "EL MANTE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "SABINAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Chihuahua",
+      "municipio": "DELICIAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Chihuahua",
+      "municipio": "HIDALGO DEL PARRAL"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "San Luis Potosí",
+      "municipio": "MATEHUALA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Tamaulipas",
+      "municipio": "HEROICA MATAMOROS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Nuevo León",
+      "municipio": "LINARES"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "San Luis Potosí",
+      "municipio": "RIOVERDE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Tamaulipas",
+      "municipio": "RIO BRAVO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Zacatecas",
+      "municipio": "FRESNILLO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "ACUÑA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "FRONTERA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Chihuahua",
+      "municipio": "NUEVO CASAS GRANDES"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "2",
+      "estado": "Zacatecas",
+      "municipio": "GUADALUPE"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Durango",
+      "municipio": "DURANGO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Tamaulipas",
+      "municipio": "NUEVO LAREDO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "MONCLOVA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "MATAMOROS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Zacatecas",
+      "municipio": "ZACATECAS"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Tamaulipas",
+      "municipio": "CIUDAD MADERO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Tamaulipas",
+      "municipio": "VICTORIA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "Durango",
+      "municipio": "GOMEZ PALACIO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "3",
+      "estado": "San Luis Potosí",
+      "municipio": "SOLEDAD DE GRACIANO SANCHEZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Chihuahua",
+      "municipio": "JUAREZ"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "TORREON"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "San Luis Potosí",
+      "municipio": "SAN LUIS POTOSI"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Chihuahua",
+      "municipio": "CHIHUAHUA"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Coahuila de Zaragoza",
+      "municipio": "SALTILLO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Tamaulipas",
+      "municipio": "TAMPICO"
+    },
+    {
+      "region": "NORESTE",
+      "regionCode": "2",
+      "estrato": "4",
+      "estado": "Tamaulipas",
+      "municipio": "REYNOSA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "IXTLAN DEL RIO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sinaloa",
+      "municipio": "ESCUINAPA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sonora",
+      "municipio": "CANANEA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "ACAPONETA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "XALISCO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sinaloa",
+      "municipio": "GUASAVE"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sonora",
+      "municipio": "HUATABAMPO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Baja California Sur",
+      "municipio": "COMONDU"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sinaloa",
+      "municipio": "NAVOLATO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "SANTIAGO IXCUINTLA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sonora",
+      "municipio": "EMPALME"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Sonora",
+      "municipio": "MAGDALENA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "TUXPAN"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "1",
+      "estado": "Nayarit",
+      "municipio": "BAHIA DE BANDERAS"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "SAN LUIS RIO COLORADO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "GUAYMAS"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sinaloa",
+      "municipio": "SALVADOR ALVARADO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "NAVOJOA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Baja California Sur",
+      "municipio": "LOS CABOS"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "CABORCA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "AGUA PRIETA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Sonora",
+      "municipio": "PUERTO PEÑASCO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Baja California",
+      "municipio": "TECATE"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "2",
+      "estado": "Baja California",
+      "municipio": "PLAYAS DEL ROSARITO"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Sinaloa",
+      "municipio": "MAZATLAN"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Sonora",
+      "municipio": "CAJEME"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Baja California Sur",
+      "municipio": "LA PAZ"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Nayarit",
+      "municipio": "TEPIC"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Baja California",
+      "municipio": "ENSENADA"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Sinaloa",
+      "municipio": "AHOME"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "3",
+      "estado": "Sonora",
+      "municipio": "NOGALES"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "4",
+      "estado": "Baja California",
+      "municipio": "MEXICALI"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "4",
+      "estado": "Sinaloa",
+      "municipio": "CULIACAN"
+    },
+    {
+      "region": "NOROESTE",
+      "regionCode": "1",
+      "estrato": "4",
+      "estado": "Sonora",
+      "municipio": "HERMOSILLO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Aguascalientes",
+      "municipio": "JESUS MARIA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "PENJAMO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "YURIRIA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "TEOCALTICHE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "PURUANDIRO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "ATOTONILCO EL ALTO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Aguascalientes",
+      "municipio": "PABELLON DE ARTEAGA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Aguascalientes",
+      "municipio": "RINCON DE ROMOS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "SAN JOSE ITURBIDE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "AMECA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "AUTLAN DE NAVARRO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "LA BARCA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "CHAPALA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "HUETAMO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "JIQUILPAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "PARACHO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "MOROLEON"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "ROMITA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "SAN LUIS DE LA PAZ"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "EL GRULLO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "JOCOTEPEC"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "SAYULA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "TAMAZULA DE GORDIANO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "TEQUILA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "MARAVATIO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "LOS REYES"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "TACAMBARO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "ABASOLO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "SALVATIERRA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "SAN FELIPE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "CIHUATLAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "SAN JUAN DE LOS LAGOS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "TALA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "TUXPAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "ZAPOTILTIC"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "MUGICA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "YURECUARO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Aguascalientes",
+      "municipio": "CALVILLO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "APASEO EL ALTO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "APASEO EL GRANDE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "COMONFORT"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "JARAL DEL PROGRESO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "PURISIMA DEL RINCON"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "SANTA CRUZ DE JUVENTINO ROSAS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Guanajuato",
+      "municipio": "VILLAGRAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "ENCARNACION DE DIAZ"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "JALOSTOTITLAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "SAN MIGUEL EL ALTO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "ZACOALCO DE TORRES"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "1",
+      "estado": "Jalisco",
+      "municipio": "ZAPOTLANEJO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "SALAMANCA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Jalisco",
+      "municipio": "ZAPOTLAN EL GRANDE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Jalisco",
+      "municipio": "TEPATITLAN DE MORELOS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "SAHUAYO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Colima",
+      "municipio": "MANZANILLO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Colima",
+      "municipio": "VILLA DE ALVAREZ"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "SAN MIGUEL DE ALLENDE"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "GUANAJUATO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "ZITACUARO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Jalisco",
+      "municipio": "LAGOS DE MORENO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Jalisco",
+      "municipio": "OCOTLAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "LAZARO CARDENAS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "PATZCUARO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "LA PIEDAD"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "ZACAPU"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "ZAMORA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "ACAMBARO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "DOLORES HIDALGO CUNA DE LA INDEPENDENCIA NACIONAL"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "SAN FRANCISCO DEL RINCON"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "APATZINGAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "HIDALGO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Colima",
+      "municipio": "TECOMAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "CORTAZAR"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "URIANGATO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Guanajuato",
+      "municipio": "VALLE DE SANTIAGO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Jalisco",
+      "municipio": "ARANDAS"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "2",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "JACONA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "3",
+      "estado": "Guanajuato",
+      "municipio": "IRAPUATO"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "3",
+      "estado": "Colima",
+      "municipio": "COLIMA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "3",
+      "estado": "Guanajuato",
+      "municipio": "CELAYA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "3",
+      "estado": "Jalisco",
+      "municipio": "PUERTO VALLARTA"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "3",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "URUAPAN"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "4",
+      "estado": "Aguascalientes",
+      "municipio": "AGUASCALIENTES"
+    },
+    {
+      "region": "OCCIDENTE",
+      "regionCode": "3",
+      "estrato": "4",
+      "estado": "Michoacán de Ocampo",
+      "municipio": "MORELIA"
+    },
+    {
+      "region": "PUEBLA",
+      "regionCode": "11",
+      "estrato": "4",
+      "estado": "Puebla",
+      "municipio": "PUEBLA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Campeche",
+      "municipio": "ESCARCEGA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "REFORMA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "COMALCALCO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "TIZIMIN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "CHIAPA DE CORZO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "MOTOZINTLA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "PALENQUE"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "CIUDAD IXTEPEC"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SANTA LUCIA DEL CAMINO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SANTA MARIA ATZOMPA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "CUNDUACAN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "MACUSPANA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "PARAISO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "TEAPA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "TENOSIQUE"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "CINTALAPA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "HUIXTLA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "OCOSINGO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "TONALA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "VILLAFLORES"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "MATIAS ROMERO AVENDAÑO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SAN PEDRO MIXTEPEC -DTO. 22 -"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SANTIAGO PINOTEPA NACIONAL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SANTO DOMINGO TEHUANTEPEC"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Quintana Roo",
+      "municipio": "FELIPE CARRILLO PUERTO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "CENTLA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "VALLADOLID"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "ARRIAGA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "FRONTERA COMALAPA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "MAPASTEPEC"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "LAS MARGARITAS"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "OCOZOCOAUTLA DE ESPINOSA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "SAN ANTONIO DE LA CAL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Tabasco",
+      "municipio": "HUIMANGUILLO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "PROGRESO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "TICUL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Campeche",
+      "municipio": "CHAMPOTON"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "BERRIOZABAL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Chiapas",
+      "municipio": "LAS ROSAS"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "LOMA BONITA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Oaxaca",
+      "municipio": "MIAHUATLAN DE PORFIRIO DIAZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Quintana Roo",
+      "municipio": "TULUM"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "HUNUCMA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "MOTUL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "OXKUTZCAB"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "PETO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "TEKAX"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "1",
+      "estado": "Yucatán",
+      "municipio": "UMAN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Chiapas",
+      "municipio": "SAN CRISTOBAL DE LAS CASAS"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Tabasco",
+      "municipio": "CARDENAS"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Oaxaca",
+      "municipio": "SALINA CRUZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Oaxaca",
+      "municipio": "SAN JUAN BAUTISTA TUXTEPEC"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Oaxaca",
+      "municipio": "SANTA CRUZ XOXOCOTLAN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Chiapas",
+      "municipio": "COMITAN DE DOMINGUEZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Oaxaca",
+      "municipio": "HEROICA CIUDAD DE HUAJUAPAN DE LEON"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Oaxaca",
+      "municipio": "HEROICA CIUDAD DE JUCHITAN DE ZARAGOZA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Quintana Roo",
+      "municipio": "SOLIDARIDAD"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Quintana Roo",
+      "municipio": "COZUMEL"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "2",
+      "estado": "Yucatán",
+      "municipio": "KANASIN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Quintana Roo",
+      "municipio": "BENITO JUAREZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Tabasco",
+      "municipio": "CENTRO"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Chiapas",
+      "municipio": "TUXTLA GUTIERREZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Campeche",
+      "municipio": "CAMPECHE"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Tabasco",
+      "municipio": "EMILIANO ZAPATA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Oaxaca",
+      "municipio": "OAXACA DE JUAREZ"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Chiapas",
+      "municipio": "TAPACHULA"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Campeche",
+      "municipio": "CARMEN"
+    },
+    {
+      "region": "SURESTE",
+      "regionCode": "6",
+      "estrato": "3",
+      "estado": "Quintana Roo",
+      "municipio": "OTHON P. BLANCO"
+    },
+    {
+      "region": "TIJUANA",
+      "regionCode": "9",
+      "estrato": "4",
+      "estado": "Baja California",
+      "municipio": "TIJUANA"
+    }
+  ]
+}

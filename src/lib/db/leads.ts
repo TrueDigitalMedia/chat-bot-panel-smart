@@ -38,6 +38,7 @@ export async function upsertLead(
   channel: Channel,
   channelUserId: string,
   channelUsername?: string,
+  opts?: { phoneNumberId?: string },
 ): Promise<Lead> {
   const now = new Date()
 
@@ -67,6 +68,11 @@ export async function upsertLead(
       channelUserId,
       channelUsername: channelUsername ?? null,
       lastActivityAt: now,
+      // spec 017 — bind a WhatsApp lead to the business number it messaged, once, at
+      // creation. Never set on the update branch above (no re-bind).
+      ...(channel === 'whatsapp' && opts?.phoneNumberId
+        ? { whatsappPhoneNumberId: opts.phoneNumberId }
+        : {}),
     })
     .returning()
 

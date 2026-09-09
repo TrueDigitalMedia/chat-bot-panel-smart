@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import styles from './quotas.module.css'
-import { AGE_BANDS, HOUSEHOLD_BANDS, NSE_LEVELS, type DimensionType } from '@/lib/quotas/dimension-catalog'
+import { AGE_BANDS, HOUSEHOLD_BANDS, type DimensionType } from '@/lib/quotas/dimension-catalog'
 
 const DIMENSION_LABELS: Record<DimensionType, string> = {
   nse: 'NSE',
@@ -11,8 +11,9 @@ const DIMENSION_LABELS: Record<DimensionType, string> = {
   integrantes: 'Integrantes',
 }
 
-const VALUES_BY_DIMENSION: Record<DimensionType, readonly string[]> = {
-  nse: NSE_LEVELS,
+// 'nse' isn't here — its valid values are country-specific (CAM "Nivel 1-4" vs Ecuador
+// "AB"/"C"/"D/E", spec 014 FR-009/FR-014) and come from the nseLevelsByCountry prop instead.
+const VALUES_BY_DIMENSION: Record<Exclude<DimensionType, 'nse'>, readonly string[]> = {
   edad: AGE_BANDS,
   integrantes: HOUSEHOLD_BANDS,
 }
@@ -20,9 +21,10 @@ const VALUES_BY_DIMENSION: Record<DimensionType, readonly string[]> = {
 interface NewQuotaTargetRowProps {
   countries: string[]
   regionsByCountry: Record<string, string[]>
+  nseLevelsByCountry: Record<string, string[]>
 }
 
-export function NewQuotaTargetRow({ countries, regionsByCountry }: NewQuotaTargetRowProps) {
+export function NewQuotaTargetRow({ countries, regionsByCountry, nseLevelsByCountry }: NewQuotaTargetRowProps) {
   const router = useRouter()
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
@@ -33,7 +35,12 @@ export function NewQuotaTargetRow({ countries, regionsByCountry }: NewQuotaTarge
   const [error, setError] = useState<string | null>(null)
 
   const availableRegions = country ? (regionsByCountry[country] ?? []) : []
-  const availableValues = dimensionType ? VALUES_BY_DIMENSION[dimensionType] : []
+  const availableValues =
+    dimensionType === 'nse'
+      ? (nseLevelsByCountry[country] ?? [])
+      : dimensionType
+        ? VALUES_BY_DIMENSION[dimensionType]
+        : []
 
   async function create() {
     if (!country || !region || !dimensionType || !dimensionValue) return
@@ -119,7 +126,7 @@ export function NewQuotaTargetRow({ countries, regionsByCountry }: NewQuotaTarge
         <select
           value={dimensionValue}
           onChange={(e) => setDimensionValue(e.target.value)}
-          disabled={busy || !dimensionType}
+          disabled={busy || !dimensionType || (dimensionType === 'nse' && !country)}
         >
           <option value="">Valor…</option>
           {availableValues.map((v) => (

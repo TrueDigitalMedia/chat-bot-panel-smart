@@ -4,7 +4,7 @@ import { sql } from '@/lib/db/client'
 import { chatModelPrecise, CHAT_MODEL_PRECISE_ID } from '@/lib/ai/models'
 import { sanitizeInput, InputRejectedError } from '@/lib/ai/sanitize'
 import { logCall } from '@/lib/db/call-log'
-import { SURVEY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { SHARED_PREFIX } from '@/lib/conversation/survey-questions'
 
 export interface FAQEntry {
   id: string
@@ -13,8 +13,9 @@ export interface FAQEntry {
   category: string | null
 }
 
-/** Real button labels from Q2 (country) — single source of truth, never hand-copied. */
-const ENABLED_COUNTRIES = (SURVEY_QUESTIONS.find((q) => q.fieldName === 'country')?.buttons ?? [])
+/** Real button labels from Q2 (country) — single source of truth, never hand-copied.
+ *  SHARED_PREFIX's country question is the same object for every country. */
+const ENABLED_COUNTRIES = (SHARED_PREFIX.find((q) => q.fieldName === 'country')?.buttons ?? [])
   .flat()
   .map((b) => b.text)
   .join(', ')

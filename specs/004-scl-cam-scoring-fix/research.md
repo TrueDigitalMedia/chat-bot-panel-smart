@@ -2,7 +2,7 @@
 
 ## R1: Fuente de verdad para los puntajes y pesos
 
-- **Decision**: Usar exactamente las tablas y pesos documentados en `docs/WIKI.md` §6 (transcritos de `docs/SCL-CAM.pdf`): NiPSH 12 niveles (0/0/0/0/250/250/250/400/900/1000/1000/1000), HACI por umbrales de `(10×personas)/dormitorios` (con caso especial `=99` sin dormitorios exclusivos), AUTO (0/650/1000), SD (0/1000), y la combinación final `(45×NiPSH + 18×HACI + 28×AUTO + 9×SD) / 100`.
+- **Decision**: Usar exactamente las tablas y pesos documentados en `docs/WIKI.md` §6 (transcritos de `docs/cam/SCL-CAM.pdf`): NiPSH 12 niveles (0/0/0/0/250/250/250/400/900/1000/1000/1000), HACI por umbrales de `(10×personas)/dormitorios` (con caso especial `=99` sin dormitorios exclusivos), AUTO (0/650/1000), SD (0/1000), y la combinación final `(45×NiPSH + 18×HACI + 28×AUTO + 9×SD) / 100`.
 - **Rationale**: Es la fuente oficial citada por el propio WIKI y coincide con el gap documentado en §7.1; no hay ambigüedad ni fuente alternativa.
 - **Alternatives considered**: Ninguna — el spec y el WIKI son explícitos y no dejan margen de interpretación en los valores.
 

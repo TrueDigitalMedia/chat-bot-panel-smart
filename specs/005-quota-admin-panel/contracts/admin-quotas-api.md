@@ -55,7 +55,7 @@ Updates `targetCount`, `active`, and/or `notes` on an existing row. Body: any su
 
 ## `POST /api/admin/quotas/import`
 
-`multipart/form-data`, field `file`: an `.xlsx` workbook shaped like `docs/Kantar Quotas Test.xlsx`'s `CAM` sheet (region rows formatted `"<País> - <Región>"`, followed by Objetivo/Conseguidos/Disponibles triplets per NSE level — see research.md R1 for the exact layout discovered by inspection).
+`multipart/form-data`, field `file`: an `.xlsx` workbook shaped like `docs/cam/Kantar Quotas Test.xlsx`'s `CAM` sheet (region rows formatted `"<País> - <Región>"`, followed by Objetivo/Conseguidos/Disponibles triplets per NSE level — see research.md R1 for the exact layout discovered by inspection).
 
 For each parsed row: normalize country (`canonicalCountry`, including the `RD` alias added per research.md R2) and match region against `listNseRegionsForCountry`. Matched rows are upserted (`ON CONFLICT (country, region, nse_level) DO UPDATE SET target_count = excluded.target_count, updated_at = now()`). Unmatched rows are **not** written.
 

@@ -8,4 +8,5 @@ export {
   normalizeMetaInbound,
   extractMetaMessages,
   type MetaWebhookPayload,
+  type MetaInboundEnvelope,
 } from '@/lib/whatsapp/providers/meta/normalize-inbound'

@@ -44,6 +44,11 @@ export interface Lead {
   panelSmartLastSyncAt: Date | null
   panelSmartSyncedAnswersJson: Record<string, unknown> | null
   panelSmartSyncedLeadStatus: LeadStatus | null
+  /** How a web lead entered — 'web:room:<country>' | 'whatsapp:number:<country>' | null (spec 016/017). */
+  acquisitionSource: string | null
+  /** Meta phone_number_id this WhatsApp lead is bound to — the number the bot replies from (spec 017).
+   *  Null for non-WhatsApp / pre-017 leads → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
+  whatsappPhoneNumberId: string | null
 }
 
 export interface SurveyProfile {
@@ -72,6 +77,13 @@ export interface SurveyProfile {
   age: number | null
   isPregnant: boolean | null
   hasBabyUnder3: boolean | null
+  // Ecuador (spec 014) — no dedicated columns for the 8 NSE variables that aren't also
+  // CAM columns (see phase-1.ts's NON_COLUMN_SCORING_FIELDS); those live merged in
+  // scoringAnswersJson instead. conflictOfInterest and nsePoints do have their own
+  // columns (migration 0029).
+  conflictOfInterest: boolean | null
+  scoringAnswersJson: Record<string, unknown> | null
+  nsePoints: number | null
 }
 
 // Scoring fields subset

@@ -117,7 +117,7 @@ Como administrador, quiero exportar el estado actual de las cuotas a un archivo 
 
 - **SC-001**: Un administrador puede actualizar un objetivo de cuota y ver el cambio reflejado en la vista de progreso en menos de 5 segundos.
 - **SC-002**: La decisión de aceptar/rechazar un lead nuevo por cupo coincide con el estado real de la cuota el 100% de las veces (se elimina por completo el comportamiento aleatorio del mock).
-- **SC-003**: La migración inicial importa el 100% de las combinaciones región+NSE de la hoja CAM (33 regiones × 4 niveles = 132 celdas, objetivo total 3494 leads) sin reingreso manual. *(Corregido durante `/speckit.plan`: la tabla resumen del WIKI §8 omitió las filas con objetivo 0 al transcribir el Excel; se verificó contando directamente `docs/Kantar Quotas Test.xlsx` — 33 filas de región, no 19.)*
+- **SC-003**: La migración inicial importa el 100% de las combinaciones región+NSE de la hoja CAM (33 regiones × 4 niveles = 132 celdas, objetivo total 3494 leads) sin reingreso manual. *(Corregido durante `/speckit.plan`: la tabla resumen del WIKI §8 omitió las filas con objetivo 0 al transcribir el Excel; se verificó contando directamente `docs/cam/Kantar Quotas Test.xlsx` — 33 filas de región, no 19.)*
 - **SC-004**: Un administrador puede desactivar una región cerrada en menos de 30 segundos, y el bot deja de aceptar leads para esa combinación en el siguiente chequeo de cupo.
 
 ## Assumptions

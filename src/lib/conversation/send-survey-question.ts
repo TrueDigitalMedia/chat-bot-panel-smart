@@ -2,59 +2,67 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { surveyProfiles, leads, flowStates } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
-import { guatemalaQuestionText, type GeoField } from '@/lib/geo/guatemala'
+import { getCountryConfig } from '@/lib/countries/registry'
+import { resolveSurveyQuestions, nextQuestionToSend } from './survey-plan'
 import { withRetryPrefix } from './exit-messages'
-import { SURVEY_QUESTIONS } from './survey-questions'
 import type { ChannelRecipient } from '@/types/channel'
 
+/**
+ * Send the survey question that should actually appear at (or after) `index`. This is the
+ * single place the "skip a pre-answered field / a geo question this country doesn't ask"
+ * rule lives (spec 016 T007) — `nextQuestionToSend` decides, and this function persists
+ * the advanced `survey_question_index` (+ writes a skipped geo field null) exactly as the
+ * pre-016 inline copies did. Callers pass the naive next index; this self-corrects.
+ */
 export async function sendSurveyQuestion(
   to: ChannelRecipient,
   index: number,
   leadId?: string,
   opts?: { retry?: boolean; leadIn?: string },
 ): Promise<void> {
-  const q = SURVEY_QUESTIONS[index - 1]
-  if (!q) return
+  let profile: { country: string | null } & Record<string, unknown> = { country: null }
+  if (leadId) {
+    const [row] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, leadId)).limit(1)
+    if (row) profile = row as typeof profile
+  }
+  const country = profile.country ?? null
+  const geo = getCountryConfig(country).geoHierarchy
+  const questions = resolveSurveyQuestions(country)
 
-  // Q5 (neighborhood) is never shown to any user, no matter which caller reaches this
-  // index or how — the definitive backstop, since every "advance to next question"
-  // path lives in a different file (phase-1.ts, gps-capture.ts, handle-confirm.ts,
-  // correction.ts's restartSurveyFromField/applyFieldAndContinue) and a new one could
-  // always miss its own copy of this skip. Corrects the *persisted* survey index to
-  // match what's actually sent (index+1), not just the displayed text, so the user's
-  // next answer isn't misfiled into the hidden field.
-  if (q.fieldName === 'neighborhood') {
-    if (leadId) {
-      await db.update(surveyProfiles).set({ neighborhood: null }).where(eq(surveyProfiles.leadId, leadId))
-      await db.update(leads).set({ surveyQuestionIndex: index + 1, updatedAt: new Date() }).where(eq(leads.id, leadId))
-      await db
-        .update(flowStates)
-        .set({ surveyQuestionIndex: index + 1, updatedAt: new Date() })
-        .where(eq(flowStates.leadId, leadId))
+  const { index: sendIndex, skipped } = nextQuestionToSend(questions, index, profile, geo, {
+    skipPregnancyWhenMale: getCountryConfig(country).skipPregnancyWhenMale,
+  })
+
+  if (leadId && sendIndex !== index) {
+    // A rule-2 (geo not asked) skip writes the geo field null — same as the old code;
+    // a rule-1 (pre-answered) skip leaves the value in place. A skipped `isPregnant`
+    // (male lead, Ecuador) is persisted as `false` so quota/registration see "No aplica"
+    // rather than null (doc §7.2).
+    const skipWrites: Record<string, null | boolean> = {}
+    for (const f of skipped) {
+      if (f === 'stateProvince' || f === 'municipality' || f === 'neighborhood') skipWrites[f] = null
+      if (f === 'isPregnant') skipWrites[f] = false
     }
-    await sendSurveyQuestion(to, index + 1, leadId, opts)
-    return
+    if (Object.keys(skipWrites).length > 0) {
+      await db.update(surveyProfiles).set(skipWrites).where(eq(surveyProfiles.leadId, leadId))
+    }
+    await db.update(leads).set({ surveyQuestionIndex: sendIndex, updatedAt: new Date() }).where(eq(leads.id, leadId))
+    await db
+      .update(flowStates)
+      .set({ surveyQuestionIndex: sendIndex, updatedAt: new Date() })
+      .where(eq(flowStates.leadId, leadId))
   }
 
+  const q = questions[sendIndex - 1]
+  if (!q) return
+
   let text = q.text
-  if (
-    leadId &&
-    (q.fieldName === 'stateProvince' ||
-      q.fieldName === 'municipality' ||
-      q.fieldName === 'neighborhood')
-  ) {
-    const [profile] = await db
-      .select({ country: surveyProfiles.country })
-      .from(surveyProfiles)
-      .where(eq(surveyProfiles.leadId, leadId))
-      .limit(1)
-    if (profile?.country === 'Guatemala') {
-      text = guatemalaQuestionText(q.fieldName as GeoField)
-    } else if (profile?.country === 'Costa Rica' && q.fieldName === 'municipality') {
-      // 'Cantón' is Costa Rica's actual term for this division — every other
-      // country just gets the generic 'municipio' wording from survey-questions.ts.
-      text = '¿En qué municipio o cantón vives?'
-    }
+  if (q.fieldName === 'stateProvince') {
+    text = `¿En qué ${geo.stateProvinceLabel} vives?`
+  } else if (q.fieldName === 'municipality') {
+    text = `¿En qué ${geo.municipalityLabel} vives?`
+  } else if (q.fieldName === 'neighborhood' && geo.neighborhoodLabel) {
+    text = `¿En qué ${geo.neighborhoodLabel} vives?`
   }
 
   // A custom lead-in (e.g. "Ok, volvamos a *Correo*.") or the standard "no te entendí"

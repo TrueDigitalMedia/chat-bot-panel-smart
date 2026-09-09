@@ -65,6 +65,6 @@ checkQuotaAvailability(params: {
 
 Ambos call sites (`phase-1.ts` línea ~272, `handle-confirm.ts` línea ~94) ya tienen `profile.country` y `profile.nseRegion` cargados en el mismo bloque donde llaman a esta función — el cambio de firma no introduce ninguna consulta nueva a la base de datos.
 
-## Datos de migración inicial (de `docs/Kantar Quotas Test.xlsx`, hoja `CAM`)
+## Datos de migración inicial (de `docs/cam/Kantar Quotas Test.xlsx`, hoja `CAM`)
 
 Verificado programáticamente (ver research.md R1): **33 filas de región × 4 niveles = 132 filas `QuotaTarget`**, objetivo total agregado = 3494, conseguidos actuales (al momento del análisis) = 159. Esta cifra reemplaza el "19 regiones" que aparecía en el WIKI §8 (transcripción incompleta — omitía filas con objetivo 0 en los 4 niveles).

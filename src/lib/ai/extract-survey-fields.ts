@@ -23,6 +23,8 @@ const FIELD_SCHEMAS = {
   householdSize: z.object({ value: z.number().int().positive().max(30).nullable() }),
   bedrooms: z.object({ value: z.number().int().min(0).max(20).nullable() }),
   age: z.object({ value: z.number().int().min(13).max(100).nullable() }),
+  // México Código Postal — 5 digits (spec 015).
+  codigoPostal: z.object({ value: z.string().regex(/^\d{5}$/).nullable() }),
   dateOfBirth: z.object({ value: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/).nullable() }),
   petCount: z.object({ value: z.number().int().min(0).max(50).nullable() }),
   shoppingCategories: z.object({
@@ -49,6 +51,8 @@ export const FIELD_HINTS: Partial<Record<FieldSchemaKey, string>> = {
     'Si el usuario escribe el número en palabras (p. ej. "siete", "ocho", "diez"), conviértelo a su forma numérica.',
   bedrooms:
     'Si el usuario escribe el número en palabras (p. ej. "siete", "ocho", "diez"), conviértelo a su forma numérica.',
+  codigoPostal:
+    'Un código postal mexicano de exactamente 5 dígitos. Extrae solo los 5 dígitos (p. ej. "mi CP es 06700" → "06700", "03810." → "03810"). Devuelve null si el mensaje no contiene un número de 5 dígitos.',
 }
 
 export async function extractField(

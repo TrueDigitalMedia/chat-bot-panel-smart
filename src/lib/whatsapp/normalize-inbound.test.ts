@@ -3,6 +3,7 @@ import {
   stripWhatsAppAddress,
   normalizeTwilioInbound,
   normalizeMetaInbound,
+  extractMetaMessages,
 } from '@/lib/whatsapp/normalize-inbound'
 import { buildNumberedChoices } from '@/lib/whatsapp/buttons'
 import { toE164, toMetaRecipient } from '@/lib/whatsapp/phone'
@@ -40,6 +41,21 @@ describe('whatsapp normalize-inbound twilio', () => {
     })
     expect(inbound.location).toEqual({ latitude: 14.63, longitude: -90.6 })
   })
+
+  it('spec 017 — carries the business number the user messaged (whatsappPhoneNumberId)', () => {
+    const inbound = normalizeTwilioInbound(
+      { From: 'whatsapp:+593999', To: 'whatsapp:+593111', Body: 'hola', MessageSid: 'SM3' },
+      null,
+      '+593111',
+    )
+    expect(inbound.channelUserId).toBe('+593999')
+    expect(inbound.whatsappPhoneNumberId).toBe('+593111')
+  })
+
+  it('spec 017 — whatsappPhoneNumberId is undefined when no To id is passed', () => {
+    const inbound = normalizeTwilioInbound({ From: 'whatsapp:+593999', Body: 'x', MessageSid: 'SM4' })
+    expect(inbound.whatsappPhoneNumberId).toBeUndefined()
+  })
 })
 
 describe('whatsapp normalize-inbound meta', () => {
@@ -72,6 +88,37 @@ describe('whatsapp normalize-inbound meta', () => {
       location: { latitude: 14.63, longitude: -90.6 },
     })
     expect(inbound?.location).toEqual({ latitude: 14.63, longitude: -90.6 })
+  })
+
+  it('spec 017 — threads the business number (value.metadata.phone_number_id) through', () => {
+    const envelopes = extractMetaMessages({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: 'EC_ID', display_phone_number: '+593 9 000' },
+                messages: [{ from: '5939999', type: 'text', text: { body: 'hola' } }],
+              },
+            },
+          ],
+        },
+      ],
+    })
+    expect(envelopes).toHaveLength(1)
+    expect(envelopes[0].phoneNumberId).toBe('EC_ID')
+    expect(envelopes[0].displayPhoneNumber).toBe('+593 9 000')
+
+    const inbound = normalizeMetaInbound(envelopes[0].message, null, envelopes[0].phoneNumberId)
+    expect(inbound?.whatsappPhoneNumberId).toBe('EC_ID')
+  })
+
+  it('spec 017 — phoneNumberId is undefined when the payload has no metadata', () => {
+    const envelopes = extractMetaMessages({
+      entry: [{ changes: [{ value: { messages: [{ from: '5021', type: 'text', text: { body: 'x' } }] } }] }],
+    })
+    expect(envelopes[0].phoneNumberId).toBeUndefined()
+    expect(normalizeMetaInbound(envelopes[0].message, null, undefined)?.whatsappPhoneNumberId).toBeUndefined()
   })
 })
 

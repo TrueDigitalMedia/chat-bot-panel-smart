@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import styles from './quotas.module.css'
-import { AGE_BANDS, HOUSEHOLD_BANDS, NSE_LEVELS, type DimensionType } from '@/lib/quotas/dimension-catalog'
+import { AGE_BANDS, HOUSEHOLD_BANDS, type DimensionType } from '@/lib/quotas/dimension-catalog'
 
 const DIMENSION_LABELS: Record<DimensionType, string> = {
   nse: 'NSE',
@@ -10,8 +10,8 @@ const DIMENSION_LABELS: Record<DimensionType, string> = {
   integrantes: 'Integrantes',
 }
 
-const VALUES_BY_DIMENSION: Record<DimensionType, readonly string[]> = {
-  nse: NSE_LEVELS,
+// 'nse' isn't here — see new-quota-target-row.tsx's identical comment.
+const VALUES_BY_DIMENSION: Record<Exclude<DimensionType, 'nse'>, readonly string[]> = {
   edad: AGE_BANDS,
   integrantes: HOUSEHOLD_BANDS,
 }
@@ -19,16 +19,27 @@ const VALUES_BY_DIMENSION: Record<DimensionType, readonly string[]> = {
 interface QuotaFiltersFormProps {
   countries: string[]
   regionsByCountry: Record<string, string[]>
+  nseLevelsByCountry: Record<string, string[]>
 }
 
-export function QuotaFiltersForm({ countries, regionsByCountry }: QuotaFiltersFormProps) {
+export function QuotaFiltersForm({ countries, regionsByCountry, nseLevelsByCountry }: QuotaFiltersFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const selectedCountry = searchParams.get('country') ?? ''
   const selectedDimensionType = (searchParams.get('dimensionType') ?? '') as DimensionType | ''
   const availableRegions = selectedCountry ? (regionsByCountry[selectedCountry] ?? []) : []
-  const availableValues = selectedDimensionType ? VALUES_BY_DIMENSION[selectedDimensionType] : []
+  // Filtering (unlike creating) doesn't require a country first: with no country selected,
+  // offer the union of every country's NSE values so an admin can still filter across
+  // countries by NSE segment (e.g. see all "AB" leads, Ecuador or otherwise).
+  const availableValues =
+    selectedDimensionType === 'nse'
+      ? selectedCountry
+        ? (nseLevelsByCountry[selectedCountry] ?? [])
+        : [...new Set(Object.values(nseLevelsByCountry).flat())]
+      : selectedDimensionType
+        ? VALUES_BY_DIMENSION[selectedDimensionType]
+        : []
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString())

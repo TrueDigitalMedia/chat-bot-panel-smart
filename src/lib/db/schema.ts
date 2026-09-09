@@ -121,6 +121,15 @@ export const leads = pgTable(
      *  transition with no changed survey/ficha-hogar field still gets synced instead of being
      *  silently dropped as "nothing pending". */
     panelSmartSyncedLeadStatus: leadStatusEnum('panel_smart_synced_lead_status'),
+    /** How a web lead entered — 'web:room:Ecuador' | 'web:room:México' | null (generic
+     *  /chat, or any non-web channel). Set once, at lead creation, by the room bootstrap
+     *  handler (spec 016); never re-scoped. */
+    acquisitionSource: varchar('acquisition_source', { length: 40 }),
+    /** Meta phone_number_id of the WhatsApp business number this lead's conversation is
+     *  bound to — the number the bot replies from (spec 017). Set once, at lead creation,
+     *  from the inbound webhook's value.metadata.phone_number_id; never re-bound. Null for
+     *  non-WhatsApp leads and pre-017 rows → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
+    whatsappPhoneNumberId: varchar('whatsapp_phone_number_id', { length: 40 }),
   },
   (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
 )
@@ -155,6 +164,14 @@ export const surveyProfiles = pgTable('survey_profiles', {
   age: smallint('age'),
   isPregnant: boolean('is_pregnant'),
   hasBabyUnder3: boolean('has_baby_under_3'),
+  /** Ecuador (and future non-CAM countries): sensitive-industry screening — see spec 014 FR-002. */
+  conflictOfInterest: boolean('conflict_of_interest'),
+  /** Raw per-variable NSE answers for the lead's country (spec 014 R6). CAM leaves this
+   *  null and keeps using the typed columns above; non-CAM countries (Ecuador, ...) store
+   *  their scoring answers here as { [variableKey]: string }. */
+  scoringAnswersJson: jsonb('scoring_answers_json').$type<Record<string, unknown>>(),
+  /** Country NSE point total (Ecuador 0-500; CAM leaves this null and uses `score`). */
+  nsePoints: smallint('nse_points'),
 })
 
 export const fichaHogarProfiles = pgTable(

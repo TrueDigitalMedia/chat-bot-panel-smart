@@ -34,7 +34,27 @@ const PAGE_SIZE = 25
 
 interface SearchParams {
   status?: string
+  source?: string
   page?: string
+}
+
+// spec 016 T021 / spec 017 T030 — filter leads by acquisition source (web room or WhatsApp number).
+const SOURCE_FILTERS = [
+  { value: 'web:room:Ecuador', label: 'Sala: Ecuador' },
+  { value: 'web:room:México', label: 'Sala: México' },
+  { value: 'generic', label: 'Web genérico (sin sala)' },
+  { value: 'whatsapp:number:Ecuador', label: 'WhatsApp: Ecuador' },
+  { value: 'whatsapp:number:México', label: 'WhatsApp: México' },
+  { value: 'whatsapp-generic', label: 'WhatsApp genérico (número CAM)' },
+] as const
+
+function roomLabel(source: string | null): string | null {
+  if (!source) return null
+  if (source === 'web:room:Ecuador') return 'Sala EC'
+  if (source === 'web:room:México') return 'Sala MX'
+  if (source === 'whatsapp:number:Ecuador') return 'WA EC'
+  if (source === 'whatsapp:number:México') return 'WA MX'
+  return source
 }
 
 function isValidStatus(v: string | undefined): v is LeadStatus {
@@ -70,16 +90,20 @@ export default async function ConversationsPage({
   const page = Math.max(1, Number(params.page) || 1)
   const offset = (page - 1) * PAGE_SIZE
 
+  const acquisitionSource = SOURCE_FILTERS.some((f) => f.value === params.source) ? params.source : undefined
+
   const { items: conversations, hasMore } = await listConversations({
     status,
+    acquisitionSource,
     limit: PAGE_SIZE,
     offset,
   })
 
   function filterHref(next: Partial<SearchParams>): string {
-    const merged = { status: params.status, page: params.page, ...next }
+    const merged = { status: params.status, source: params.source, page: params.page, ...next }
     const qs = new URLSearchParams()
     if (merged.status) qs.set('status', merged.status)
+    if (merged.source) qs.set('source', merged.source)
     if (merged.page) qs.set('page', merged.page)
     const s = qs.toString()
     return s ? `/admin/conversations?${s}` : '/admin/conversations'
@@ -104,6 +128,14 @@ export default async function ConversationsPage({
           {ALL_STATUSES.map((s) => (
             <option key={s} value={s}>
               {s}
+            </option>
+          ))}
+        </select>
+        <select name="source" defaultValue={acquisitionSource ?? ''} className={styles.filterSelect}>
+          <option value="">Todos los orígenes</option>
+          {SOURCE_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
             </option>
           ))}
         </select>
@@ -146,6 +178,9 @@ export default async function ConversationsPage({
                   </td>
                   <td>
                     <span className={styles.channel}>{c.channel}</span>
+                    {roomLabel(c.acquisitionSource) ? (
+                      <span className={styles.muted}> · {roomLabel(c.acquisitionSource)}</span>
+                    ) : null}
                   </td>
                   <td>
                     <span className={`${styles.badge} ${statusClass(c.leadStatus)}`}>

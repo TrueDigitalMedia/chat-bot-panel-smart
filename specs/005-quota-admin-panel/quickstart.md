@@ -17,7 +17,7 @@ npx drizzle-kit push       # o el flujo de migración habitual del proyecto
 
 ```bash
 curl -u admin:$ADMIN_PASSWORD \
-  -F "file=@docs/Kantar Quotas Test.xlsx" \
+  -F "file=@docs/cam/Kantar Quotas Test.xlsx" \
   http://localhost:3000/api/admin/quotas/import
 ```
 

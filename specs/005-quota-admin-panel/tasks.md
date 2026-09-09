@@ -81,18 +81,18 @@ Single Next.js project — `src/`, `tests/` at repository root (plan.md § Proje
 
 ## Phase 5: User Story 3 - Importar cuotas iniciales desde Excel (Priority: P2)
 
-**Goal**: Bulk-load `docs/Kantar Quotas Test.xlsx` into `quota_targets`.
+**Goal**: Bulk-load `docs/cam/Kantar Quotas Test.xlsx` into `quota_targets`.
 
-**Independent Test**: `curl -F file=@"docs/Kantar Quotas Test.xlsx" .../api/admin/quotas/import` → `{"imported": 132, "unmatched": []}` (quickstart.md § 2).
+**Independent Test**: `curl -F file=@"docs/cam/Kantar Quotas Test.xlsx" .../api/admin/quotas/import` → `{"imported": 132, "unmatched": []}` (quickstart.md § 2).
 
 ### Implementation for User Story 3
 
-- [X] T019 [US3] Create `src/lib/quotas/excel-import.ts`: parse the workbook (`xlsx`, same API as `scripts/import-cam-nse-excel.ts`), split each `"<País> - <Región>"` row label, normalize via `canonicalCountry()` (T004) + `canonicalNseRegion()` (T005 follow-up), and call `upsertQuotaTarget()` (T013) per matched row; collect unmatched rows into the response shape from the contract. Depends on T004, T005, T013. **Verified against the real file directly** (not just fixtures): parsing `docs/Kantar Quotas Test.xlsx` with this exact code → 33/33 regions matched, 132/132 cells, 0 unmatched.
+- [X] T019 [US3] Create `src/lib/quotas/excel-import.ts`: parse the workbook (`xlsx`, same API as `scripts/import-cam-nse-excel.ts`), split each `"<País> - <Región>"` row label, normalize via `canonicalCountry()` (T004) + `canonicalNseRegion()` (T005 follow-up), and call `upsertQuotaTarget()` (T013) per matched row; collect unmatched rows into the response shape from the contract. Depends on T004, T005, T013. **Verified against the real file directly** (not just fixtures): parsing `docs/cam/Kantar Quotas Test.xlsx` with this exact code → 33/33 regions matched, 132/132 cells, 0 unmatched.
 - [X] T020 [US3] [P] Create `src/app/api/admin/quotas/import/route.ts`: `POST multipart/form-data`, `.xlsx`-only validation, delegates to T019. Depends on T019.
 - [X] T021 [US3] Write `tests/unit/quota-excel-import.test.ts` using fixture rows shaped like the real sheet (research.md R1): `"RD - Cibao Sin Santiago"` maps to country `Rep. Dominicana` / region `Cibao sin Santiago`; `"Panama - Norte"` maps to `Panamá` (accent normalized); an unrecognized country/region prefix lands in `unmatched`, not silently created; a target of exactly 0 is imported, not skipped. 7 tests, all passing (mocks `upsertQuotaTarget`, no DB needed). Depends on T019.
 - [X] T022 [US3] Add `src/app/admin/quotas/import-form.tsx` (Client Component) and wire it into `page.tsx`'s header, posting to T020's route and displaying the `imported`/`unmatched` result. Depends on T016, T020 (see Dependencies § US3 exception noted after the analyze pass).
 
-**Checkpoint**: Importing the real Excel produces 132 rows and zero unmatched (after T004's RD fix + T005's case-insensitive region matching) — verified directly against `docs/Kantar Quotas Test.xlsx`, not just documented. `npx vitest run tests/unit` → 82/82 passing (was 75 after US2; +7, zero regressions).
+**Checkpoint**: Importing the real Excel produces 132 rows and zero unmatched (after T004's RD fix + T005's case-insensitive region matching) — verified directly against `docs/cam/Kantar Quotas Test.xlsx`, not just documented. `npx vitest run tests/unit` → 82/82 passing (was 75 after US2; +7, zero regressions).
 
 ---
 

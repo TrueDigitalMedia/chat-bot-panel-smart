@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateScore, getQuotaSegment, NIPSH_SCORES } from '@/lib/scoring/socioeconomic'
-import { SURVEY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { resolveSurveyQuestions } from '@/lib/conversation/survey-plan'
 
 describe('calculateScore — official Kantar SCL-CAM formula', () => {
   it('matches the manual calculation for a known high-SES profile', () => {
@@ -104,10 +104,12 @@ describe('calculateScore — official Kantar SCL-CAM formula', () => {
 
 describe('educationPsh survey options stay in sync with the NiPSH table', () => {
   it('every educationPsh button value has a matching NiPSH_SCORES entry', () => {
-    const question = SURVEY_QUESTIONS.find((q) => q.fieldName === 'educationPsh')
+    const question = resolveSurveyQuestions('Guatemala').find((q) => q.fieldName === 'educationPsh')
     expect(question?.buttons).toBeDefined()
 
-    const values = question!.buttons!.flat().map((b) => b.callback_data.split(':').slice(1).join(':'))
+    const values = question!.buttons!.flat().map((b: { callback_data: string }) =>
+      b.callback_data.split(':').slice(1).join(':'),
+    )
     expect(values).toHaveLength(12)
 
     for (const value of values) {
