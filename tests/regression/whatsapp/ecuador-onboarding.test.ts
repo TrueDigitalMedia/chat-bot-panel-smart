@@ -115,7 +115,7 @@ async function toName(send: ReturnType<typeof sender>, name: string) {
 }
 
 // Use cases: specs/regression/use-cases.md
-// J1 UC-A/EC1/EC3/EC5 · J2 UC-EC2 · J3 UC-EC4 · J4 UC-EC6 · J5 UC-MX1 · J6 UC-B · J7 UC-F
+// J1 → UC-A/EC1/EC2/EC3/EC6 · J2 → UC-EC5 · J3 → UC-EC4 · J4 → UC-EC7 · J5 → UC-MX1 · J6 → UC-B · J7 → UC-F
 describe('Ecuador + México onboarding — WhatsApp E2E', () => {
   beforeAll(async () => {
     await db.delete(quotaTargets)
