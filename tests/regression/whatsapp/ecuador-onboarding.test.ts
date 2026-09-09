@@ -1,13 +1,15 @@
 /**
- * Ecuador onboarding — full WhatsApp/Twilio journey, in-process against the real dev DB.
+ * Ecuador onboarding — end-to-end WhatsApp/Twilio journeys, in-process against the real
+ * dev DB (mocked outbound + AI extraction).
  *
- * Exercises the three fixes that spec 017 traffic exposed:
+ * Exercises the behaviour spec 017 traffic exposed and the 014/015 fixes:
  *  - feature 016: a lead on the Ecuador business number is never asked "¿En qué país…?"
- *  - commit a434a88: conflictOfInterest (and every EC NSE button) advances instead of looping
- *  - commit 23f15a1: "Guayaquil" typed for the provincia is rejected with examples; the
- *    real provincia "Guayas" is then accepted
+ *  - commit a434a88: conflictOfInterest / every EC NSE button advances instead of looping;
+ *                    conflictOfInterest = "Sí" now disqualifies (was a string-compare bug)
+ *  - commit 23f15a1: a cantón typed for the provincia is rejected with examples; an
+ *                    out-of-catalog province is accepted on the 2nd miss (no hard loop)
  *
- * Not a golden-master snapshot — explicit assertions on the behaviour that regressed.
+ * Explicit assertions on the behaviour that regressed — not a golden-master snapshot.
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
@@ -58,8 +60,8 @@ import {
 import { processWhatsAppInbound } from '@/lib/whatsapp/handle-inbound'
 import type { ChannelInbound } from '@/types/channel'
 
-const EC_NUMBER = '+15722192733'
-const USER = '+593999000111'
+const EC_NUMBER = '+15722192733' // mapped to Ecuador in .env WHATSAPP_NUMBER_MAP
+const CAM_NUMBER = '+19516696845' // TWILIO_WHATSAPP_FROM — generic, not mapped
 
 async function resetTables() {
   for (const t of [conversationMessages, consentEvents, reEngagementSchedules, flowStates,
@@ -69,29 +71,46 @@ async function resetTables() {
 }
 
 let msgId = 0
-async function send(overrides: Partial<ChannelInbound>, extract: Record<string, unknown> = {}) {
-  for (const k of Object.keys(extractionScript)) delete extractionScript[k]
-  Object.assign(extractionScript, extract)
-  const inbound: ChannelInbound = {
-    channel: 'whatsapp', channelUserId: USER, text: '', ...overrides,
-    whatsappPhoneNumberId: EC_NUMBER,
+function sender(user: string, number: string) {
+  return async (overrides: Partial<ChannelInbound>, extract: Record<string, unknown> = {}) => {
+    for (const k of Object.keys(extractionScript)) delete extractionScript[k]
+    Object.assign(extractionScript, extract)
+    const inbound: ChannelInbound = {
+      channel: 'whatsapp', channelUserId: user, text: '', ...overrides,
+      whatsappPhoneNumberId: number,
+    }
+    await processWhatsAppInbound(inbound, {
+      messageSid: `SM${++msgId}`, provider: 'twilio', phoneNumberId: number,
+    })
   }
-  await processWhatsAppInbound(inbound, { messageSid: `SM${++msgId}`, provider: 'twilio', phoneNumberId: EC_NUMBER })
+}
+const lastText = () => outbox[outbox.length - 1]?.text ?? ''
+const turnText = () => outbox.map((o) => o.text).join('\n---\n')
+const allJoined = () => allText.join('\n')
+
+// Drive the SHARED_PREFIX up to (and including) the name — country is skipped on the EC number.
+async function toName(send: ReturnType<typeof sender>, name: string) {
+  await send({ text: 'Hola' })
+  await send({ callbackData: 'optin:accept' })
+  await send({ callbackData: 'd1:accept' })
+  await send({ callbackData: 'reengagement_consent:accept' })
+  await send({ callbackData: 'd3:yes' })
+  await send({ text: name }, { fullName: name })
 }
 
-const lastText = () => outbox[outbox.length - 1]?.text ?? ''
-const transcript = () => outbox.map((o) => o.text).join('\n---\n')
-
-describe('Ecuador onboarding — full WhatsApp journey', () => {
+describe('Ecuador onboarding — WhatsApp E2E', () => {
   beforeAll(async () => {
     await db.delete(quotaTargets)
     await db.delete(quotaRegionCaps)
-    // open NSE cells so the lead can qualify regardless of computed NSE band
+    // open NSE cells for every EC region + band so a completed survey can qualify
+    const regions = ['Cuenca', 'Guayaquil Norte', 'Guayaquil Sur', 'Quito Norte', 'Quito Sur', 'Sierra']
     await db.insert(quotaTargets).values(
-      (['AB', 'C', 'D/E'] as const).map((v) => ({
-        country: 'Ecuador', region: 'Guayaquil Sur', dimensionType: 'nse' as const,
-        dimensionValue: v, targetCount: 100, active: true,
-      })),
+      regions.flatMap((region) =>
+        (['AB', 'C', 'D/E'] as const).map((v) => ({
+          country: 'Ecuador', region, dimensionType: 'nse' as const,
+          dimensionValue: v, targetCount: 500, active: true,
+        })),
+      ),
     )
   })
   beforeEach(async () => {
@@ -100,68 +119,114 @@ describe('Ecuador onboarding — full WhatsApp journey', () => {
     await resetTables()
   })
 
-  it('scopes to Ecuador, never asks country, validates geo, and does not loop on NSE buttons', async () => {
-    await send({ text: 'Hola' })
-    // 017: lead pre-scoped to Ecuador at creation
-    const [lead0] = await db.select().from(leads).where(eq(leads.channelUserId, USER))
-    expect(lead0.whatsappPhoneNumberId).toBe(EC_NUMBER)
-    expect(lead0.acquisitionSource).toBe('whatsapp:number:Ecuador')
-    const [p0] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead0.id))
-    expect(p0.country).toBe('Ecuador')
+  it('J1 — full survey to a decision; country never asked; geo validated', async () => {
+    const send = sender('+593900000001', EC_NUMBER)
+    await toName(send, 'Brenda Montero')
 
-    await send({ callbackData: 'optin:accept' })
-    await send({ callbackData: 'd1:accept' })
-    await send({ callbackData: 'reengagement_consent:accept' })
-    await send({ callbackData: 'd3:yes' })
-    await send({ text: 'Brenda Montero' }, { fullName: 'Brenda Montero' })
-
-    // 016: country question never shown; first geo prompt uses the Ecuador label
-    expect(transcript()).not.toContain('¿En qué país')
+    // 017 + 016: pre-scoped to Ecuador, country question skipped, EC geo label used
+    const [lead] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000001'))
+    expect(lead.acquisitionSource).toBe('whatsapp:number:Ecuador')
+    expect((await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id)))[0].country).toBe('Ecuador')
+    expect(allJoined()).not.toContain('¿En qué país')
     expect(lastText()).toContain('provincia')
 
-    // 23f15a1: a cantón typed as a provincia is rejected with examples (then the
-    // question is re-asked, so check the whole turn's output, not just the last line)
+    // 23f15a1: cantón typed as provincia → rejected, not persisted
     outbox.length = 0
-    await send({ text: 'Guayaquil' }, { stateProvince: 'Guayaquil' })
-    expect(transcript()).toContain('No reconocí esa provincia')
-    expect(transcript()).toContain('Ejemplos:')
-    const [pStuck] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead0.id))
-    expect(pStuck.stateProvince).not.toBe('Guayaquil') // not persisted
+    await send({ text: 'Cuenca' }, { stateProvince: 'Cuenca' }) // Cuenca is a cantón, not a provincia
+    expect(turnText()).toContain('No reconocí esa provincia')
+    expect((await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id)))[0].stateProvince).not.toBe('Cuenca')
 
-    // the real provincia is accepted and the survey advances to the cantón
     outbox.length = 0
-    await send({ text: 'Guayas' }, { stateProvince: 'Guayas' })
+    await send({ text: 'Azuay' }, { stateProvince: 'Azuay' })
     expect(lastText()).toContain('cantón')
-
-    await send({ text: 'Guayaquil' }, { municipality: 'Guayaquil' })
-    await send({ text: 'Tarqui' }, { neighborhood: 'Tarqui' })
+    await send({ text: 'Cuenca' }, { municipality: 'Cuenca' })
+    await send({ text: 'El Sagrario' }, { neighborhood: 'El Sagrario' })
     await send({ text: 'brenda@example.com' }, { email: 'brenda@example.com' })
     await send({ callbackData: 'gender:Femenino' })
     await send({ text: '33' }, { age: 33 })
 
-    // a434a88: the conflictOfInterest button advances the survey — before the fix it
-    // routed to the AI handler and re-asked the same question forever
-    const idxBefore = (await db.select().from(leads).where(eq(leads.id, lead0.id)))[0].surveyQuestionIndex
-    outbox.length = 0
+    // a434a88: the screening + all 8 NSE buttons advance (were routing to the AI handler)
     await send({ callbackData: 'conflictOfInterest:false' })
-    const idxAfter = (await db.select().from(leads).where(eq(leads.id, lead0.id)))[0].surveyQuestionIndex
-    expect(idxAfter).toBeGreaterThan(idxBefore)
-    expect(transcript()).not.toContain('agencia de publicidad') // the conflict question text
-
-    // and a couple of the Ecuador NSE buttons also advance (same BUTTON_PREFIXES fix)
-    outbox.length = 0
     await send({ callbackData: 'healthInsurancePsh:IESS' })
-    const idxNse1 = (await db.select().from(leads).where(eq(leads.id, lead0.id)))[0].surveyQuestionIndex
-    expect(idxNse1).toBeGreaterThan(idxAfter)
     await send({ callbackData: 'monthlyIncome:De $701 hasta $1.000' })
-    const idxNse2 = (await db.select().from(leads).where(eq(leads.id, lead0.id)))[0].surveyQuestionIndex
-    expect(idxNse2).toBeGreaterThan(idxNse1)
+    await send({ callbackData: 'dwellingFinishes:Casa de Cemento/Ladrillo Techo de Loza o Teja' })
+    await send({ callbackData: 'floorMaterial:Cerámica, baldosa, vinil o marmetón' })
+    await send({ callbackData: 'vehicleCount:1' })
+    await send({ callbackData: 'occupationHead:Empleados de oficina' })
+    await send({ callbackData: 'occupationAma:Empleados de oficina' })
+    await send({ callbackData: 'educationPsh:Universidad completa' })
+    await send({ callbackData: 'householdSize:3' })
+    await send({ callbackData: 'isPregnant:false' })
+    await send({ callbackData: 'hasBabyUnder3:false' })
+    await send({ callbackData: 'internetAccess:Internet Hogar contratado (cable)' })
+    await send({ callbackData: 'shoppingFrequency:Semanal' })
+    await send({ text: '1, 2' }, { shoppingCategories: [1, 2] })
+    await send({ callbackData: 'contactChannel:WhatsApp' })
+    await send({ callbackData: 'contactSchedule:Tarde (13-17hs)' })
 
-    const [finalProfile] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead0.id))
-    expect(finalProfile.country).toBe('Ecuador')
-    expect(finalProfile.stateProvince).toBe('Guayas')
-    expect(finalProfile.conflictOfInterest).toBe(false)
-    // country question was never asked anywhere in the whole conversation
-    expect(allText.join('\n')).not.toContain('¿En qué país')
-  }, 120_000)
+    const [fl] = await db.select().from(leads).where(eq(leads.id, lead.id))
+    const [fp] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
+    // the survey ran to completion — a real decision, never stuck mid-flow
+    expect([
+      'link_sent', 'waiting_for_code', 'code_delivered_registered',
+      'code_delivered_not_registered', 'code_delivered_no_response',
+      'not_qualified', 'quota_exhausted',
+    ]).toContain(fl.leadStatus)
+    expect(fp.country).toBe('Ecuador')
+    expect(fp.stateProvince).toBe('Azuay')
+    expect(fp.nsePoints).not.toBeNull()
+    expect(fp.conflictOfInterest).toBe(false)
+    expect(allJoined()).not.toContain('¿En qué país')
+  }, 180_000)
+
+  it('J2 — conflictOfInterest = "Sí" disqualifies the lead', async () => {
+    const send = sender('+593900000002', EC_NUMBER)
+    await toName(send, 'Juan Díaz')
+    await send({ text: 'Pichincha' }, { stateProvince: 'Pichincha' })
+    await send({ text: 'Mejía' }, { municipality: 'Mejía' })
+    await send({ text: 'Machachi' }, { neighborhood: 'Machachi' })
+    await send({ text: 'juan@example.com' }, { email: 'juan@example.com' })
+    await send({ callbackData: 'gender:Masculino' })
+    await send({ text: '40' }, { age: 40 })
+    await send({ callbackData: 'conflictOfInterest:true' })
+
+    const [fl] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000002'))
+    expect(fl.leadStatus).toBe('not_qualified')
+    expect(fl.statusReason).toBe('sensitive_industry')
+  }, 90_000)
+
+  it('J3 — out-of-catalog province: rejected once, then accepted (no hard loop)', async () => {
+    const send = sender('+593900000003', EC_NUMBER)
+    await toName(send, 'Ana Coba')
+    // Napo (Amazon) is not in the NSE sample catalog
+    outbox.length = 0
+    await send({ text: 'Napo' }, { stateProvince: 'Napo' })
+    expect(turnText()).toContain('No reconocí esa provincia') // 1st miss → help + re-ask
+    const [p1] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId,
+      (await db.select().from(leads).where(eq(leads.channelUserId, '+593900000003')))[0].id))
+    expect(p1.stateProvince).not.toBe('Napo')
+
+    outbox.length = 0
+    await send({ text: 'Napo' }, { stateProvince: 'Napo' }) // 2nd miss → accept raw, advance
+    const [lead] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000003'))
+    const [p2] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id))
+    expect(p2.stateProvince).toBe('Napo')
+    expect(lastText()).toContain('cantón') // advanced past provincia, not looping
+  }, 90_000)
+
+  it('J4 — a lead on the generic (CAM) number IS still asked their country', async () => {
+    const send = sender('+50700000004', CAM_NUMBER)
+    await send({ text: 'Hola' })
+    await send({ callbackData: 'optin:accept' })
+    await send({ callbackData: 'd1:accept' })
+    await send({ callbackData: 'reengagement_consent:accept' })
+    await send({ callbackData: 'd3:yes' })
+    await send({ text: 'Carlos Ruiz' }, { fullName: 'Carlos Ruiz' })
+    await send({ callbackData: 'gps:manual' }) // opt out of GPS → reach the country question
+
+    const [lead] = await db.select().from(leads).where(eq(leads.channelUserId, '+50700000004'))
+    expect(lead.acquisitionSource).toBeNull()
+    expect((await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, lead.id)))[0].country).toBeNull()
+    expect(allJoined()).toContain('¿En qué país')
+  }, 90_000)
 })
