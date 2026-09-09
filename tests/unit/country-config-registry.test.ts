@@ -132,10 +132,10 @@ describe('getCountryConfig — CAM/RD countries', () => {
 })
 
 describe('getCountryConfig — Ecuador', () => {
-  it('resolves a distinct CountryConfig with the Ecuador NSE level bands', () => {
+  it('resolves a distinct CountryConfig with the official 5-level Ecuador NSE bands', () => {
     const cfg = getCountryConfig('Ecuador')
     expect(cfg.country).toBe('Ecuador')
-    expect(cfg.nseLevels).toEqual(['AB', 'C', 'D/E'])
+    expect(cfg.nseLevels).toEqual(['A', 'B', 'C', 'D', 'E'])
   })
 
   it('has its own geoHierarchy — parroquia is a real (non-hidden) Q5', () => {
@@ -147,9 +147,24 @@ describe('getCountryConfig — Ecuador', () => {
     })
   })
 
-  it('has a non-empty sensitive-industry screening question (unlike every CAM/RD country)', () => {
+  it('has no Phase-1 sensitive-industry screening — Ecuador asks it in the Ficha Hogar instead', () => {
     const cfg = getCountryConfig('Ecuador')
-    expect(cfg.screeningIndustries.length).toBeGreaterThan(0)
+    expect(cfg.screeningIndustries).toEqual([])
+    expect(cfg.fichaHogarQuestions[0]?.fieldName).toBe('conflictOfInterest')
+  })
+
+  it('has a 6-question Ecuador Ficha Hogar (no "acceso a internet") and the health-condition discard flag', () => {
+    const cfg = getCountryConfig('Ecuador')
+    expect(cfg.fichaHogarQuestions.map((q) => q.fieldName)).toEqual([
+      'conflictOfInterest',
+      'relationshipToHoh',
+      'dateOfBirth',
+      'hasHealthCondition',
+      'unlimitedDataPlan',
+      'petCount',
+    ])
+    expect(cfg.fichaHogarHealthConditionDisqualifies).toBe(true)
+    expect(cfg.skipPregnancyWhenMale).toBe(true)
   })
 
   it('validatePhone strips 593/leading-0 and returns E.164 +593XXXXXXXXX', () => {
@@ -209,8 +224,8 @@ describe('getCountryConfig — México (spec 015)', () => {
   })
 
   it('registering México did not change the CAM or Ecuador resolved question lists', () => {
-    // Guard: CAM stays 19, Ecuador stays 25 (spec 015 T008 / SC-004)
+    // Guard: CAM stays 19 (spec 015 T008 / SC-004); Ecuador is 23 after the Kantar refactor
     expect(resolveSurveyQuestions('Guatemala').length).toBe(19)
-    expect(resolveSurveyQuestions('Ecuador').length).toBe(25)
+    expect(resolveSurveyQuestions('Ecuador').length).toBe(23)
   })
 })

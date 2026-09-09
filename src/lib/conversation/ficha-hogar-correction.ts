@@ -1,11 +1,26 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { fichaHogarProfiles, flowStates } from '@/lib/db/schema'
+import { fichaHogarProfiles, flowStates, surveyProfiles } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
-import { FICHA_HOGAR_FIELDS, type FichaHogarFieldName, type Lead } from '@/types/lead'
-import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from './ficha-hogar-questions'
+import { type FichaHogarFieldName, type Lead } from '@/types/lead'
+import { resolveFichaHogarQuestions, fichaHogarQuestionCount } from './ficha-hogar-plan'
 import { sendFichaHogarQuestion } from './phases/phase-4'
 import type { InlineKeyboardButton } from '@/types/telegram'
+
+async function fichaHogarCountry(leadId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, leadId))
+    .limit(1)
+  return row?.country ?? null
+}
+
+/** Ordered field names for this lead's country-resolved Ficha Hogar. */
+async function fichaHogarFieldsFor(leadId: string): Promise<FichaHogarFieldName[]> {
+  const country = await fichaHogarCountry(leadId)
+  return resolveFichaHogarQuestions(country).map((q) => q.fieldName)
+}
 
 // Small standalone correction module for Ficha Hogar (spec 008, research.md R3) —
 // same UX pattern as src/lib/conversation/correction.ts, not a shared implementation
@@ -62,7 +77,8 @@ export async function showFichaHogarCorrectionMenu(lead: Lead): Promise<void> {
     return
   }
   const rec = profile as unknown as Record<string, unknown>
-  const filled = FICHA_HOGAR_FIELDS.filter((f) => rec[f] !== null && rec[f] !== undefined)
+  const fields = await fichaHogarFieldsFor(lead.id)
+  const filled = fields.filter((f) => rec[f] !== null && rec[f] !== undefined)
   if (filled.length === 0) {
     await sendText(lead, 'Aún no hay respuestas de Ficha Hogar para corregir.')
     return
@@ -84,7 +100,8 @@ export async function showFichaHogarCorrectionMenu(lead: Lead): Promise<void> {
 }
 
 export async function restartFichaHogarFromField(lead: Lead, field: FichaHogarFieldName): Promise<void> {
-  const idx = FICHA_HOGAR_QUESTIONS.findIndex((q) => q.fieldName === field) + 1
+  const country = await fichaHogarCountry(lead.id)
+  const idx = resolveFichaHogarQuestions(country).findIndex((q) => q.fieldName === field) + 1
   if (idx < 1) return
 
   const profile = await getProfile(lead.id)
@@ -110,7 +127,7 @@ export async function restartFichaHogarFromField(lead: Lead, field: FichaHogarFi
     .where(eq(flowStates.leadId, lead.id))
 
   await sendText(lead, `Ok, volvamos a "${FIELD_LABELS[field]}".`)
-  await sendFichaHogarQuestion(lead, idx)
+  await sendFichaHogarQuestion(lead, idx, country)
 }
 
 /**
@@ -131,10 +148,12 @@ export async function resumeFichaHogarAfterCorrection(leadId: string, nextIdx: n
 
   const profile = await getProfile(leadId)
   const rec = (profile ?? {}) as unknown as Record<string, unknown>
+  const country = await fichaHogarCountry(leadId)
+  const questions = resolveFichaHogarQuestions(country)
 
   let idx = nextIdx
-  while (idx < resumeIdx && idx <= FICHA_HOGAR_QUESTION_COUNT) {
-    const q = FICHA_HOGAR_QUESTIONS[idx - 1]
+  while (idx < resumeIdx && idx <= fichaHogarQuestionCount(country)) {
+    const q = questions[idx - 1]
     const v = q ? rec[q.fieldName] : undefined
     const filled = v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')
     if (!filled) return idx
@@ -160,7 +179,8 @@ async function getFichaHogarFilledFieldsSummary(
   const profile = await getProfile(leadId)
   if (!profile) return []
   const rec = profile as unknown as Record<string, unknown>
-  return FICHA_HOGAR_FIELDS.filter((f) => rec[f] !== null && rec[f] !== undefined).map((f) => ({
+  const fields = await fichaHogarFieldsFor(leadId)
+  return fields.filter((f) => rec[f] !== null && rec[f] !== undefined).map((f) => ({
     field: f,
     label: FIELD_LABELS[f],
     value: formatValue(rec[f]),
@@ -210,7 +230,7 @@ export async function tryHandleFichaHogarCorrectionRequest(
   }
 
   const field = intent.field as FichaHogarFieldName
-  if (!(FICHA_HOGAR_FIELDS as readonly string[]).includes(field)) return false
+  if (!(await fichaHogarFieldsFor(lead.id)).includes(field)) return false
   await restartFichaHogarFromField(lead, field)
   return true
 }
@@ -218,9 +238,10 @@ export async function tryHandleFichaHogarCorrectionRequest(
 export async function cancelFichaHogarCorrection(lead: Lead): Promise<void> {
   const profile = await getProfile(lead.id)
   await sendText(lead, 'Corrección cancelada. Seguimos donde íbamos.')
+  const country = await fichaHogarCountry(lead.id)
   const idx = profile?.questionIndex ?? 0
-  if (idx >= 1 && idx <= FICHA_HOGAR_QUESTIONS.length) {
-    await sendFichaHogarQuestion(lead, idx)
+  if (idx >= 1 && idx <= fichaHogarQuestionCount(country)) {
+    await sendFichaHogarQuestion(lead, idx, country)
   }
 }
 
@@ -241,7 +262,7 @@ export async function handleFichaHogarCorrectionFlow(
   }
   if (callbackData.startsWith('correctfh:field:')) {
     const field = callbackData.slice('correctfh:field:'.length) as FichaHogarFieldName
-    if (!(FICHA_HOGAR_FIELDS as readonly string[]).includes(field)) {
+    if (!(await fichaHogarFieldsFor(lead.id)).includes(field)) {
       await sendText(lead, 'Campo no válido.')
       return true
     }

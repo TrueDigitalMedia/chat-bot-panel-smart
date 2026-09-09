@@ -18,15 +18,16 @@ describe('resolveSurveyQuestions / surveyQuestionCount — CAM (unchanged)', () 
 describe('resolveSurveyQuestions / surveyQuestionCount — Ecuador', () => {
   const questions = resolveSurveyQuestions('Ecuador')
 
-  it('resolves the shared prefix (8) + Ecuador scoring block (13) + shared suffix (4) = 25 questions', () => {
-    // Ecuador's scoring block: conflictOfInterest, 5 NSE vars (health/income/finishes/
-    // floor/vehicles), occupationHead, occupationAma, educationPsh, householdSize,
-    // isPregnant, hasBabyUnder3, internetAccess = 13.
-    expect(questions.length).toBe(25)
-    expect(surveyQuestionCount('Ecuador')).toBe(25)
+  it('resolves the shared prefix (8) + Ecuador scoring block (11) + shared suffix (4) = 23 questions', () => {
+    // Ecuador's scoring block (doc/ecuador/flujo_kantar_ecuador.md §2, Q11–Q21):
+    // healthInsurancePsh, monthlyIncome, dwellingFinishes, floorMaterial, householdSize,
+    // vehicleCount, isPregnant, hasBabyUnder3, occupationPsh, educationPsh, internetAccess.
+    // The sensitive-industry screener moved to Ficha Hogar; occupation is a single PSH Q.
+    expect(questions.length).toBe(23)
+    expect(surveyQuestionCount('Ecuador')).toBe(23)
   })
 
-  it('is re-indexed 1..24 with no gaps', () => {
+  it('is re-indexed 1..23 with no gaps', () => {
     questions.forEach((q, i) => expect(q.index).toBe(i + 1))
   })
 
@@ -40,20 +41,18 @@ describe('resolveSurveyQuestions / surveyQuestionCount — Ecuador', () => {
     expect(questions.slice(-4).map((q) => q.fieldName)).toEqual(camSuffix)
   })
 
-  it('places the 13 Ecuador-specific scoring fields between prefix and suffix, in spec order', () => {
-    expect(questions.slice(8, 21).map((q) => q.fieldName)).toEqual([
-      'conflictOfInterest',
+  it('places the 11 Ecuador-specific scoring fields between prefix and suffix, in spec order', () => {
+    expect(questions.slice(8, 19).map((q) => q.fieldName)).toEqual([
       'healthInsurancePsh',
       'monthlyIncome',
       'dwellingFinishes',
       'floorMaterial',
-      'vehicleCount',
-      'occupationHead',
-      'occupationAma',
-      'educationPsh',
       'householdSize',
+      'vehicleCount',
       'isPregnant',
       'hasBabyUnder3',
+      'occupationPsh',
+      'educationPsh',
       'internetAccess',
     ])
   })

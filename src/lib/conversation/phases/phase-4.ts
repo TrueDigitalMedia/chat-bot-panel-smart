@@ -15,15 +15,20 @@ import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
 import { describeQuotaMatch } from '@/lib/scoring/quota'
-import { FICHA_HOGAR_QUESTIONS, FICHA_HOGAR_QUESTION_COUNT } from '../ficha-hogar-questions'
+import { resolveFichaHogarQuestions, fichaHogarQuestionCount } from '../ficha-hogar-plan'
+import { getCountryConfig } from '@/lib/countries/registry'
 import { matchButtonChoice } from '../match-button-choice'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import type { ChannelRecipient } from '@/types/channel'
 
 const THANK_YOU_VIDEO = process.env.THANK_YOU_VIDEO_URL ?? ''
 
-export async function sendFichaHogarQuestion(to: ChannelRecipient, index: number): Promise<void> {
-  const q = FICHA_HOGAR_QUESTIONS[index - 1]
+export async function sendFichaHogarQuestion(
+  to: ChannelRecipient,
+  index: number,
+  country?: string | null,
+): Promise<void> {
+  const q = resolveFichaHogarQuestions(country)[index - 1]
   if (!q) return
   if (q.inputType === 'button' && q.buttons) {
     await sendInlineKeyboard(to, q.text, q.buttons)
@@ -91,16 +96,26 @@ export async function handleFichaHogar(
   const profile = await getOrCreateFichaHogarProfile(lead.id)
   const idx = profile.questionIndex
 
+  const [countryRow] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, lead.id))
+    .limit(1)
+  const country = countryRow?.country ?? null
+  const questions = resolveFichaHogarQuestions(country)
+  const questionCount = fichaHogarQuestionCount(country)
+  const cfg = getCountryConfig(country)
+
   if (idx < 1) {
     await db
       .update(fichaHogarProfiles)
       .set({ questionIndex: 1, updatedAt: new Date() })
       .where(eq(fichaHogarProfiles.leadId, lead.id))
-    await sendFichaHogarQuestion(to, 1)
+    await sendFichaHogarQuestion(to, 1, country)
     return
   }
 
-  const question = FICHA_HOGAR_QUESTIONS[idx - 1]
+  const question = questions[idx - 1]
   if (!question) return
 
   let fieldValue: unknown = null
@@ -127,7 +142,7 @@ export async function handleFichaHogar(
       }
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
       if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, country)
       return
     }
     const raw = resolvedCallback.split(':').slice(1).join(':')
@@ -138,7 +153,7 @@ export async function handleFichaHogar(
   } else {
     if (!messageText.trim()) {
       await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, country)
       return
     }
     const result = await extractField(
@@ -156,14 +171,14 @@ export async function handleFichaHogar(
       if (!answered) {
         await sendText(to, NOT_UNDERSTOOD_MESSAGE)
       }
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, country)
       return
     }
     fieldValue = result.value
 
     if (question.fieldName === 'dateOfBirth' && !isPlausibleBirthDate(String(fieldValue))) {
       await sendText(to, 'Esa fecha no parece válida. ¿Puedes escribirla de nuevo en formato DD/MM/AAAA?')
-      await sendFichaHogarQuestion(to, idx)
+      await sendFichaHogarQuestion(to, idx, country)
       return
     }
   }
@@ -186,6 +201,22 @@ export async function handleFichaHogar(
     return
   }
 
+  // Permanent health-condition discard gate (doc/ecuador §4 Q4 — Ecuador only, gated by
+  // CountryConfig.fichaHogarHealthConditionDisqualifies).
+  if (
+    question.fieldName === 'hasHealthCondition' &&
+    fieldValue === true &&
+    cfg.fichaHogarHealthConditionDisqualifies
+  ) {
+    await db
+      .update(fichaHogarProfiles)
+      .set({ hasHealthCondition: true, completedAt: new Date(), updatedAt: new Date() })
+      .where(eq(fichaHogarProfiles.leadId, lead.id))
+    await transitionLead(lead.id, 'ficha_hogar_descartado', 'ficha_hogar_health_condition', correlationId)
+    await sendText(to, EXIT_A)
+    return
+  }
+
   await db
     .update(fichaHogarProfiles)
     .set({ [question.fieldName]: fieldValue, updatedAt: new Date() } as Record<string, unknown>)
@@ -200,8 +231,8 @@ export async function handleFichaHogar(
   const { resumeFichaHogarAfterCorrection } = await import('../ficha-hogar-correction')
   const finalIdx = await resumeFichaHogarAfterCorrection(lead.id, nextIdx)
 
-  if (finalIdx <= FICHA_HOGAR_QUESTION_COUNT) {
-    await sendFichaHogarQuestion(to, finalIdx)
+  if (finalIdx <= questionCount) {
+    await sendFichaHogarQuestion(to, finalIdx, country)
     return
   }
 

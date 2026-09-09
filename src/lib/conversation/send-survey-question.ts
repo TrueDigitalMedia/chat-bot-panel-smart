@@ -27,17 +27,22 @@ export async function sendSurveyQuestion(
   const geo = getCountryConfig(country).geoHierarchy
   const questions = resolveSurveyQuestions(country)
 
-  const { index: sendIndex, skipped } = nextQuestionToSend(questions, index, profile, geo)
+  const { index: sendIndex, skipped } = nextQuestionToSend(questions, index, profile, geo, {
+    skipPregnancyWhenMale: getCountryConfig(country).skipPregnancyWhenMale,
+  })
 
   if (leadId && sendIndex !== index) {
     // A rule-2 (geo not asked) skip writes the geo field null — same as the old code;
-    // a rule-1 (pre-answered) skip leaves the value in place.
-    const geoNulls: Record<string, null> = {}
+    // a rule-1 (pre-answered) skip leaves the value in place. A skipped `isPregnant`
+    // (male lead, Ecuador) is persisted as `false` so quota/registration see "No aplica"
+    // rather than null (doc §7.2).
+    const skipWrites: Record<string, null | boolean> = {}
     for (const f of skipped) {
-      if (f === 'stateProvince' || f === 'municipality' || f === 'neighborhood') geoNulls[f] = null
+      if (f === 'stateProvince' || f === 'municipality' || f === 'neighborhood') skipWrites[f] = null
+      if (f === 'isPregnant') skipWrites[f] = false
     }
-    if (Object.keys(geoNulls).length > 0) {
-      await db.update(surveyProfiles).set(geoNulls).where(eq(surveyProfiles.leadId, leadId))
+    if (Object.keys(skipWrites).length > 0) {
+      await db.update(surveyProfiles).set(skipWrites).where(eq(surveyProfiles.leadId, leadId))
     }
     await db.update(leads).set({ surveyQuestionIndex: sendIndex, updatedAt: new Date() }).where(eq(leads.id, leadId))
     await db

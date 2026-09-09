@@ -6,6 +6,7 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { ECUADOR_FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
 import { computeEcuadorNse } from '@/lib/scoring/ecuador-nse'
 import { lookupEcuadorNseRegion, ECUADOR_REGIONS } from '@/lib/geo/ecuador-nse-catalog'
 import type { CountryConfig, GeoHierarchy } from './types'
@@ -82,7 +83,7 @@ const FLOOR_MATERIAL_QUESTION: SurveyQuestion = {
 const VEHICLE_COUNT_QUESTION: SurveyQuestion = {
   index: 0,
   fieldName: 'vehicleCount',
-  text: 'Número de vehículos (de uso personal, excepto de uso para taxi o trabajo)',
+  text: '¿Cuántos vehículos dispone regularmente este hogar?',
   inputType: 'button',
   buttons: [
     [
@@ -112,16 +113,14 @@ const OCCUPATION_BUTTONS: InlineKeyboardButton[][] = [
   [{ text: 'Inactivos / Jubilado', callback_data: '__FIELD__:Inactivos / Jubilado' }],
 ]
 
-function occupationQuestion(fieldName: 'occupationHead' | 'occupationAma', text: string): SurveyQuestion {
-  return {
-    index: 0,
-    fieldName,
-    text,
-    inputType: 'button',
-    buttons: OCCUPATION_BUTTONS.map((row) =>
-      row.map((b) => ({ text: b.text, callback_data: b.callback_data!.replace('__FIELD__', fieldName) })),
-    ),
-  }
+const OCCUPATION_PSH_QUESTION: SurveyQuestion = {
+  index: 0,
+  fieldName: 'occupationPsh',
+  text: '¿Cuál es la ocupación del principal sostén del hogar (PSH)?',
+  inputType: 'button',
+  buttons: OCCUPATION_BUTTONS.map((row) =>
+    row.map((b) => ({ text: b.text, callback_data: b.callback_data!.replace('__FIELD__', 'occupationPsh') })),
+  ),
 }
 
 const EDUCATION_PSH_QUESTION: SurveyQuestion = {
@@ -189,36 +188,24 @@ const INTERNET_ACCESS_QUESTION: SurveyQuestion = {
   ],
 }
 
-const CONFLICT_OF_INTEREST_QUESTION: SurveyQuestion = {
-  index: 0,
-  fieldName: 'conflictOfInterest',
-  text: 'Muchas gracias por su interés en participar de nuestro proyecto.\n\n¿Algún integrante de su hogar trabaja en: agencia de publicidad, empresa de investigación de mercado, radio/periódico/TV, o es propietario de industria o comercio de alimentos, higiene personal o limpieza?',
-  inputType: 'button',
-  buttons: [
-    [
-      { text: 'Sí', callback_data: 'conflictOfInterest:true' },
-      { text: 'No', callback_data: 'conflictOfInterest:false' },
-    ],
-  ],
-}
-
 /**
- * Order: screening first, then the 8 NSE variables (occupation split into head + ama,
- * scored as max() — see ecuador-nse.ts), household size, pregnancy/baby, internet.
+ * Order follows docs/ecuador/flujo_kantar_ecuador.md §2 (Q11–Q21), inserted between
+ * SHARED_PREFIX (Q1–Q10) and SHARED_SUFFIX (Q22–Q25). The sensitive-industry screener is
+ * NOT here — for Ecuador it lives in the Ficha Hogar (Fase 4, doc §4 Q1). Occupation is a
+ * single PSH question (doc Q19). isPregnant (Q17) is skipped for male leads — see
+ * skipPregnancyWhenMale.
  */
 const ECUADOR_SCORING_QUESTIONS: SurveyQuestion[] = [
-  CONFLICT_OF_INTEREST_QUESTION,
-  HEALTH_INSURANCE_QUESTION,
-  MONTHLY_INCOME_QUESTION,
-  DWELLING_FINISHES_QUESTION,
-  FLOOR_MATERIAL_QUESTION,
-  VEHICLE_COUNT_QUESTION,
-  occupationQuestion('occupationHead', '¿Cuál es la máxima ocupación del Jefe de Familia?'),
-  occupationQuestion('occupationAma', '¿Cuál es la máxima ocupación del Ama de Casa?'),
-  EDUCATION_PSH_QUESTION,
-  HOUSEHOLD_SIZE_QUESTION,
-  ...PREGNANCY_BABY_QUESTIONS,
-  INTERNET_ACCESS_QUESTION,
+  HEALTH_INSURANCE_QUESTION, // Q11
+  MONTHLY_INCOME_QUESTION, // Q12
+  DWELLING_FINISHES_QUESTION, // Q13
+  FLOOR_MATERIAL_QUESTION, // Q14
+  HOUSEHOLD_SIZE_QUESTION, // Q15
+  VEHICLE_COUNT_QUESTION, // Q16
+  ...PREGNANCY_BABY_QUESTIONS, // Q17 isPregnant (male-skip), Q18 hasBabyUnder3
+  OCCUPATION_PSH_QUESTION, // Q19
+  EDUCATION_PSH_QUESTION, // Q20
+  INTERNET_ACCESS_QUESTION, // Q21
 ]
 
 const ECUADOR_GEO_HIERARCHY: GeoHierarchy = {
@@ -226,8 +213,6 @@ const ECUADOR_GEO_HIERARCHY: GeoHierarchy = {
   municipalityLabel: 'cantón',
   neighborhoodLabel: 'parroquia',
 }
-
-const ECUADOR_SCREENING_INDUSTRIES: InlineKeyboardButton[][] = CONFLICT_OF_INTEREST_QUESTION.buttons!
 
 function ecuadorValidatePhone(raw: string): { ok: boolean; normalized: string | null } {
   let digits = raw.replace(/\D/g, '')
@@ -243,10 +228,14 @@ function ecuadorValidatePhone(raw: string): { ok: boolean; normalized: string | 
 
 export const ecuadorConfig: CountryConfig = {
   country: 'Ecuador',
-  nseLevels: ['AB', 'C', 'D/E'],
+  nseLevels: ['A', 'B', 'C', 'D', 'E'],
   geoHierarchy: ECUADOR_GEO_HIERARCHY,
   scoringQuestions: ECUADOR_SCORING_QUESTIONS,
-  screeningIndustries: ECUADOR_SCREENING_INDUSTRIES,
+  // Sensitive-industry screening moved to the Ficha Hogar (Fase 4, doc §4 Q1) for Ecuador.
+  screeningIndustries: [],
+  skipPregnancyWhenMale: true,
+  fichaHogarQuestions: ECUADOR_FICHA_HOGAR_QUESTIONS,
+  fichaHogarHealthConditionDisqualifies: true,
   computeNse: (answers) => {
     const result = computeEcuadorNse(answers as Parameters<typeof computeEcuadorNse>[0])
     return { points: result.points, level: result.level }

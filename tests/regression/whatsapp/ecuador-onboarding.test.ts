@@ -2,10 +2,12 @@
  * Ecuador onboarding — end-to-end WhatsApp/Twilio journeys, in-process against the real
  * dev DB (mocked outbound + AI extraction).
  *
- * Exercises the behaviour spec 017 traffic exposed and the 014/015 fixes:
+ * Exercises the behaviour spec 017 traffic exposed and the 014/015 fixes, plus the
+ * docs/ecuador/flujo_kantar_ecuador.md refactor:
  *  - feature 016: a lead on the Ecuador business number is never asked "¿En qué país…?"
- *  - commit a434a88: conflictOfInterest / every EC NSE button advances instead of looping;
- *                    conflictOfInterest = "Sí" now disqualifies (was a string-compare bug)
+ *  - every EC NSE button advances instead of looping
+ *  - Kantar refactor: NSE block Q11–Q21 order, single PSH occupation, no Phase-1
+ *    sensitive-industry screener (moved to Ficha Hogar), isPregnant skipped for males
  *  - commit 23f15a1: a cantón typed for the provincia is rejected with examples; an
  *                    out-of-catalog province is accepted on the 2nd miss (no hard loop)
  *
@@ -121,7 +123,7 @@ describe('Ecuador + México onboarding — WhatsApp E2E', () => {
     const mxRegions = ['GUADALAJARA', 'AMCM', 'MONTERREY', 'CENTRO', 'OCCIDENTE']
     await db.insert(quotaTargets).values([
       ...ecRegions.flatMap((region) =>
-        (['AB', 'C', 'D/E'] as const).map((v) => ({
+        (['A', 'B', 'C', 'D', 'E'] as const).map((v) => ({
           country: 'Ecuador', region, dimensionType: 'nse' as const,
           dimensionValue: v, targetCount: 500, active: true,
         })),
@@ -166,19 +168,18 @@ describe('Ecuador + México onboarding — WhatsApp E2E', () => {
     await send({ callbackData: 'gender:Femenino' })
     await send({ text: '33' }, { age: 33 })
 
-    // a434a88: the screening + all 8 NSE buttons advance (were routing to the AI handler)
-    await send({ callbackData: 'conflictOfInterest:false' })
+    // flujo_kantar_ecuador.md §2: NSE block Q11–Q21, no Phase-1 screener, single PSH
+    // occupation. isPregnant IS asked here (Brenda is Femenino).
     await send({ callbackData: 'healthInsurancePsh:IESS' })
     await send({ callbackData: 'monthlyIncome:De $701 hasta $1.000' })
     await send({ callbackData: 'dwellingFinishes:Casa de Cemento/Ladrillo Techo de Loza o Teja' })
     await send({ callbackData: 'floorMaterial:Cerámica, baldosa, vinil o marmetón' })
-    await send({ callbackData: 'vehicleCount:1' })
-    await send({ callbackData: 'occupationHead:Empleados de oficina' })
-    await send({ callbackData: 'occupationAma:Empleados de oficina' })
-    await send({ callbackData: 'educationPsh:Universidad completa' })
     await send({ callbackData: 'householdSize:3' })
+    await send({ callbackData: 'vehicleCount:1' })
     await send({ callbackData: 'isPregnant:false' })
     await send({ callbackData: 'hasBabyUnder3:false' })
+    await send({ callbackData: 'occupationPsh:Empleados de oficina' })
+    await send({ callbackData: 'educationPsh:Universidad completa' })
     await send({ callbackData: 'internetAccess:Internet Hogar contratado (cable)' })
     await send({ callbackData: 'shoppingFrequency:Semanal' })
     await send({ text: '1, 2' }, { shoppingCategories: [1, 2] })
@@ -196,11 +197,13 @@ describe('Ecuador + México onboarding — WhatsApp E2E', () => {
     expect(fp.country).toBe('Ecuador')
     expect(fp.stateProvince).toBe('Azuay')
     expect(fp.nsePoints).not.toBeNull()
-    expect(fp.conflictOfInterest).toBe(false)
+    expect(['A', 'B', 'C', 'D', 'E']).toContain(fl.quotaSegment)
+    // the sensitive-industry screener is NOT asked in Phase 1 for Ecuador anymore
+    expect(allJoined()).not.toContain('agencia de publicidad')
     expect(allJoined()).not.toContain('¿En qué país')
   }, 180_000)
 
-  it('J2 — conflictOfInterest = "Sí" disqualifies the lead', async () => {
+  it('J2 — male lead: the pregnancy question is never asked and isPregnant is stored false', async () => {
     const send = sender('+593900000002', EC_NUMBER)
     await toName(send, 'Juan Díaz')
     await send({ text: 'Pichincha' }, { stateProvince: 'Pichincha' })
@@ -209,12 +212,29 @@ describe('Ecuador + México onboarding — WhatsApp E2E', () => {
     await send({ text: 'juan@example.com' }, { email: 'juan@example.com' })
     await send({ callbackData: 'gender:Masculino' })
     await send({ text: '40' }, { age: 40 })
-    await send({ callbackData: 'conflictOfInterest:true' })
+    await send({ callbackData: 'healthInsurancePsh:IESS' })
+    await send({ callbackData: 'monthlyIncome:De $701 hasta $1.000' })
+    await send({ callbackData: 'dwellingFinishes:Casa de Cemento/Ladrillo Techo de Loza o Teja' })
+    await send({ callbackData: 'floorMaterial:Cerámica, baldosa, vinil o marmetón' })
+    await send({ callbackData: 'householdSize:3' })
+    await send({ callbackData: 'vehicleCount:1' })
+    // no isPregnant tap — it must have been skipped; the next button shown is hasBabyUnder3
+    await send({ callbackData: 'hasBabyUnder3:false' })
+    await send({ callbackData: 'occupationPsh:Empleados de oficina' })
+    await send({ callbackData: 'educationPsh:Universidad completa' })
+    await send({ callbackData: 'internetAccess:Internet Hogar contratado (cable)' })
+    await send({ callbackData: 'shoppingFrequency:Semanal' })
+    await send({ text: '1, 2' }, { shoppingCategories: [1, 2] })
+    await send({ callbackData: 'contactChannel:WhatsApp' })
+    await send({ callbackData: 'contactSchedule:Tarde (13-17hs)' })
 
-    const [fl] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000002'))
-    expect(fl.leadStatus).toBe('not_qualified')
-    expect(fl.statusReason).toBe('sensitive_industry')
-  }, 90_000)
+    const [fp] = await db.select().from(surveyProfiles).where(eq(surveyProfiles.leadId, (
+      await db.select().from(leads).where(eq(leads.channelUserId, '+593900000002'))
+    )[0].id))
+    expect(allJoined()).not.toContain('embarazada')
+    expect(fp.isPregnant).toBe(false)
+    expect(fp.nsePoints).not.toBeNull()
+  }, 180_000)
 
   it('J3 — out-of-catalog province: rejected once, then accepted (no hard loop)', async () => {
     const send = sender('+593900000003', EC_NUMBER)

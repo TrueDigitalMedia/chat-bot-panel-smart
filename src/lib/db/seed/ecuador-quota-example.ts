@@ -26,7 +26,7 @@ async function seedEcuadorQuotaExample(): Promise<void> {
   const { createRegionCap, RegionCapConflictError } = await import('@/lib/quotas/region-caps')
   const { AGE_BANDS, HOUSEHOLD_BANDS } = await import('@/lib/quotas/dimension-catalog')
 
-  const nseLevels = getCountryConfig('Ecuador').nseLevels // ['AB', 'C', 'D/E']
+  const nseLevels = getCountryConfig('Ecuador').nseLevels // ['A', 'B', 'C', 'D', 'E']
 
   let targetsUpserted = 0
   for (const region of ECUADOR_REGIONS) {

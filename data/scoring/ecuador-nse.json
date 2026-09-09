@@ -73,8 +73,10 @@
     }
   },
   "levelCutoffs": [
-    { "maxPoints": 50, "level": "D/E" },
+    { "maxPoints": 30, "level": "E" },
+    { "maxPoints": 50, "level": "D" },
     { "maxPoints": 75, "level": "C" },
-    { "maxPoints": 9999, "level": "AB" }
+    { "maxPoints": 90, "level": "B" },
+    { "maxPoints": 9999, "level": "A" }
   ]
 }

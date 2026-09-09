@@ -6,6 +6,7 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
 import { calculateScore, getQuotaSegment } from '@/lib/scoring/socioeconomic'
 import { lookupNseRegion, listNseRegionsForCountry } from '@/lib/geo/cam-nse-catalog'
 import type { CountryConfig, GeoHierarchy, NseResult } from './types'
@@ -189,6 +190,7 @@ export function makeCamConfig(country: string): CountryConfig {
           : CAM_GEO_HIERARCHY,
     scoringQuestions: CAM_SCORING_QUESTIONS,
     screeningIndustries: CAM_SCREENING_INDUSTRIES,
+    fichaHogarQuestions: FICHA_HOGAR_QUESTIONS,
     computeNse: camComputeNse,
     resolveNseRegion: (geo) => lookupNseRegion(country, geo.stateProvince ?? '', geo.municipality ?? ''),
     validatePhone: camValidatePhone,

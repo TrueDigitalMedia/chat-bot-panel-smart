@@ -11,6 +11,7 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
+import { FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
 import { computeMexicoNse } from '@/lib/scoring/mexico-nse'
 import { lookupMexicoNseRegion, MEXICO_REGIONS } from '@/lib/geo/mexico-nse-catalog'
 import type { CountryConfig, GeoHierarchy } from './types'
@@ -211,6 +212,7 @@ export const mexicoConfig: CountryConfig = {
   geoHierarchy: MEXICO_GEO_HIERARCHY,
   scoringQuestions: MEXICO_SCORING_QUESTIONS,
   screeningIndustries: MEXICO_SCREENING_INDUSTRIES,
+  fichaHogarQuestions: FICHA_HOGAR_QUESTIONS,
   computeNse: (answers) => {
     const result = computeMexicoNse(answers as Parameters<typeof computeMexicoNse>[0])
     return { points: result.points, level: result.level }

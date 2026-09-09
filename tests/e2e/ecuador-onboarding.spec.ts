@@ -77,7 +77,7 @@ async function sendUpdate(request: APIRequestContext, body: unknown): Promise<nu
 test.describe('Ecuador onboarding — part 1 (T023): screening + household-profile block, Q2=Ecuador', () => {
   const chatId = 999014001
 
-  test('opt-in -> D1 -> reengagement -> D3 -> phone -> name -> Ecuador selects into the conflict-of-interest screening question', async ({
+  test('opt-in -> D1 -> reengagement -> D3 -> phone -> name -> Ecuador is accepted (geo block next, no CAM NSE question)', async ({
     request,
   }) => {
     test.skip(!secret, 'TELEGRAM_WEBHOOK_SECRET required')
@@ -89,14 +89,13 @@ test.describe('Ecuador onboarding — part 1 (T023): screening + household-profi
     await sendUpdate(request, telegramCallback(chatId, u++, 'd3:yes'))
     await sendUpdate(request, telegramText(chatId, u++, '+593987654321'))
     await sendUpdate(request, telegramText(chatId, u++, 'María Pérez'))
-    // Selecting Ecuador as country must not crash the webhook — the next question the
-    // bot sends is Ecuador's conflictOfInterest screening (spec 014 FR-002), not any
-    // CAM NSE question.
+    // Selecting Ecuador as country must not crash the webhook — the sensitive-industry
+    // screener now lives in the Ficha Hogar (doc §4), not Phase 1.
     const status = await sendUpdate(request, telegramCallback(chatId, u++, 'country:Ecuador'))
     expect(status).toBeLessThan(500)
   })
 
-  test('answering the sensitive-industry screening "Sí" does not crash the webhook (would set not_qualified)', async ({
+  test('the Ficha Hogar sensitive-industry callback "Sí" does not crash the webhook (would discard the lead)', async ({
     request,
   }) => {
     test.skip(!secret, 'TELEGRAM_WEBHOOK_SECRET required')
@@ -177,40 +176,38 @@ async function runFullEcuadorJourney(
   await step(telegramText(chatId, u++, 'María Pérez'))
   await step(telegramCallback(chatId, u++, 'gps:manual'))
   await step(telegramCallback(chatId, u++, 'country:Ecuador'))
-  await step(telegramCallback(chatId, u++, 'conflictOfInterest:false'))
   await step(telegramText(chatId, u++, stateProvince))
   await step(telegramText(chatId, u++, municipality))
   await step(telegramText(chatId, u++, neighborhood))
   await step(telegramText(chatId, u++, 'maria@example.com'))
   await step(telegramCallback(chatId, u++, 'gender:Femenino'))
   await step(telegramText(chatId, u++, '34'))
+  // Ecuador NSE block, doc/ecuador/flujo_kantar_ecuador.md §2 order (Q11–Q21).
   await step(telegramCallback(chatId, u++, 'healthInsurancePsh:Privada'))
   await step(telegramCallback(chatId, u++, 'monthlyIncome:De $701 hasta $1.000'))
   await step(telegramCallback(chatId, u++, 'dwellingFinishes:Casa de Cemento Techo de Eternit o Zinc'))
   await step(telegramCallback(chatId, u++, 'floorMaterial:Ladrillo o cemento'))
-  await step(telegramCallback(chatId, u++, 'vehicleCount:1'))
-  await step(telegramCallback(chatId, u++, 'occupationHead:Técnicos y profesionales de nivel medio'))
-  await step(telegramCallback(chatId, u++, 'occupationAma:Trabajadores no calificados'))
-  await step(telegramCallback(chatId, u++, 'educationPsh:Universidad completa'))
   await step(telegramCallback(chatId, u++, 'householdSize:4'))
+  await step(telegramCallback(chatId, u++, 'vehicleCount:1'))
   await step(telegramCallback(chatId, u++, `isPregnant:${isPregnant}`))
   await step(telegramCallback(chatId, u++, 'hasBabyUnder3:false'))
+  await step(telegramCallback(chatId, u++, 'occupationPsh:Técnicos y profesionales de nivel medio'))
+  await step(telegramCallback(chatId, u++, 'educationPsh:Universidad completa'))
   await step(telegramCallback(chatId, u++, 'internetAccess:Internet Hogar contratado (Fibra Op)'))
 }
 
 test.describe('Ecuador onboarding — part 3 (T035): 8 Ecuador NSE questions, survey completion', () => {
   const chatId = 999014005
 
-  test('the full Ecuador NSE question block (health/income/finishes/floor/vehicles/occupation x2/internet) is accepted end to end', async ({
+  test('the full Ecuador NSE question block (health/income/finishes/floor/household/vehicles/pregnancy/baby/occupation/education/internet) is accepted end to end', async ({
     request,
   }) => {
     test.skip(!secret, 'TELEGRAM_WEBHOOK_SECRET required')
     await runFullEcuadorJourney(request, chatId)
-    // computeEcuadorNse for this exact answer set = 58 points -> level 'C' (see
-    // tests/unit/ecuador-nse.test.ts's "workbook sample household" vector). The
-    // survey-complete branch the last callback triggers writes leads.nse_points=58,
-    // leads.quota_segment='C', leads.score=null — asserted directly in that unit test;
-    // this test only confirms the webhook accepted every step in the chain.
+    // computeEcuadorNse for this answer set = 68 points -> level 'C' on the official
+    // 5-level scale (51–75). The survey-complete branch the last callback triggers writes
+    // leads.quota_segment='C', leads.score=null; this test only confirms the webhook
+    // accepted every step in the chain.
   })
 })
 

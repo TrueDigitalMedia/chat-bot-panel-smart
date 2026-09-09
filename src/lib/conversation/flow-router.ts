@@ -26,9 +26,9 @@ const BUTTON_PREFIXES = [
   'domesticHelp:', 'shoppingFrequency:', 'contactChannel:', 'contactSchedule:',
   'isPregnant:', 'hasBabyUnder3:', 'householdSize:', 'bedrooms:',
   'correct:',
-  // Ecuador screening + NSE button questions (spec 014)
+  // Ecuador NSE button questions (spec 014 / flujo_kantar_ecuador.md)
   'conflictOfInterest:', 'healthInsurancePsh:', 'monthlyIncome:', 'dwellingFinishes:',
-  'floorMaterial:', 'vehicleCount:', 'occupationHead:', 'occupationAma:', 'internetAccess:',
+  'floorMaterial:', 'vehicleCount:', 'occupationPsh:', 'internetAccess:',
   // México NSE button questions (spec 015)
   'educationHoh:', 'fullBathrooms:', 'homeInternet:', 'workers14Plus:',
 ]

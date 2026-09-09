@@ -1,7 +1,8 @@
 # Contract: Ecuador NSE Scoring
 
 **Module**: `src/lib/scoring/ecuador-nse.ts` · **Data**: `data/scoring/ecuador-nse.json` ·
-**Source of truth**: `docs/ecuador/Muestra Regiones NSE Ecuador.xlsx`
+**Source of truth**: `docs/ecuador/flujo_kantar_ecuador.md` §5 (Kantar IA, supersedes the
+earlier `Muestra Regiones NSE Ecuador.xlsx` level grouping).
 
 ## Function
 
@@ -12,21 +13,21 @@ export function computeEcuadorNse(answers: {
   dwellingFinishes?: string
   floorMaterial?: string
   vehicleCount?: string
-  occupationHead?: string
-  occupationAma?: string
+  occupationPsh?: string
   educationPsh?: string
   internetAccess?: string
-}): { points: number; level: 'AB' | 'C' | 'D/E'; contributions: Record<string, number> }
+}): { points: number; level: 'A' | 'B' | 'C' | 'D' | 'E'; contributions: Record<string, number> }
 ```
 
 ## Algorithm
 
 1. For each variable, look up the answer string in its point table (below). Unknown / missing / "No sé,
    no recuerdo" → 0.
-2. Occupation = `max(points(occupationHead), points(occupationAma))` (research R2).
-3. `points` = sum of the 8 contributions (occupation counts once).
-4. `level` = first `levelCutoffs` entry with `points <= maxPoints`:
-   `0–50 → "D/E"`, `51–75 → "C"`, `76+ → "AB"`.
+2. Occupation = `points(occupationPsh)` — a single "principal sostén del hogar" question (doc Q19).
+3. `points` = sum of the 8 contributions.
+4. `level` = first `levelCutoffs` entry with `points <= maxPoints` — the official 5-level
+   scale (doc §5.2): `0–30 → "E"`, `31–50 → "D"`, `51–75 → "C"`, `76–90 → "B"`, `91+ → "A"`.
+   The `AB / C / D/E` grouping from the long lookup table is discarded.
 
 ## Point tables (option → points)
 
@@ -44,7 +45,7 @@ marmetón` 7 · `Ladrillo o cemento` 4 · `Tierra/caña` 2 · `Otros materiales`
 
 **Número de vehículos**: `0` 0 · `1` 6 · `2` 9 · `3` 12 · `4 o más` 14
 
-**Máxima ocupación (jefe y/o ama)**: `Directivo admón. pública/empresas` 13 · `Profesionales
+**Ocupación del PSH** (`occupationPsh`): `Directivo admón. pública/empresas` 13 · `Profesionales
 científicos e intelectuales` 12 · `Técnicos y profesionales de nivel medio` 9 · `Empleados de
 oficina` 6 · `Trabajadores de servicios y comerciantes` 4 · `Trabajadores calificados agropecuarios y
 pesqueros` 3 · `Oficiales, operarios y artesanos` 3 · `Operadores de instalaciones y máquinas` 4 ·
@@ -60,18 +61,16 @@ incompleta` 8 · `Técnica completa` 10 · `Universidad incompleta` 12 · `Unive
 
 ## Test vectors (`tests/unit/ecuador-nse.test.ts`)
 
-| Case | Answers | Expected points | level |
-|------|---------|-----------------|-------|
-| Workbook sample household | Issfa, $701–$1.000, Cemento/eternit, Ladrillo o cemento, 0 vehículos, Técnico nivel medio, Universidad completa, Fibra óptica | 58 | C |
-| Lower boundary | any combo summing to 50 | 50 | D/E |
-| Level bump | any combo summing to 51 | 51 | C |
-| Upper boundary | sum 75 | 75 | C |
-| AB threshold | sum 76 | 76 | AB |
-| All-missing | `{}` | 0 | D/E |
-| Occupation max | occupationHead "Trabajadores no calificados" (0), occupationAma "Profesionales científicos" (12) → contributes 12 | — | — |
-
-> The workbook's own sample row shows total **52** because its *Acabados* points cell is blank; with
-> the table applied the same household is **58**. Tests assert against the tables, not the 52.
+| Case | Expected points | level |
+|------|-----------------|-------|
+| Workbook sample household (Issfa, $701–$1.000, Cemento/eternit, Ladrillo o cemento, 0 vehículos, Técnico nivel medio, Universidad completa, Fibra óptica) | 58 | C |
+| E ceiling | 30 | E |
+| D band | 31–50 | D |
+| C band | 51–75 | C |
+| B band | 76–90 | B |
+| A band | 91+ | A |
+| Theoretical max | 100 | A |
+| All-missing `{}` | 0 | E |
 
 ## Logging
 

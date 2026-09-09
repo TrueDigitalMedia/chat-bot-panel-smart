@@ -31,6 +31,14 @@ const GEO_LABEL_BY_FIELD: Record<string, keyof GeoLabels> = {
   neighborhood: 'neighborhoodLabel',
 }
 
+/** Extra per-country skip rules layered on top of the pre-answered / geo-not-asked rules. */
+export interface SurveySkipOptions {
+  /** Skip the `isPregnant` question when `answered.gender` is "Masculino" (Ecuador, doc §7.2). */
+  skipPregnancyWhenMale?: boolean
+}
+
+const MALE_GENDER_VALUES = new Set(['Masculino', 'masculino', 'Hombre', 'hombre'])
+
 /**
  * Given a lead's country-resolved question list, the 1-based index the survey is about to
  * send, the lead's persisted field values, and the country's geo labels, return the index
@@ -52,6 +60,7 @@ export function nextQuestionToSend(
   fromIndex: number,
   answered: Partial<Record<string, unknown>>,
   geoLabels: GeoLabels,
+  opts: SurveySkipOptions = {},
 ): { index: number; skipped: string[] } {
   const skipped: string[] = []
   let index = fromIndex
@@ -60,7 +69,12 @@ export function nextQuestionToSend(
     const preAnswered = answered[field] != null
     const geoLabelKey = GEO_LABEL_BY_FIELD[field]
     const geoNotAsked = geoLabelKey !== undefined && geoLabels[geoLabelKey] == null
-    if (!preAnswered && !geoNotAsked) break
+    const pregnancyNotAsked =
+      field === 'isPregnant' &&
+      !!opts.skipPregnancyWhenMale &&
+      typeof answered.gender === 'string' &&
+      MALE_GENDER_VALUES.has(answered.gender)
+    if (!preAnswered && !geoNotAsked && !pregnancyNotAsked) break
     skipped.push(field)
     index += 1
   }
@@ -74,10 +88,8 @@ export function nextQuestionForCountry(
   fromIndex: number,
   answered: Partial<Record<string, unknown>>,
 ): { index: number; skipped: string[] } {
-  return nextQuestionToSend(
-    resolveSurveyQuestions(country),
-    fromIndex,
-    answered,
-    getCountryConfig(country).geoHierarchy,
-  )
+  const cfg = getCountryConfig(country)
+  return nextQuestionToSend(resolveSurveyQuestions(country), fromIndex, answered, cfg.geoHierarchy, {
+    skipPregnancyWhenMale: cfg.skipPregnancyWhenMale,
+  })
 }

@@ -89,8 +89,7 @@ const NON_COLUMN_SCORING_FIELDS = new Set([
   'dwellingFinishes',
   'floorMaterial',
   'vehicleCount',
-  'occupationHead',
-  'occupationAma',
+  'occupationPsh',
   'internetAccess',
   // México (bedrooms/householdSize/conflictOfInterest/isPregnant/hasBabyUnder3 are real
   // columns; vehicleCount is shared with Ecuador above)
@@ -306,7 +305,7 @@ export async function handlePhase1(
   }
 
   const [surveyCountryRow] = await db
-    .select({ country: surveyProfiles.country })
+    .select({ country: surveyProfiles.country, gender: surveyProfiles.gender })
     .from(surveyProfiles)
     .where(eq(surveyProfiles.leadId, lead.id))
     .limit(1)
@@ -577,9 +576,9 @@ export async function handlePhase1(
     return
   }
 
-  // Sensitive-industry screening (spec 014 FR-002) — only asked for countries whose
-  // CountryConfig.screeningIndustries is non-empty (Ecuador today; CAM's list is empty
-  // so this field is never in a CAM lead's resolved question list — zero CAM impact).
+  // Sensitive-industry screening — only reached for a country that puts `conflictOfInterest`
+  // in its Phase-1 scoringQuestions (México today). CAM never has it; Ecuador moved it to
+  // the Ficha Hogar (doc §4 Q1) — so for those two this branch is unreachable in Phase 1.
   if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
     await transitionLead(lead.id, 'not_qualified', 'sensitive_industry', correlationId)
     await sendText(to, EXIT_A)
@@ -628,7 +627,12 @@ export async function handlePhase1(
   // Resolve any skips (a room-pre-answered `country`, or a geo question this country
   // doesn't ask — spec 016 T007) once, up front, so the GPS-gate / survey-complete
   // branches below see the real next index. sendSurveyQuestion re-resolves + persists.
-  const { index: realIdx } = nextQuestionForCountry(surveyCountry, finalIdx, { country: surveyCountry })
+  const genderForSkip =
+    question.fieldName === 'gender' ? fieldValue : (surveyCountryRow?.gender ?? null)
+  const { index: realIdx } = nextQuestionForCountry(surveyCountry, finalIdx, {
+    country: surveyCountry,
+    gender: genderForSkip,
+  })
 
   // Enter GPS gate before the manual country questions — but not for a room lead whose
   // country is already pre-answered (realIdx has skipped past 2; needsGpsCapture also

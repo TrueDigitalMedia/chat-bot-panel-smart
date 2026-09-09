@@ -1,5 +1,6 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
+import type { FichaHogarQuestion } from '@/lib/conversation/ficha-hogar-questions'
 
 /**
  * Country-configuration registry (constitution v1.2.0 Principle V). `getCountryConfig`
@@ -34,6 +35,18 @@ export interface CountryConfig {
   scoringQuestions: readonly SurveyQuestion[]
   /** Sensitive-industry screening options for the conflict-of-interest question. */
   screeningIndustries: readonly InlineKeyboardButton[][]
+  /**
+   * When true, the Phase-1 pregnancy question (`isPregnant`) is not sent to leads whose
+   * gender is "Masculino" — it's persisted as `false` instead (doc §7.2, Ecuador only).
+   */
+  skipPregnancyWhenMale?: boolean
+  /** Ficha Hogar (Fase 4) question list for this country — see resolveFichaHogarQuestions. */
+  fichaHogarQuestions: readonly FichaHogarQuestion[]
+  /**
+   * When true, answering "Sí" to the Ficha Hogar permanent-health-condition question
+   * disqualifies the lead (`ficha_hogar_descartado`) — doc §4 Q4, Ecuador only.
+   */
+  fichaHogarHealthConditionDisqualifies?: boolean
   computeNse(answers: Record<string, unknown>): NseResult
   /** null = out of geographic quota. */
   resolveNseRegion(geo: {

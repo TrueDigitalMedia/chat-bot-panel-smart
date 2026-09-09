@@ -248,16 +248,16 @@ describe('quota-targets validation — Ecuador (spec 014 US5)', () => {
     nextId = 1
   })
 
-  it('accepts a valid Ecuador region + NSE level (AB/C/D-E, not CAM Nivel 1-4)', async () => {
+  it('accepts a valid Ecuador region + NSE level (A/B/C/D/E, not CAM Nivel 1-4)', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
     const row = await createQuotaTarget({
       country: 'Ecuador',
       region: 'Guayaquil Norte',
       dimensionType: 'nse',
-      dimensionValue: 'AB',
+      dimensionValue: 'B',
       targetCount: 30,
     })
-    expect(row).toMatchObject({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionValue: 'AB' })
+    expect(row).toMatchObject({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionValue: 'B' })
   })
 
   it('rejects a CAM-style dimensionValue ("Nivel 1") for Ecuador', async () => {
@@ -270,7 +270,7 @@ describe('quota-targets validation — Ecuador (spec 014 US5)', () => {
   it('rejects a region not in the Ecuador catalog', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Ecuador', region: 'Región Inventada', dimensionType: 'nse', dimensionValue: 'AB' }),
+      createQuotaTarget({ country: 'Ecuador', region: 'Región Inventada', dimensionType: 'nse', dimensionValue: 'B' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 

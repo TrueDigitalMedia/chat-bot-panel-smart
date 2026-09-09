@@ -18,7 +18,7 @@ async function loginAsAdmin(page: import('@playwright/test').Page): Promise<void
 }
 
 test.describe('Admin quota screen — Ecuador (spec 014 US5)', () => {
-  test('selecting Ecuador offers the 12 Ecuador regions and the AB/C/D-E NSE levels, and creates a target', async ({
+  test('selecting Ecuador offers the 12 Ecuador regions and the A/B/C/D/E NSE levels, and creates a target', async ({
     page,
   }) => {
     await loginAsAdmin(page)
@@ -43,11 +43,11 @@ test.describe('Admin quota screen — Ecuador (spec 014 US5)', () => {
 
     const valueSelect = newRow.locator('select').nth(3)
     const valueOptions = await valueSelect.locator('option').allTextContents()
-    expect(valueOptions.filter((o) => o !== 'Valor…')).toEqual(['AB', 'C', 'D/E'])
+    expect(valueOptions.filter((o) => o !== 'Valor…')).toEqual(['A', 'B', 'C', 'D', 'E'])
     // No CAM "Nivel N" value should leak into Ecuador's NSE dimension options.
     expect(valueOptions.some((o) => o.startsWith('Nivel'))).toBe(false)
 
-    await valueSelect.selectOption('AB')
+    await valueSelect.selectOption('B')
     await newRow.locator('input[type="number"]').fill('15')
     await newRow.getByRole('button', { name: 'Agregar' }).click()
 
