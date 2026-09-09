@@ -121,7 +121,7 @@ async function handleTwilioPost(request: NextRequest): Promise<NextResponse> {
   const signature = request.headers.get('X-Twilio-Signature')
   const webhookUrl = resolveTwilioWebhookUrl(request.url)
 
-  if (!verifyTwilioSignature(signature, webhookUrl, params)) {
+  if (!verifyTwilioSignature(signature, webhookUrl, params, request.url)) {
     console.warn('[whatsapp:twilio:signature] invalid', { webhookUrl })
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
   }
