@@ -88,7 +88,7 @@ export const SHARED_PREFIX: SurveyQuestion[] = [
   {
     index: 6,
     fieldName: 'email',
-    text: '✅ ¡Perfecto! Ahora, por favor, escribe tu correo electrónico:',
+    text: '📧 ¿Cuál es tu correo electrónico?',
     inputType: 'free_text',
   },
   {

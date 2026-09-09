@@ -9,13 +9,15 @@ import { hasSentOutboundMessage, hadRecentGeoReject } from '@/lib/db/conversatio
 import { recordConsentEvent } from '@/lib/db/leads'
 import { resolveSurveyQuestions, surveyQuestionCount, nextQuestionForCountry } from '../survey-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
-import { EXIT_A, EXIT_B, EXIT_B_THANKS, NOT_UNDERSTOOD_MESSAGE } from '../exit-messages'
+import { EXIT_A, EXIT_B, EXIT_B_THANKS, withRetryPrefix } from '../exit-messages'
+import { isStalePassedGateCallback } from './stale-gate'
 import {
   validateGuatemalaGeoField,
 } from '@/lib/geo/guatemala'
 import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
+import { salvageEmail, isNoEmailAnswer, NO_EMAIL_HELP } from '../email-answer'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import { isMinorAge } from '../age-eligibility'
@@ -159,6 +161,11 @@ export async function handlePhase1(
 ): Promise<void> {
   const to = lead
 
+  if (callbackData && isStalePassedGateCallback(lead, callbackData)) {
+    console.info('[phase-1] ignoring stale tap on an already-cleared gate', { leadId: lead.id, callbackData })
+    return
+  }
+
   // --- DECISION POINTS ---
 
   // Opt-in: initial enrollment gate, before D1 (spec 007)
@@ -194,8 +201,7 @@ export async function handlePhase1(
       // Free text that isn't a button tap might be a question ("¿de qué sirve esto?")
       // rather than junk — answer it via FAQ before re-showing the same gate.
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, OPT_IN_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendOptIn(to)
+      await sendOptIn(to, !answered)
     }
     return
   }
@@ -222,8 +228,7 @@ export async function handlePhase1(
       await sendText(to, EXIT_A)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendD1(to)
+      await sendD1(to, !answered)
     }
     return
   }
@@ -250,8 +255,7 @@ export async function handlePhase1(
       await sendD3(to)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, REENGAGEMENT_CONSENT_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendReEngagementConsent(to)
+      await sendReEngagementConsent(to, !answered)
     }
     return
   }
@@ -281,8 +285,7 @@ export async function handlePhase1(
       await sendText(to, EXIT_B)
     } else {
       const answered = await maybeAnswerFaq(lead, messageText, correlationId, D3_TEXT)
-      if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendD3(to)
+      await sendD3(to, !answered)
     }
     return
   }
@@ -359,8 +362,7 @@ export async function handlePhase1(
           { leadId: lead.id },
         )
         if (!result.ok) {
-          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-          await sendSurveyQuestion(to, idx, lead.id)
+          await sendSurveyQuestion(to, idx, lead.id, { retry: true })
           return
         }
         fieldValue = result.value
@@ -370,8 +372,7 @@ export async function handlePhase1(
           return
         }
         const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
-        if (!answered) await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-        await sendSurveyQuestion(to, idx, lead.id)
+        await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
         return
       }
     } else {
@@ -386,21 +387,26 @@ export async function handlePhase1(
   } else {
     // Free-text: ignore empty / stray button callbacks — just re-ask
     if (!messageText.trim()) {
-      await sendText(to, NOT_UNDERSTOOD_MESSAGE)
-      await sendSurveyQuestion(to, idx, lead.id)
+      await sendSurveyQuestion(to, idx, lead.id, { retry: true })
       return
     }
 
-    console.info('[phase-1] extracting field', {
-      leadId: lead.id,
-      field: question.fieldName,
-      text: messageText.slice(0, 80),
-    })
-    const result = await extractField(
-      question.fieldName as Parameters<typeof extractField>[0],
-      messageText,
-      { leadId: lead.id },
-    )
+    // Email: repair near-miss addresses locally before the AI, and answer "no tengo
+    // correo" with a how-to-get-one message instead of looping "no te entendí". A real
+    // address is required — email is never stored null.
+    let emailResolved = false
+    if (question.fieldName === 'email') {
+      if (isNoEmailAnswer(messageText)) {
+        await sendText(to, NO_EMAIL_HELP)
+        await sendSurveyQuestion(to, idx, lead.id)
+        return
+      }
+      const salvaged = salvageEmail(messageText)
+      if (salvaged) {
+        fieldValue = salvaged
+        emailResolved = true
+      }
+    }
 
     // If AI fails on geo fields with real validation data, fall back to raw text
     // and let geo validation decide.
@@ -423,42 +429,54 @@ export async function handlePhase1(
     const hasGenericGeoValidation = isDeptOrMuni && country !== null && isSupportedGeoCountry(country)
     const hasGeoValidation = (isGeoField && isGuatemala) || hasGenericGeoValidation
 
-    if (!result.ok) {
-      // Check for a correction request BEFORE the geo raw-text fallback below — otherwise
-      // something like "seleccione mal el pais, puedo corregirlo" typed at a geo question
-      // would get forced through fuzzy department/municipality matching instead of ever
-      // being recognized as wanting to fix an earlier answer.
-      const { tryHandleCorrectionRequest } = await import('../correction')
-      if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
-        return
-      }
-      if (hasGeoValidation && messageText.trim().length >= 2) {
-        console.warn('[phase-1] extraction failed — using raw text for geo', {
-          leadId: lead.id,
-          field: question.fieldName,
-        })
-        fieldValue = messageText.trim()
-      } else if (question.fieldName === 'email' && /.+@.+\..+/.test(messageText.trim())) {
-        // A transient model failure (e.g. AI_NoObjectGeneratedError) must not reject a
-        // well-formed email — the schema's own check is z.string().email(), so a basic
-        // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
-        console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
-        fieldValue = messageText.trim()
-      } else if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
-        // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
-        fieldValue = messageText.trim()
-      } else {
-        console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
-        const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-        const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
-        if (!answered) {
-          await sendText(to, NOT_UNDERSTOOD_MESSAGE)
+    // Skip AI extraction when the email special-case above already resolved a value
+    // (a repaired address, or an accepted "no tengo correo").
+    if (!emailResolved) {
+      console.info('[phase-1] extracting field', {
+        leadId: lead.id,
+        field: question.fieldName,
+        text: messageText.slice(0, 80),
+      })
+      const result = await extractField(
+        question.fieldName as Parameters<typeof extractField>[0],
+        messageText,
+        { leadId: lead.id },
+      )
+
+      if (!result.ok) {
+        // Check for a correction request BEFORE the geo raw-text fallback below — otherwise
+        // something like "seleccione mal el pais, puedo corregirlo" typed at a geo question
+        // would get forced through fuzzy department/municipality matching instead of ever
+        // being recognized as wanting to fix an earlier answer.
+        const { tryHandleCorrectionRequest } = await import('../correction')
+        if (await tryHandleCorrectionRequest(lead, messageText, correlationId, question.text)) {
+          return
         }
-        await sendSurveyQuestion(to, idx, lead.id)
-        return
+        if (hasGeoValidation && messageText.trim().length >= 2) {
+          console.warn('[phase-1] extraction failed — using raw text for geo', {
+            leadId: lead.id,
+            field: question.fieldName,
+          })
+          fieldValue = messageText.trim()
+        } else if (question.fieldName === 'email' && /.+@.+\..+/.test(messageText.trim())) {
+          // A transient model failure (e.g. AI_NoObjectGeneratedError) must not reject a
+          // well-formed email — the schema's own check is z.string().email(), so a basic
+          // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
+          console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
+          fieldValue = messageText.trim()
+        } else if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
+          // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
+          fieldValue = messageText.trim()
+        } else {
+          console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
+          const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
+          const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
+          await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })
+          return
+        }
+      } else {
+        fieldValue = result.value
       }
-    } else {
-      fieldValue = result.value
     }
 
     // Geo validation (departamento/provincia → municipio, + zona/barrio for Guatemala)
@@ -516,10 +534,6 @@ export async function handlePhase1(
       }
     }
 
-    // Confirm municipality echo (Q4) — only after exact accept
-    if (question.fieldName === 'municipality') {
-      await sendText(to, `He entendido que tu municipio es ${fieldValue}.`)
-    }
   }
 
   // Persist field and advance index. Non-CAM NSE variables that have no dedicated
@@ -728,20 +742,20 @@ export async function handlePhase1(
 
 // --- Helpers ---
 
-async function sendOptIn(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, OPT_IN_TEXT, OPT_IN_BUTTONS)
+async function sendOptIn(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(OPT_IN_TEXT, retry), OPT_IN_BUTTONS)
 }
 
-async function sendD1(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, D1_TEXT, D1_BUTTONS)
+async function sendD1(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(D1_TEXT, retry), D1_BUTTONS)
 }
 
-async function sendReEngagementConsent(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, REENGAGEMENT_CONSENT_TEXT, REENGAGEMENT_CONSENT_BUTTONS)
+async function sendReEngagementConsent(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(REENGAGEMENT_CONSENT_TEXT, retry), REENGAGEMENT_CONSENT_BUTTONS)
 }
 
-async function sendD3(to: ChannelRecipient): Promise<void> {
-  await sendInlineKeyboard(to, D3_TEXT, D3_BUTTONS)
+async function sendD3(to: ChannelRecipient, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(D3_TEXT, retry), D3_BUTTONS)
 }
 
 // Re-export for callers that still import from phase-1

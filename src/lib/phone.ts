@@ -8,9 +8,25 @@ export function normalizePhone(input: string): string | null {
 
   const hasPlus = raw.startsWith('+')
   const digits = raw.replace(/\D/g, '')
-  if (digits.length < 8 || digits.length > 15) return null
+  // E.164 caps at 15 digits, but a real consumer mobile in our markets (DR, Guatemala,
+  // Ecuador, Mexico, CAM) is 10-13 with the country code. Cap at 14 so a 15-19 digit
+  // BSUID digit-string that slipped past the isBsuidChannelUserId guard can't be
+  // mistaken for a phone here either (the pre-fix bug baked exactly-15-digit fakes into
+  // some rows — see project_bsuid_fake_phone_bug).
+  if (digits.length < 8 || digits.length > 14) return null
 
   return hasPlus || digits.length >= 10 ? `+${digits}` : digits
+}
+
+/**
+ * A phone number safe to address the Authentication OTP template to (Meta requires a
+ * real phone, not a BSUID, for copy-code auth templates). Guards the OTP send in
+ * deliver-registration-code.ts against a malformed/BSUID-derived value that is
+ * non-null but not a real number — those fail delivery (Twilio 63005 / WhatsApp
+ * 131026) and drag the template's delivery-rate KPI.
+ */
+export function isValidRegistrationPhone(phone: string | null | undefined): phone is string {
+  return typeof phone === 'string' && /^\+\d{8,14}$/.test(phone.trim())
 }
 
 /**

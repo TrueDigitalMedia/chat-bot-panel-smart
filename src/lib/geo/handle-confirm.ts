@@ -43,7 +43,6 @@ export async function persistSurveyFieldAndAdvance(
     .where(eq(surveyProfiles.leadId, lead.id))
 
   if (field === 'municipality') {
-    await sendText(to, `He entendido que tu municipio es ${value}.`)
     const [profile] = await db
       .select()
       .from(surveyProfiles)

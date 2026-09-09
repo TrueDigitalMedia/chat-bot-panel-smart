@@ -315,7 +315,29 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
  * is left untouched so the same fields stay "pending" for the next attempt. Never throws;
  * every attempt (success or failure) is logged via `logCall`.
  */
+/** Hard ceiling for one lead's sync. Well above the 20s Panel Smart fetch + a couple
+ *  of Neon writes, but low enough that a hung Neon query (the 2026-09 audit saw
+ *  `update leads` calls stuck for 15-57 minutes) can't keep the serverless invocation
+ *  — and its bill — alive. A blown deadline is logged as a failure; the snapshot is
+ *  untouched so the fields retry on the next transition. */
+const SYNC_DEADLINE_MS = 45000
+
 export async function syncPendingPanelSmartAnswers(
+  leadId: string,
+  correlationId: string,
+  opts: PanelSmartSyncOptions,
+): Promise<boolean> {
+  return Promise.race([
+    runPanelSmartSync(leadId, correlationId, opts),
+    new Promise<boolean>((resolve) => setTimeout(() => {
+      console.error('[panel-smart-sync] deadline exceeded', { leadId, correlationId, deadlineMs: SYNC_DEADLINE_MS })
+      void logCall({ leadId, callType: 'panel_smart_sync', latencyMs: SYNC_DEADLINE_MS, correlationId, error: 'sync deadline exceeded' }).catch(() => {})
+      resolve(false)
+    }, SYNC_DEADLINE_MS)),
+  ])
+}
+
+async function runPanelSmartSync(
   leadId: string,
   correlationId: string,
   opts: PanelSmartSyncOptions,

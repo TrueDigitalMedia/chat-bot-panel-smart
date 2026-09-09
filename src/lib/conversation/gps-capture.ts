@@ -148,7 +148,10 @@ export async function requestGps(lead: Lead): Promise<void> {
   await sendLocationRequest(lead)
 }
 
-async function beginManualGeo(lead: Lead): Promise<void> {
+async function beginManualGeo(
+  lead: Lead,
+  leadIn = 'Seguimos con las preguntas de ubicación.',
+): Promise<void> {
   console.info('[gps] skipped_manual', { leadId: lead.id })
   await setGpsState(lead.id, { gpsGateStatus: 'skipped_manual', gpsProposal: null })
   await db
@@ -159,7 +162,16 @@ async function beginManualGeo(lead: Lead): Promise<void> {
     .update(flowStates)
     .set({ surveyQuestionIndex: 2, updatedAt: new Date() })
     .where(eq(flowStates.leadId, lead.id))
-  await sendSurveyQuestion(lead, 2, lead.id)
+  // Telegram's location request is a persistent request_location reply keyboard — clear
+  // it explicitly with its own message. On WhatsApp/web it's an inline/quick-reply
+  // that's already gone, so the transition line rides along as the country question's
+  // lead-in: one message instead of two.
+  if (lead.channel === 'telegram') {
+    await confirmLocationKeyboardRemoved(lead, leadIn)
+    await sendSurveyQuestion(lead, 2, lead.id)
+  } else {
+    await sendSurveyQuestion(lead, 2, lead.id, { leadIn })
+  }
 }
 
 /**
@@ -201,10 +213,6 @@ export async function handleGpsCapture(
 
   if (gpsGateStatus === 'awaiting_location') {
     if (opts.callbackData === GPS_MANUAL_CALLBACK) {
-      await confirmLocationKeyboardRemoved(
-        lead,
-        'De acuerdo, continuamos con las preguntas de ubicación.',
-      )
       await beginManualGeo(lead)
       return true
     }
@@ -214,11 +222,7 @@ export async function handleGpsCapture(
       const proposal = await reverseGeocode(opts.location.latitude, opts.location.longitude)
       if (!proposal) {
         console.warn('[gps] reverse_geocode_fail', { leadId: lead.id })
-        await confirmLocationKeyboardRemoved(
-          lead,
-          'No pude identificar tu ubicación. Vamos a preguntarte el país y la zona a mano.',
-        )
-        await beginManualGeo(lead)
+        await beginManualGeo(lead, 'No pude identificar tu ubicación. Vamos a preguntarte el país y la zona a mano.')
         return true
       }
       console.info('[gps] reverse_geocode_ok', {
@@ -239,10 +243,6 @@ export async function handleGpsCapture(
 
     const text = opts.text?.trim() ?? ''
     if (await wantsManualEntry(text, { leadId: lead.id, correlationId: opts.correlationId })) {
-      await confirmLocationKeyboardRemoved(
-        lead,
-        'De acuerdo, continuamos con las preguntas de ubicación.',
-      )
       await beginManualGeo(lead)
       return true
     }

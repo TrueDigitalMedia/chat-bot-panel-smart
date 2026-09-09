@@ -11,6 +11,7 @@ import {
   REGISTRATION_CODE_OTP_TEMPLATE,
   REGISTRATION_INSTRUCTIONS_CONFIRM_TEMPLATE,
 } from '@/lib/whatsapp/providers/twilio/template-ids'
+import { isValidRegistrationPhone } from '@/lib/phone'
 import type { Lead } from '@/types/lead'
 
 const ONBOARDING_VIDEO = process.env.ONBOARDING_VIDEO_URL ?? ''
@@ -98,7 +99,15 @@ export async function deliverRegistrationCode(
     // phoneNumber should always be set by the time a WhatsApp lead reaches link_sent
     // (phone.ts's channelRequiresPhonePrompt / missing-phone-recovery.ts) — this falls
     // back to `lead` itself only as a defensive no-op for a pre-fix straggler.
-    const otpRecipient = lead.channel === 'whatsapp' && lead.phoneNumber ? { ...lead, channelUserId: lead.phoneNumber } : lead
+    // Only address the copy-code Authentication template by phoneNumber when it's a
+    // real number — a malformed/BSUID-derived value (non-null but junk, from the
+    // pre-fix coercion bug) would 63005/131026 and hurt the delivery-rate KPI. Falling
+    // back to `lead` routes via the BSUID channelUserId, where sendTemplateOrText's
+    // template send fails cleanly and drops to a plain-text code send that works.
+    const otpRecipient =
+      lead.channel === 'whatsapp' && isValidRegistrationPhone(lead.phoneNumber)
+        ? { ...lead, channelUserId: lead.phoneNumber }
+        : lead
     await sendTemplateOrText(otpRecipient, REGISTRATION_CODE_OTP_TEMPLATE, codeText, {
       contentVariables: { '1': code },
     })

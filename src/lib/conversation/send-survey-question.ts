@@ -4,6 +4,7 @@ import { surveyProfiles, leads, flowStates } from '@/lib/db/schema'
 import { sendText, sendInlineKeyboard } from '@/lib/messaging/send'
 import { getCountryConfig } from '@/lib/countries/registry'
 import { resolveSurveyQuestions, nextQuestionToSend } from './survey-plan'
+import { withRetryPrefix } from './exit-messages'
 import type { ChannelRecipient } from '@/types/channel'
 
 /**
@@ -17,6 +18,7 @@ export async function sendSurveyQuestion(
   to: ChannelRecipient,
   index: number,
   leadId?: string,
+  opts?: { retry?: boolean; leadIn?: string },
 ): Promise<void> {
   let profile: { country: string | null } & Record<string, unknown> = { country: null }
   if (leadId) {
@@ -63,9 +65,12 @@ export async function sendSurveyQuestion(
     text = `¿En qué ${geo.neighborhoodLabel} vives?`
   }
 
+  // A custom lead-in (e.g. "Ok, volvamos a *Correo*.") or the standard "no te entendí"
+  // prefix — folded into the question so it's one message, not two.
+  const outText = opts?.leadIn ? `${opts.leadIn}\n\n${text}` : withRetryPrefix(text, opts?.retry)
   if (q.inputType === 'button' && q.buttons) {
-    await sendInlineKeyboard(to, text, q.buttons)
+    await sendInlineKeyboard(to, outText, q.buttons)
   } else if (q.inputType === 'free_text') {
-    await sendText(to, text)
+    await sendText(to, outText)
   }
 }

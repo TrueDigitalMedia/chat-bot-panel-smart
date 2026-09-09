@@ -86,6 +86,7 @@ export async function hasSentOutboundMessage(leadId: string): Promise<boolean> {
 export interface LastOutboundMessage {
   body: string
   meta: Record<string, unknown> | null
+  createdAt: Date
 }
 
 /**
@@ -111,7 +112,11 @@ export async function hadRecentGeoReject(leadId: string, field: string): Promise
  *  same gate/question is about to be re-shown) so it can be varied instead. */
 export async function getLastOutboundMessage(leadId: string): Promise<LastOutboundMessage | null> {
   const [row] = await db
-    .select({ body: conversationMessages.body, meta: conversationMessages.meta })
+    .select({
+      body: conversationMessages.body,
+      meta: conversationMessages.meta,
+      createdAt: conversationMessages.createdAt,
+    })
     .from(conversationMessages)
     .where(and(eq(conversationMessages.leadId, leadId), eq(conversationMessages.direction, 'out')))
     .orderBy(desc(conversationMessages.createdAt))

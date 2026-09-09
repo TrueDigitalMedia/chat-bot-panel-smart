@@ -195,6 +195,10 @@ export const OPT_OUT_STATUS_REASONS = new Set([
   're_engagement_declined_2nd_attempt',
   're_engagement_declined_3rd_attempt',
   're_engagement_declined',
+  // Twilio's Advanced Opt-Out blocked a send with error 21610 — the recipient texted
+  // STOP straight to Twilio, which does not always forward it to our webhook. Synced in
+  // from the failed send (handle-twilio-stop.ts) so re-engage stops retrying.
+  'twilio_stop',
 ])
 
 export function hasOptedOut(lead: Pick<Lead, 'statusReason'>): boolean {

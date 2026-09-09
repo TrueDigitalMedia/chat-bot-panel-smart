@@ -85,8 +85,8 @@ interface DedupeResult {
 /**
  * Never send the exact same text twice in a row to the same lead — many gates/questions
  * re-show byte-identical prompts when the user's reply didn't resolve to anything (see
- * flow-router.ts's waiting_for_code reminder, phase-1.ts's NOT_UNDERSTOOD_MESSAGE +
- * re-ask combo, survey question resends, etc.), which reads as broken/robotic.
+ * flow-router.ts's waiting_for_code reminder, the "no te entendí" + re-ask combo,
+ * survey question resends, etc.), which reads as broken/robotic.
  *
  * Tracks the repeat run via `meta.dedupeBase`/`dedupeIndex` on the previous message
  * rather than comparing raw bodies directly, so appending a nudge doesn't itself break
@@ -100,6 +100,13 @@ async function dedupeRepeat(leadId: string | undefined, text: string): Promise<D
   const lastBase = (last?.meta?.dedupeBase as string | undefined) ?? last?.body
   if (!last || lastBase !== text) {
     return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: false }
+  }
+  // Identical text within a few seconds of the last one is never a legitimate re-ask
+  // (the user hasn't had time to read + reply) — it's two near-simultaneous turns both
+  // landing on the same prompt (a rapid double-message, a correction-flow rewind
+  // racing a callback). Suppress it outright, regardless of the consecutive-run count.
+  if (Date.now() - new Date(last.createdAt).getTime() < 4000) {
+    return { text, meta: { dedupeBase: text, dedupeIndex: 0 }, suppress: true }
   }
   const dedupeIndex = ((last.meta?.dedupeIndex as number | undefined) ?? 0) + 1
   if (dedupeIndex >= MAX_CONSECUTIVE_REPEATS) {

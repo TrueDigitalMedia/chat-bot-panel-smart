@@ -15,12 +15,20 @@ import { getWhatsAppProvider } from '@/lib/whatsapp/provider'
 import * as meta from '@/lib/whatsapp/providers/meta/send'
 import * as twilio from '@/lib/whatsapp/providers/twilio/send'
 import { getApprovedTemplate } from '@/lib/whatsapp/providers/twilio/templates'
+import { isTwilioOptOutError } from '@/lib/whatsapp/providers/twilio/errors'
 
-function logSendFailure(fn: string, channelUserId: string, err: unknown): void {
+async function logSendFailure(fn: string, channelUserId: string, err: unknown): Promise<void> {
   console.error(`[whatsapp:send] ${fn} failed`, {
     channelUserId,
     error: err instanceof Error ? err.message : String(err),
   })
+  // Twilio 21610 = recipient unsubscribed. Record it so the re-engage cadence stops
+  // firing nudges that just bounce (dynamic import: this transport module must not
+  // pull the conversation/state-machine graph in at load time).
+  if (isTwilioOptOutError(err)) {
+    const { handleTwilioStop } = await import('@/lib/conversation/handle-twilio-stop')
+    await handleTwilioStop(channelUserId)
+  }
 }
 
 export async function sendWhatsAppText(
@@ -33,7 +41,7 @@ export async function sendWhatsAppText(
       ? twilio.sendTwilioText(channelUserId, text, fromPhoneNumberId)
       : meta.sendMetaText(channelUserId, text, fromPhoneNumberId))
   } catch (err) {
-    logSendFailure('sendWhatsAppText', channelUserId, err)
+    await logSendFailure('sendWhatsAppText', channelUserId, err)
     return undefined
   }
 }
@@ -49,7 +57,7 @@ export async function sendWhatsAppVideo(
       ? twilio.sendTwilioVideo(channelUserId, videoUrl, caption, fromPhoneNumberId)
       : meta.sendMetaVideo(channelUserId, videoUrl, caption, fromPhoneNumberId))
   } catch (err) {
-    logSendFailure('sendWhatsAppVideo', channelUserId, err)
+    await logSendFailure('sendWhatsAppVideo', channelUserId, err)
     return undefined
   }
 }
@@ -65,7 +73,7 @@ export async function sendWhatsAppKeyboard(
       ? twilio.sendTwilioKeyboard(channelUserId, text, buttons, fromPhoneNumberId)
       : meta.sendMetaKeyboard(channelUserId, text, buttons, fromPhoneNumberId))
   } catch (err) {
-    logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
+    await logSendFailure('sendWhatsAppKeyboard', channelUserId, err)
     return { sid: undefined, choices: {} }
   }
 }
@@ -90,8 +98,10 @@ export async function sendWhatsAppTemplateOrKeyboard(
         const sid = await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
         return { sid, choices }
       } catch (err) {
-        logSendFailure('sendWhatsAppTemplateOrKeyboard', channelUserId, err)
-        // Fall through to the free-text/dynamic-content path below.
+        await logSendFailure('sendWhatsAppTemplateOrKeyboard', channelUserId, err)
+        // An opt-out (21610) will bounce on the free-text path too — don't retry it.
+        if (isTwilioOptOutError(err)) return { sid: undefined, choices: {} }
+        // Otherwise fall through to the free-text/dynamic-content path below.
       }
     }
   }
@@ -112,8 +122,10 @@ export async function sendWhatsAppTemplateOrText(
       try {
         return await twilio.sendTwilioTemplate(channelUserId, template.contentSid, contentVariables, fromPhoneNumberId)
       } catch (err) {
-        logSendFailure('sendWhatsAppTemplateOrText', channelUserId, err)
-        // Fall through to the free-text path below.
+        await logSendFailure('sendWhatsAppTemplateOrText', channelUserId, err)
+        // An opt-out (21610) will bounce on the free-text path too — don't retry it.
+        if (isTwilioOptOutError(err)) return undefined
+        // Otherwise fall through to the free-text path below.
       }
     }
   }

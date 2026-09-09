@@ -83,11 +83,17 @@ export async function extractField(
     const prompt = buildExtractionPrompt(fieldName, sanitized, FIELD_HINTS[fieldName])
     const schema = FIELD_SCHEMAS[fieldName]
 
-    const result = await generateObject({
-      model: chatModel(),
-      schema,
-      prompt,
-    })
+    // "the model did not return a response" is an empty/rate-limited API reply, not a
+    // model mistake — it jumped from ~1% to ~16% of calls when traffic scaled ~10x in
+    // 2026-09, and it fails fast (~800ms). One short retry recovers most of them.
+    let result: Awaited<ReturnType<typeof generateObject<typeof schema>>>
+    try {
+      result = await generateObject({ model: chatModel(), schema, prompt })
+    } catch (err) {
+      if (!/did not return a response|rate.?limit|overloaded|ECONNRESET|fetch failed/i.test(String(err))) throw err
+      await new Promise((r) => setTimeout(r, 500))
+      result = await generateObject({ model: chatModel(), schema, prompt })
+    }
 
     const latencyMs = Date.now() - start
     await logCall({

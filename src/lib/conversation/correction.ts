@@ -141,12 +141,11 @@ export async function restartSurveyFromField(lead: Lead, field: SurveyFieldName)
     })
     .where(eq(flowStates.leadId, lead.id))
 
-  let msg = `Ok, volvamos a *${FIELD_LABELS[field]}*.`
+  let leadIn = `Ok, volvamos a *${FIELD_LABELS[field]}*.`
   if (cascade.length > 0) {
-    msg += `\nTambién limpio: ${cascade.map((f) => FIELD_LABELS[f]).join(', ')} (los volverás a completar).`
+    leadIn += `\nTambién limpio: ${cascade.map((f) => FIELD_LABELS[f]).join(', ')} (los volverás a completar).`
   }
-  await sendText(lead, msg)
-  await sendSurveyQuestion(lead, idx, lead.id)
+  await sendSurveyQuestion(lead, idx, lead.id, { leadIn })
 }
 
 export async function cancelCorrection(lead: Lead): Promise<void> {
@@ -213,13 +212,11 @@ export async function applyFieldAndContinue(
     })
     .where(eq(flowStates.leadId, lead.id))
 
-  let msg = `✅ Actualicé *${FIELD_LABELS[field]}* a: ${formatValue(value)}.`
+  let leadIn = `✅ Actualicé *${FIELD_LABELS[field]}* a: ${formatValue(value)}.`
   if (cascade.length > 0) {
-    msg += `\nTambién limpio: ${cascade.map((f) => FIELD_LABELS[f]).join(', ')}.`
+    leadIn += `\nTambién limpio: ${cascade.map((f) => FIELD_LABELS[f]).join(', ')}.`
   }
-  await sendText(lead, msg)
-  await sendText(lead, 'Continuamos desde aquí:')
-  await sendSurveyQuestion(lead, nextIdx, lead.id)
+  await sendSurveyQuestion(lead, nextIdx, lead.id, { leadIn })
 
   // Fire-and-forget: resync the corrected answer to Panel Smart right away, since a
   // one-shot NL correction ("cambia el email a x") doesn't necessarily trigger a status

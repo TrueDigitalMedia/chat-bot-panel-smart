@@ -58,8 +58,11 @@ export async function handleReengageChoice(
   }
 
   await sendText(lead, '¡Genial! Sigamos donde lo dejamos 👉')
-  const { routeMessage } = await import('./flow-router')
-  await routeMessage(
+  // routeMessageLocked, not routeMessage: this call already runs inside the outer
+  // turn's lead-lock (flow-router.ts's routeMessage -> ... -> handleReengageChoice),
+  // so re-acquiring here would just block on itself for no benefit.
+  const { routeMessageLocked } = await import('./flow-router')
+  await routeMessageLocked(
     lead,
     { channel: lead.channel, channelUserId: lead.channelUserId, text: '', callbackData: undefined },
     correlationId,

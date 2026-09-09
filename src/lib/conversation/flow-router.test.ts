@@ -31,6 +31,7 @@ const {
   handleMissingPhoneRecovery,
   hasOptedOut,
   detectOptOutReversalIntent,
+  getLeadById,
 } = vi.hoisted(() => ({
   cancelPendingJobs: vi.fn(),
   cancelPendingRecontact: vi.fn(),
@@ -62,6 +63,9 @@ const {
   handleMissingPhoneRecovery: vi.fn(),
   hasOptedOut: vi.fn().mockReturnValue(false),
   detectOptOutReversalIntent: vi.fn().mockResolvedValue(false),
+  // null so routeMessage's re-fetch-after-lock falls back to the exact `lead` object
+  // each test passes in, instead of needing a real DB round trip.
+  getLeadById: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/scheduler/re-engagement', () => ({ cancelPendingJobs, cancelPendingRecontact, scheduleRecontact }))
@@ -90,6 +94,11 @@ vi.mock('@/lib/db/leads', () => ({
   recordConsentEvent,
   reviveAbandonedLinkSent,
   hasOptedOut,
+  getLeadById,
+}))
+vi.mock('@/lib/concurrency/lead-lock', () => ({
+  // No real lock/DB in unit tests — just run the turn.
+  withLeadLock: (_leadId: string, fn: () => Promise<unknown>) => fn(),
 }))
 vi.mock('./detect-opt-out-reversal', () => ({ detectOptOutReversalIntent }))
 vi.mock('./missing-phone-recovery', () => ({ isMissingPhoneForRegistration, handleMissingPhoneRecovery }))
