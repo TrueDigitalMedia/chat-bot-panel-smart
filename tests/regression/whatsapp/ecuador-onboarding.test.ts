@@ -114,6 +114,8 @@ async function toName(send: ReturnType<typeof sender>, name: string) {
   await send({ text: name }, { fullName: name })
 }
 
+// Use cases: specs/regression/use-cases.md
+// J1 UC-A/EC1/EC3/EC5 · J2 UC-EC2 · J3 UC-EC4 · J4 UC-EC6 · J5 UC-MX1 · J6 UC-B · J7 UC-F
 describe('Ecuador + México onboarding — WhatsApp E2E', () => {
   beforeAll(async () => {
     await db.delete(quotaTargets)
@@ -325,4 +327,30 @@ describe('Ecuador + México onboarding — WhatsApp E2E', () => {
     expect(fp.nsePoints).not.toBeNull()
     expect(fp.conflictOfInterest).toBe(false)
   }, 180_000)
+
+  it('J6 — UC-B: declines the opt-in → not_qualified / opt_in_decline', async () => {
+    const send = sender('+593900000006', EC_NUMBER)
+    await send({ text: 'Hola' })
+    await send({ callbackData: 'optin:decline' })
+    const [fl] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000006'))
+    expect(fl.leadStatus).toBe('not_qualified')
+    expect(fl.statusReason).toBe('opt_in_decline')
+    // still scoped — the number established the country before the decline
+    expect(fl.acquisitionSource).toBe('whatsapp:number:Ecuador')
+  }, 60_000)
+
+  it('J7 — UC-F: minor (age 16) → not_qualified / age_minor right after the age answer', async () => {
+    const send = sender('+593900000007', EC_NUMBER)
+    await toName(send, 'Kevin Andrade')
+    await send({ text: 'Azuay' }, { stateProvince: 'Azuay' })
+    await send({ text: 'Cuenca' }, { municipality: 'Cuenca' })
+    await send({ text: 'El Sagrario' }, { neighborhood: 'El Sagrario' })
+    await send({ text: 'kevin@example.com' }, { email: 'kevin@example.com' })
+    await send({ callbackData: 'gender:Masculino' })
+    outbox.length = 0
+    await send({ text: '16' }, { age: 16 })
+    const [fl] = await db.select().from(leads).where(eq(leads.channelUserId, '+593900000007'))
+    expect(fl.leadStatus).toBe('not_qualified')
+    expect(fl.statusReason).toBe('age_minor')
+  }, 90_000)
 })
