@@ -33,6 +33,14 @@ export function verifyTwilioSignature(
       from: params.From,
       to: params.To,
       authTokenTail: env.TWILIO_AUTH_TOKEN.slice(-4),
+      // AccountSid / MessagingServiceSid are identifiers, not secrets — logged in full so
+      // a Messaging-Service webhook signed by a subaccount can be told apart from a stale
+      // Auth Token. `accountSidMatches` false ⇒ set TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN
+      // to the account whose SID is in `paramAccountSid`.
+      paramAccountSid: params.AccountSid ?? null,
+      envAccountSid: env.TWILIO_ACCOUNT_SID ?? null,
+      accountSidMatches: Boolean(params.AccountSid && params.AccountSid === env.TWILIO_ACCOUNT_SID),
+      messagingServiceSid: params.MessagingServiceSid ?? null,
     })
   }
   return ok
