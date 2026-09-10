@@ -242,7 +242,7 @@ export const reEngagementSchedules = pgTable(
     action: varchar('action', { length: 30 }).notNull(),
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
-    outcome: varchar('outcome', { length: 20 }),
+    outcome: varchar('outcome', { length: 64 }),
     qstashMessageId: varchar('qstash_message_id', { length: 100 }),
   },
   (t) => [
