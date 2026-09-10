@@ -4,7 +4,10 @@
 
 **Created**: 2026-07-20
 
-**Status**: Draft
+**Status**: Amended 2026-09-10 — see "Addendum" at the bottom (the region ceiling is now
+the FIRST and hard limit for everyone; the pregnancy/baby exception no longer bypasses it;
+out-of-sample regions are closed). The addendum overrides US3/US4, FR-003/FR-004/FR-006 and
+the related edge cases where they conflict.
 
 **Input**: User description: "Cambiar la elegibilidad de cuota de panelistas: un lead califica si cumple al menos una condición de cuota disponible (NSE, edad, o tamaño de hogar) dentro de su región, en vez de requerir que todas coincidan. Todas las regiones quedan abiertas para reclutamiento. Cada región tiene un tope agregado de leads que bloquea nuevos registros al alcanzarse, incluso si alguna dimensión individual sigue con cupo. Hogares con embarazada o bebé de 0-36 meses siempre califican sin límite de cuota. Aplica a todos los países (CAM, México, Ecuador, RD). Reemplaza el modelo actual de quota_targets (country+region+nse_level, spec 005) que exige coincidencia simultánea."
 
@@ -115,3 +118,34 @@ Como negocio, aunque todas las regiones estén abiertas, necesito que cada regi�
 - Este cambio aplica a todos los países servidos por el bot (CAM completo, México, Ecuador, República Dominicana), no solo a los que ya tienen `quota_targets` activo hoy.
 - El panel administrativo de cuotas (spec 005) se actualiza como parte de esta feature para poder cargar/editar los nuevos cupos por dimensión y el tope agregado por región, en vez de mantenerse limitado al modelo país+región+NSE.
 - La lógica de scoring NSE (SCL-CAM, spec 004) no cambia — esta feature solo cambia cómo se usa el resultado del scoring (junto con edad e integrantes) para decidir cupo, no cómo se calcula.
+
+---
+
+## Addendum — 2026-09-10 (aclaración del cliente, PUNTO 1)
+
+El modelo original trataba el tope de región como **manual y opcional** y dejaba a la
+excepción de embarazo/bebé **siempre calificar**. En producción esto dejó entrar leads de
+regiones fuera de muestra (p. ej. El Salvador "Centro I") y sobre-entregar en El Salvador,
+Honduras y Panamá. Correcciones vigentes:
+
+1. **El objetivo por país + región es el PRIMER condicional y el techo duro para TODOS**
+   (NSE, edad, integrantes y la excepción de embarazo/bebé por igual). Se calcula así:
+   objetivo manual de `quota_region_caps.cap_count` si está cargado; si no, la Σ de las
+   líneas NSE activas de esa región. Ambos deberían coincidir; el panel marca la
+   discrepancia.
+2. **Región sin objetivo configurado ⇒ CERRADA.** No califica nadie, ni la excepción.
+   (Reemplaza el default "sin tope" de FR-006 y el edge case correspondiente.)
+3. **La excepción de embarazo/bebé sigue salteando la celda puntual de NSE/edad/
+   integrantes, pero NO el objetivo de la región.** Si la región llegó a su objetivo, el
+   lead va a `quota_exhausted`. (Reemplaza US3 escenario 2 y FR-003 en ese punto.)
+4. **Los condicionales 2 y 3 "completan cuota", no la amplían.** Un lead que califica por
+   edad/integrantes (con su línea NSE llena) o por la excepción se imputa a la **línea NSE
+   de mayor volumen** de la región, para que esa línea avance a su objetivo y se
+   desactive a tiempo.
+5. **Leads sin región identificada ⇒ `quota_exhausted`** (motivo `region_no_identificada`
+   en el log `quota_check.denied_reason`).
+
+Implementación: `src/lib/quotas/region-caps.ts` (`getRegionObjective`, `listRegionObjectives`),
+`src/lib/quotas/quota-progress.ts` (`getHighestVolumeNseTarget`), `src/lib/scoring/quota.ts`
+(nuevo orden de evaluación), `src/app/admin/quotas/page.tsx` (tabla "Estado de cuota por
+región"). Sin migración de base.

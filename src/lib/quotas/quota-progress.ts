@@ -102,23 +102,31 @@ async function countAchieved(
 }
 
 /**
- * The single active quota cell with the highest configured target_count for this
- * country+region, across all dimension types (nse/edad/integrantes) — not a per-type
- * sum. Used to attribute exception-qualified leads (pregnancy/baby-under-3, which
- * always qualify regardless of any specific cell's availability — src/lib/scoring/quota.ts)
- * to a real quota cell instead of leaving them unattributed, so they still count
- * against something for capacity-planning purposes. Null if the region has no active
- * targets configured at all (degenerate case — caller falls back to leaving it
- * unattributed).
+ * The active **NSE** quota line with the highest configured target_count for this
+ * country+region. Per the client's model (see docs/whatsapp/ + PUNTO 1 clarification
+ * 2026-09-10) every lead that qualifies by a "second/third conditional" — the
+ * pregnancy/baby-under-3 exception, or by edad/integrantes when its own NSE line is
+ * full — must be *charged to the region's highest-volume NSE line* so that line still
+ * advances toward its objective and deactivates on time, instead of being booked
+ * against an edad/integrantes cell (which would let the region silently over-deliver).
+ * Null only if the region has no active NSE line at all (objective then came from a
+ * manual region cap — caller falls back to the unattributed 'exception' marker).
  */
-export async function getHighestVolumeTarget(
+export async function getHighestVolumeNseTarget(
   country: string,
   region: string,
 ): Promise<{ dimensionType: DimensionType; dimensionValue: string } | null> {
   const [row] = await db
     .select({ dimensionType: quotaTargets.dimensionType, dimensionValue: quotaTargets.dimensionValue })
     .from(quotaTargets)
-    .where(and(eq(quotaTargets.country, country), eq(quotaTargets.region, region), eq(quotaTargets.active, true)))
+    .where(
+      and(
+        eq(quotaTargets.country, country),
+        eq(quotaTargets.region, region),
+        eq(quotaTargets.active, true),
+        eq(quotaTargets.dimensionType, 'nse'),
+      ),
+    )
     .orderBy(desc(quotaTargets.targetCount))
     .limit(1)
 

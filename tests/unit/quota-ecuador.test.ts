@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { QuotaProgress } from '@/lib/quotas/quota-progress'
-import type { RegionCapProgress } from '@/lib/quotas/region-caps'
+import type { RegionObjective } from '@/lib/quotas/region-caps'
 
 // Spec 014 T037 — `checkQuotaAvailability` needs NO code change for Ecuador: it's already
 // generic over country/region/segment (spec 011). This suite proves that by exercising it
@@ -11,8 +11,8 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
-let regionCap: RegionCapProgress | null = null
-let highestVolumeTarget: { dimensionType: string; dimensionValue: string } | null = null
+let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+let highestVolumeNseTarget: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
@@ -46,11 +46,11 @@ vi.mock('@/lib/quotas/quota-progress', () => ({
       return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
     },
   ),
-  getHighestVolumeTarget: vi.fn(async () => highestVolumeTarget),
+  getHighestVolumeNseTarget: vi.fn(async () => highestVolumeNseTarget),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
-  getRegionCapProgress: vi.fn(async () => regionCap),
+  getRegionObjective: vi.fn(async () => regionObjective),
 }))
 
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
@@ -61,8 +61,8 @@ const ECUADOR_GUAYAQUIL_NORTE = { country: 'Ecuador', region: 'Guayaquil Norte',
 describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from spec 011)', () => {
   beforeEach(() => {
     progressByKey.clear()
-    regionCap = null
-    highestVolumeTarget = null
+    regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+    highestVolumeNseTarget = null
   })
 
   it('qualifies via the Ecuador "AB" NSE dimension (not a CAM "Nivel N" value)', async () => {
@@ -125,12 +125,17 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null })
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'sin_cupo',
+    })
   })
 
-  it('the Ecuador region aggregate cap blocks an otherwise-qualifying lead once reached', async () => {
+  it('the Ecuador region objective blocks an otherwise-qualifying lead once reached', async () => {
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'nse', dimensionValue: 'C', target: 10, achieved: 0 })
-    regionCap = { cap: 20, achieved: 20 }
+    regionObjective = { objective: 20, source: 'cap', achieved: 20 }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -141,12 +146,17 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null })
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_completa',
+    })
   })
 
-  it('an Ecuador household reporting a pregnancy qualifies via the exception even with every dimension exhausted', async () => {
+  it('an Ecuador household reporting a pregnancy qualifies via the exception when the region still has room', async () => {
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'nse', dimensionValue: 'AB', target: 5, achieved: 5 })
-    highestVolumeTarget = null // no active cell to attribute to — falls back to the unattributed marker
+    highestVolumeNseTarget = null // no NSE line to attribute to — falls back to the unattributed marker
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -160,8 +170,8 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
     expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
   })
 
-  it('a baby-under-3 Ecuador household attributes to the region\'s highest-volume active cell instead of going unattributed', async () => {
-    highestVolumeTarget = { dimensionType: 'nse', dimensionValue: 'C' }
+  it('a baby-under-3 Ecuador household attributes to the region\'s highest-volume NSE line instead of going unattributed', async () => {
+    highestVolumeNseTarget = { dimensionType: 'nse', dimensionValue: 'C' }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -175,8 +185,8 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
     expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'C' })
   })
 
-  it('the pregnancy/baby exception is never blocked by an Ecuador region cap that has already been reached', async () => {
-    regionCap = { cap: 10, achieved: 10 }
+  it('the pregnancy/baby exception IS blocked once the Ecuador region objective is reached (PUNTO 1)', async () => {
+    regionObjective = { objective: 10, source: 'cap', achieved: 10 }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -187,6 +197,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result.qualifies).toBe(true)
+    expect(result.qualifies).toBe(false)
+    expect(result.deniedReason).toBe('region_completa')
   })
 })
