@@ -55,6 +55,37 @@ export const FIELD_HINTS: Partial<Record<FieldSchemaKey, string>> = {
     'Un código postal mexicano de exactamente 5 dígitos. Extrae solo los 5 dígitos (p. ej. "mi CP es 06700" → "06700", "03810." → "03810"). Devuelve null si el mensaje no contiene un número de 5 dígitos.',
 }
 
+/**
+ * Pulls a well-formed email token out of `text`, or `undefined` if there isn't one.
+ * Strict on purpose — no typo repair, no gluing trailing words onto the domain (that's
+ * salvageEmail's job, and callers already run it first). It just needs to recognize an
+ * address the user typed cleanly, which is the overwhelming majority of answers to the
+ * email question: `"juan.perez@gmail.com"`, `"mi correo: ana@empresa.com.mx"`.
+ */
+function extractPlainEmail(text: string): string | undefined {
+  const m = text.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i)
+  if (!m) return undefined
+  const candidate = m[0].toLowerCase().replace(/\.+$/, '')
+  return z.string().email().max(200).safeParse(candidate).success ? candidate : undefined
+}
+
+/**
+ * A value we can extract without the model when the answer has an unambiguous shape —
+ * a fast path that skips the model call, and with it the `AI_NoObjectGeneratedError`
+ * (an empty / rate-limited API reply, not a model mistake) that was still hitting
+ * `email` extraction after the in-line retry below. Returns `undefined` when there is
+ * no confident deterministic value and the model should run.
+ *
+ * `email` only, for now: it's the field with a machine-checkable format
+ * (`z.string().email()`, the same check the model schema uses) and a high share of
+ * clean answers. Callers handle "no tengo correo" (isNoEmailAnswer) and typo repair
+ * (salvageEmail) before ever reaching extractField.
+ */
+function deterministicValue(fieldName: FieldSchemaKey, text: string): string | undefined {
+  if (fieldName === 'email') return extractPlainEmail(text)
+  return undefined
+}
+
 export async function extractField(
   fieldName: FieldSchemaKey,
   userText: string,
@@ -79,20 +110,39 @@ export async function extractField(
 
   const model = CHAT_MODEL_ID
   const start = Date.now()
+
+  // Fast path: skip the model entirely when the answer is deterministically parseable
+  // (see deterministicValue). Removes the model call — and its ~16% empty-response
+  // failure rate — from the hot path for the fields it covers.
+  const shortCircuit = deterministicValue(fieldName, sanitized)
+  if (shortCircuit !== undefined) {
+    await logCall({
+      leadId: opts?.leadId,
+      callType: 'field_extraction',
+      model: 'deterministic',
+      latencyMs: Date.now() - start,
+      correlationId,
+    }).catch(() => {})
+    return { ok: true, value: shortCircuit, correlationId }
+  }
+
   try {
     const prompt = buildExtractionPrompt(fieldName, sanitized, FIELD_HINTS[fieldName])
     const schema = FIELD_SCHEMAS[fieldName]
 
     // "the model did not return a response" is an empty/rate-limited API reply, not a
     // model mistake — it jumped from ~1% to ~16% of calls when traffic scaled ~10x in
-    // 2026-09, and it fails fast (~800ms). One short retry recovers most of them.
+    // 2026-09, and it fails fast (~800ms). Retry a couple of times with backoff.
+    const RETRYABLE = /did not return a response|rate.?limit|overloaded|ECONNRESET|fetch failed/i
     let result: Awaited<ReturnType<typeof generateObject<typeof schema>>>
-    try {
-      result = await generateObject({ model: chatModel(), schema, prompt })
-    } catch (err) {
-      if (!/did not return a response|rate.?limit|overloaded|ECONNRESET|fetch failed/i.test(String(err))) throw err
-      await new Promise((r) => setTimeout(r, 500))
-      result = await generateObject({ model: chatModel(), schema, prompt })
+    for (let attempt = 0; ; attempt++) {
+      try {
+        result = await generateObject({ model: chatModel(), schema, prompt })
+        break
+      } catch (err) {
+        if (attempt >= 2 || !RETRYABLE.test(String(err))) throw err
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+      }
     }
 
     const latencyMs = Date.now() - start
