@@ -57,7 +57,13 @@ export function QuotaRowForm({ item }: { item: QuotaProgress }) {
       <td>{item.achieved}</td>
       <td>{item.available}</td>
       <td>
-        <span className={`${styles.pctBadge} ${pctClass(item.progressPct)}`}>{item.progressPct}%</span>
+        <span className={`${styles.pctBadge} ${pctClass(item.progressPct)}`}>
+          {item.achieved > item.target
+            ? `EXCEDIDA +${item.achieved - item.target}`
+            : item.available === 0 && item.target > 0
+              ? 'COMPLETA'
+              : `${item.progressPct}%`}
+        </span>
       </td>
       <td>
         <div className={styles.rowActions}>

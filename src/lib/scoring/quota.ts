@@ -1,6 +1,6 @@
 import { ageBand, householdBand } from '@/lib/quotas/quota-bands'
-import { getQuotaProgressForTarget, getHighestVolumeTarget } from '@/lib/quotas/quota-progress'
-import { getRegionCapProgress } from '@/lib/quotas/region-caps'
+import { getQuotaProgressForTarget, getHighestVolumeNseTargetWithRoom } from '@/lib/quotas/quota-progress'
+import { getRegionObjective } from '@/lib/quotas/region-caps'
 import type { DimensionType } from '@/lib/quotas/quota-targets'
 
 interface CheckQuotaAvailabilityParams {
@@ -14,10 +14,18 @@ interface CheckQuotaAvailabilityParams {
   leadId?: string
 }
 
+/** Why a lead did NOT qualify — for audit/dashboard segmentation (not persisted; logged). */
+export type QuotaDeniedReason =
+  | 'region_no_identificada'
+  | 'region_fuera_de_muestra'
+  | 'region_completa'
+  | 'sin_cupo'
+
 export interface QuotaDecision {
   qualifies: boolean
   matchedDimension: DimensionType | 'exception' | null
   matchedValue: string | null
+  deniedReason?: QuotaDeniedReason
 }
 
 /**
@@ -35,7 +43,7 @@ const DIMENSION_ORDER: readonly { type: DimensionType; value: (params: CheckQuot
 function logQuotaCheck(
   params: CheckQuotaAvailabilityParams,
   decision: QuotaDecision,
-  extra: { regionCapBlocked: boolean },
+  extra: { regionObjective: number | null; regionAchieved: number | null; regionBlocked: boolean },
 ): void {
   console.log(
     JSON.stringify({
@@ -50,58 +58,152 @@ function logQuotaCheck(
       has_baby_under_3: params.hasBabyUnder3,
       matched_dimension: decision.matchedDimension,
       matched_value: decision.matchedValue,
-      region_cap_blocked: extra.regionCapBlocked,
+      denied_reason: decision.deniedReason ?? null,
+      region_objective: extra.regionObjective,
+      region_achieved: extra.regionAchieved,
+      // kept for existing log consumers — now means "blocked by the region objective ceiling"
+      region_cap_blocked: extra.regionBlocked,
       decision: decision.qualifies,
     }),
   )
 }
 
 /**
- * Real quota check against `quota_targets` + `quota_region_caps` (spec 011 — replaces the
- * single country+region+NSE AND-match from spec 005 with OR-matching across independent
- * dimensions). See specs/011-flexible-quota-matching/contracts/quota-check-contract.md.
+ * Quota check (PUNTO 1 clarification, 2026-09-10 — supersedes the spec 011 model where the
+ * region cap was manual/optional and the pregnancy exception was never blocked).
+ *
+ * The client's requested panelist count per country+region is the FIRST and hard ceiling
+ * for everyone. Only within a region that still has room:
+ *   - the pregnancy / baby-under-36-months exception qualifies without checking any
+ *     specific NSE/edad/integrantes cell, and
+ *   - a lead whose own NSE cell is full still qualifies if edad or integrantes has demand,
+ *   both charged to the region's highest-volume NSE line so it advances toward its
+ *   objective and deactivates on time.
+ * A region with no objective configured (out of the client sample — e.g. Centro I) is
+ * CLOSED: nothing qualifies, exception included.
  */
 export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParams): Promise<QuotaDecision> {
   const { country, nseRegion } = params
 
-  // 1. Pregnancy / baby-under-36-months exception — always qualifies, never blocked.
-  // Attributed to whichever active quota cell has the highest configured target_count in
-  // this region, so it still decrements a real cell's "achieved" count instead of going
-  // unattributed. Falls back to the unattributed 'exception' marker only if the region has
-  // no active quota targets configured at all.
+  // 0. The region (PUNTO 1 "primer condicional") must be identified at all.
+  if (!nseRegion) {
+    const decision: QuotaDecision = {
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_no_identificada',
+    }
+    logQuotaCheck(params, decision, { regionObjective: null, regionAchieved: null, regionBlocked: true })
+    return decision
+  }
+
+  // 1. Region objective — the hard ceiling for EVERY lead, exception included.
+  const region = await getRegionObjective(country, nseRegion)
+
+  if (region.objective <= 0) {
+    // No demand configured for this region → out of the client sample → closed.
+    const decision: QuotaDecision = {
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_fuera_de_muestra',
+    }
+    logQuotaCheck(params, decision, { regionObjective: 0, regionAchieved: region.achieved, regionBlocked: true })
+    return decision
+  }
+
+  if (region.achieved >= region.objective) {
+    const decision: QuotaDecision = {
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_completa',
+    }
+    logQuotaCheck(params, decision, {
+      regionObjective: region.objective,
+      regionAchieved: region.achieved,
+      regionBlocked: true,
+    })
+    return decision
+  }
+
+  const logExtra = {
+    regionObjective: region.objective,
+    regionAchieved: region.achieved,
+    regionBlocked: false,
+  }
+
+  // The country+region+NSE line is ALSO a hard cap: every conditional-qualified lead must
+  // be charged to an NSE line that still has room, and no line may pass its own objective.
+  // If every NSE line is full the region is done — even the pregnancy/baby exception.
+  const openNseLine = await getHighestVolumeNseTargetWithRoom(country, nseRegion)
+
+  // 2. Pregnancy / baby-under-36-months exception — skips the lead's own NSE/edad/
+  // integrantes cell, but is still bounded by the region objective AND by there being an
+  // open NSE line to charge it to. Falls back to the unattributed 'exception' marker only
+  // when the region's objective is a manual cap with no NSE lines at all.
   if (params.isPregnant || params.hasBabyUnder3) {
-    const highestVolume = await getHighestVolumeTarget(country, nseRegion)
-    const decision: QuotaDecision = highestVolume
-      ? { qualifies: true, matchedDimension: highestVolume.dimensionType, matchedValue: highestVolume.dimensionValue }
-      : { qualifies: true, matchedDimension: 'exception', matchedValue: null }
-    logQuotaCheck(params, decision, { regionCapBlocked: false })
+    if (openNseLine) {
+      const decision: QuotaDecision = {
+        qualifies: true,
+        matchedDimension: 'nse',
+        matchedValue: openNseLine.dimensionValue,
+      }
+      logQuotaCheck(params, decision, logExtra)
+      return decision
+    }
+    if (region.source === 'cap') {
+      const decision: QuotaDecision = { qualifies: true, matchedDimension: 'exception', matchedValue: null }
+      logQuotaCheck(params, decision, logExtra)
+      return decision
+    }
+    const decision: QuotaDecision = {
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_completa',
+    }
+    logQuotaCheck(params, decision, { ...logExtra, regionBlocked: true })
     return decision
   }
 
-  // 2. Region aggregate cap gate (manual, independent of per-dimension targets).
-  const regionCap = await getRegionCapProgress(country, nseRegion)
-  const regionCapBlocked = regionCap != null && regionCap.cap != null && regionCap.achieved >= regionCap.cap
-  if (regionCapBlocked) {
-    const decision: QuotaDecision = { qualifies: false, matchedDimension: null, matchedValue: null }
-    logQuotaCheck(params, decision, { regionCapBlocked: true })
+  // 3. Own NSE line first — books that exact line while it has room.
+  const ownNse = await getQuotaProgressForTarget(country, nseRegion, 'nse', params.segment)
+  if (ownNse != null && ownNse.active && ownNse.available > 0) {
+    const decision: QuotaDecision = { qualifies: true, matchedDimension: 'nse', matchedValue: params.segment }
+    logQuotaCheck(params, decision, logExtra)
     return decision
   }
 
-  // 3. OR-match across dimensions in fixed order; first one with available quota wins.
+  // 4. Own NSE line full → the "third conditional" (edad / integrantes) can still qualify
+  // the lead IF that band has demand configured, but the lead is charged to another NSE
+  // line that still has room — never opening extra capacity, never passing the region
+  // total. No open NSE line ⇒ region done.
   for (const dimension of DIMENSION_ORDER) {
+    if (dimension.type === 'nse') continue
     const value = dimension.value(params)
     if (value == null) continue
 
     const progress = await getQuotaProgressForTarget(country, nseRegion, dimension.type, value)
     if (progress != null && progress.active && progress.available > 0) {
-      const decision: QuotaDecision = { qualifies: true, matchedDimension: dimension.type, matchedValue: value }
-      logQuotaCheck(params, decision, { regionCapBlocked: false })
+      if (!openNseLine) break
+      const decision: QuotaDecision = {
+        qualifies: true,
+        matchedDimension: 'nse',
+        matchedValue: openNseLine.dimensionValue,
+      }
+      logQuotaCheck(params, decision, logExtra)
       return decision
     }
   }
 
-  const decision: QuotaDecision = { qualifies: false, matchedDimension: null, matchedValue: null }
-  logQuotaCheck(params, decision, { regionCapBlocked: false })
+  const decision: QuotaDecision = {
+    qualifies: false,
+    matchedDimension: null,
+    matchedValue: null,
+    deniedReason: openNseLine ? 'sin_cupo' : 'region_completa',
+  }
+  logQuotaCheck(params, decision, { ...logExtra, regionBlocked: !openNseLine })
   return decision
 }
 

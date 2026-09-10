@@ -324,5 +324,10 @@ async function completeFichaHogar(lead: Lead, correlationId: string): Promise<vo
     await sendVideo(lead, THANK_YOU_VIDEO, '📹 Así registras tus compras en la app')
   }
 
-  await sendText(lead, 'Gracias por tu interés y por el tiempo que has dedicado. 🙌')
+  // Mensaje final único para todos los desarrollos (CAM, RD, EC, MX) tras completar las 4 fases.
+  await sendText(
+    lead,
+    'Gracias por tu interés y por el tiempo que has dedicado. 🙌\n' +
+      '💬 Ten presente que más allá de que ya puedes cargar tus compras, serás contactado por nuestro equipo en el horario indicado anteriormente para terminar de validar las preguntas y ser parte de nuestro panel',
+  )
 }

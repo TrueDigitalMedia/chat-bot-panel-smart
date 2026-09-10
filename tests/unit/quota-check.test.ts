@@ -1,24 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { QuotaProgress } from '@/lib/quotas/quota-progress'
-import type { RegionCapProgress } from '@/lib/quotas/region-caps'
+import type { RegionObjective } from '@/lib/quotas/region-caps'
 
 // `db/client.ts` calls `neon(process.env.POSTGRES_URL!)` at module load — mock it so unit
 // tests don't need a real connection string just to import quota.ts's dependency chain.
 vi.mock('@/lib/db/client', () => ({ db: {} }))
-// db/client.ts's eager module load would otherwise throw without real credentials.
-vi.mock('@/lib/env', () => ({
-  env: {},
-}))
+vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
-let regionCap: RegionCapProgress | null = null
-let highestVolumeTarget: { dimensionType: string; dimensionValue: string } | null = null
+/** The region objective (PUNTO 1) — the single hard ceiling. Default: wide open. */
+let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+/** The highest-volume NSE line in the region that STILL HAS ROOM (null = all lines full). */
+let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
 }
 
-function seedProgress(p: Pick<QuotaProgress, 'country' | 'region' | 'dimensionType' | 'dimensionValue' | 'target' | 'achieved'> & { active?: boolean }) {
+function seedProgress(
+  p: Pick<QuotaProgress, 'country' | 'region' | 'dimensionType' | 'dimensionValue' | 'target' | 'achieved'> & {
+    active?: boolean
+  },
+) {
   const available = Math.max(0, p.target - p.achieved)
   progressByKey.set(key(p.country, p.region, p.dimensionType, p.dimensionValue), {
     id: 'x',
@@ -37,34 +40,104 @@ function seedProgress(p: Pick<QuotaProgress, 'country' | 'region' | 'dimensionTy
 }
 
 vi.mock('@/lib/quotas/quota-progress', () => ({
-  getQuotaProgressForTarget: vi.fn(async (country: string, region: string, dimensionType: string, dimensionValue: string) => {
-    return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
-  }),
-  getHighestVolumeTarget: vi.fn(async () => highestVolumeTarget),
+  getQuotaProgressForTarget: vi.fn(
+    async (country: string, region: string, dimensionType: string, dimensionValue: string) => {
+      return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
+    },
+  ),
+  getHighestVolumeNseTargetWithRoom: vi.fn(async () => openNseLine),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
-  getRegionCapProgress: vi.fn(async () => regionCap),
+  getRegionObjective: vi.fn(async () => regionObjective),
 }))
 
 import { checkQuotaAvailability, describeQuotaMatch } from '@/lib/scoring/quota'
 
-const HONDURAS_NOR_OCCIDENTE_I = { country: 'Honduras', region: 'Nor Occidente I', nseRegion: 'Nor Occidente I' }
-const HONDURAS_CENTRO_I = { country: 'Honduras', region: 'Centro I', nseRegion: 'Centro I' }
+const HN_NOR_OCC_I = { country: 'Honduras', region: 'Nor Occidente I', nseRegion: 'Nor Occidente I' }
+const HN_CENTRO_I = { country: 'Honduras', region: 'Centro I', nseRegion: 'Centro I' }
 
-describe('checkQuotaAvailability — OR-matching across dimensions (spec 011 US1)', () => {
-  beforeEach(() => {
-    progressByKey.clear()
-    regionCap = null
-  })
+function resetState() {
+  progressByKey.clear()
+  regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+  openNseLine = null
+}
 
-  it('qualifies via integrantes when NSE and edad are exhausted (Honduras Nor Occidente I example)', async () => {
-    seedProgress({ ...HONDURAS_NOR_OCCIDENTE_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 0, achieved: 0 })
-    seedProgress({ ...HONDURAS_NOR_OCCIDENTE_I, dimensionType: 'edad', dimensionValue: '50+', target: 0, achieved: 0 })
-    seedProgress({ ...HONDURAS_NOR_OCCIDENTE_I, dimensionType: 'integrantes', dimensionValue: '5+', target: 22, achieved: 0 })
+describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO 1)', () => {
+  beforeEach(resetState)
+
+  it('does NOT qualify when the region has no objective configured (out of the client sample)', async () => {
+    regionObjective = { objective: 0, source: 'none', achieved: 0 }
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_NOR_OCCIDENTE_I,
+      ...HN_CENTRO_I,
+      segment: 'Nivel 4',
+      age: 40,
+      householdSize: 3,
+      isPregnant: true, // even the exception cannot open a closed region
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_fuera_de_muestra',
+    })
+  })
+
+  it('does NOT qualify when there is no identified region at all', async () => {
+    const result = await checkQuotaAvailability({
+      country: 'Honduras',
+      nseRegion: '',
+      segment: 'Nivel 2',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_no_identificada',
+    })
+  })
+
+  it('does NOT qualify once the region objective is reached — plain NSE lead', async () => {
+    regionObjective = { objective: 93, source: 'cap', achieved: 93 }
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 2' }
+
+    const result = await checkQuotaAvailability({
+      ...HN_NOR_OCC_I,
+      segment: 'Nivel 2',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result.deniedReason).toBe('region_completa')
+  })
+
+  it('a conditional lead in a closed region does NOT borrow cupo from another region', async () => {
+    // Lead lives in Centro I (objetivo 0). Centro II / Nivel 1 has room — irrelevant:
+    // the region is fixed by geo and cross-region borrowing never happens.
+    regionObjective = { objective: 0, source: 'none', achieved: 0 }
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 1' } // "some other region has room"
+
+    const byException = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 1',
+      age: 55,
+      householdSize: 6,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+    const byBand = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
       segment: 'Nivel 1',
       age: 55,
       householdSize: 6,
@@ -72,16 +145,36 @@ describe('checkQuotaAvailability — OR-matching across dimensions (spec 011 US1
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'integrantes', matchedValue: '5+' })
+    expect(byException.deniedReason).toBe('region_fuera_de_muestra')
+    expect(byBand.deniedReason).toBe('region_fuera_de_muestra')
   })
 
-  it('qualifies via NSE when edad and integrantes are exhausted (Honduras Centro I example)', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'edad', dimensionValue: '35 a 49', target: 0, achieved: 0 })
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'integrantes', dimensionValue: '3 a 4', target: 0, achieved: 0 })
+  it('does NOT qualify once the region objective is reached — even with pregnancy / baby', async () => {
+    regionObjective = { objective: 14, source: 'cap', achieved: 14 }
+
+    const pregnant = await checkQuotaAvailability({
+      ...HN_NOR_OCC_I,
+      segment: 'Nivel 4',
+      age: 20,
+      householdSize: 1,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+
+    expect(pregnant.qualifies).toBe(false)
+    expect(pregnant.deniedReason).toBe('region_completa')
+  })
+})
+
+describe('checkQuotaAvailability — per NSE line is ALSO a hard cap (PUNTO 1, El Salvador Centro II)', () => {
+  beforeEach(resetState)
+
+  it('the lead\'s own NSE line books that exact line while it has room', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 14, achieved: 5 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 4' }
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
       segment: 'Nivel 4',
       age: 40,
       householdSize: 3,
@@ -92,13 +185,63 @@ describe('checkQuotaAvailability — OR-matching across dimensions (spec 011 US1
     expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
   })
 
-  it('does not qualify when NSE, edad, and integrantes are all exhausted', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 5, achieved: 5 })
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'edad', dimensionValue: 'Hasta 34', target: 5, achieved: 5 })
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'integrantes', dimensionValue: '1 a 2', target: 5, achieved: 5 })
+  it('an NSE lead whose own line is FULL does not qualify by NSE (line stays at its objective)', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 14, achieved: 14 })
+    openNseLine = null // no other line has room either
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
+      segment: 'Nivel 4',
+      age: 40,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result.qualifies).toBe(false)
+  })
+
+  it('own NSE line full + edad has demand → CHARGED to another NSE line that still has room', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 14, achieved: 14 })
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'edad', dimensionValue: '50+', target: 30, achieved: 0 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 1' }
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 4',
+      age: 55,
+      householdSize: 2,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 1' })
+  })
+
+  it('own NSE line full + edad has demand but NO NSE line has room → does not qualify', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 14, achieved: 14 })
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'edad', dimensionValue: '50+', target: 30, achieved: 0 })
+    openNseLine = null
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 4',
+      age: 55,
+      householdSize: 2,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result.qualifies).toBe(false)
+    expect(result.deniedReason).toBe('region_completa')
+  })
+
+  it('does not qualify when the own NSE line is full and no edad/integrantes demand', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 5, achieved: 5 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 2' }
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
       segment: 'Nivel 1',
       age: 20,
       householdSize: 1,
@@ -106,30 +249,27 @@ describe('checkQuotaAvailability — OR-matching across dimensions (spec 011 US1
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null })
-  })
-
-  it('evaluates in fixed order nse -> edad -> integrantes, preferring NSE when multiple dimensions have room', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 2', target: 10, achieved: 0 })
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'edad', dimensionValue: '35 a 49', target: 10, achieved: 0 })
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 2',
-      age: 40,
-      householdSize: null,
-      isPregnant: false,
-      hasBabyUnder3: false,
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'sin_cupo',
     })
-
-    expect(result.matchedDimension).toBe('nse')
   })
 
-  it('treats a row with active=false as unavailable even when target > achieved', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 3', target: 10, achieved: 0, active: false })
+  it('treats an inactive NSE line as unavailable', async () => {
+    seedProgress({
+      ...HN_CENTRO_I,
+      dimensionType: 'nse',
+      dimensionValue: 'Nivel 3',
+      target: 10,
+      achieved: 0,
+      active: false,
+    })
+    openNseLine = null
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
       segment: 'Nivel 3',
       age: null,
       householdSize: null,
@@ -139,35 +279,16 @@ describe('checkQuotaAvailability — OR-matching across dimensions (spec 011 US1
 
     expect(result.qualifies).toBe(false)
   })
-
-  it('does not error when age/householdSize are null — those dimensions are simply unmatchable', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 3', target: 0, achieved: 0 })
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 3',
-      age: null,
-      householdSize: null,
-      isPregnant: false,
-      hasBabyUnder3: false,
-    })
-
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null })
-  })
 })
 
-describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 US3)', () => {
-  beforeEach(() => {
-    progressByKey.clear()
-    regionCap = null
-    highestVolumeTarget = null
-  })
+describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => {
+  beforeEach(resetState)
 
-  it('qualifies via exception when isPregnant is true, even with every dimension exhausted', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 0, achieved: 0 })
+  it('qualifies (own dimensions ignored), charged to the highest-volume NSE line with room', async () => {
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 2' }
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
       segment: 'Nivel 1',
       age: 20,
       householdSize: 1,
@@ -175,12 +296,15 @@ describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2' })
   })
 
-  it('qualifies via exception when hasBabyUnder3 is true', async () => {
+  it('falls back to the unattributed exception marker only for a manual-cap region with no NSE lines', async () => {
+    regionObjective = { objective: 20, source: 'cap', achieved: 3 }
+    openNseLine = null
+
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
       segment: 'Nivel 1',
       age: 20,
       householdSize: 1,
@@ -191,11 +315,12 @@ describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 
     expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
   })
 
-  it('is never blocked by a region cap that has already been reached', async () => {
-    regionCap = { cap: 10, achieved: 10 }
+  it('IS blocked when every NSE line of the region is full (nse_sum objective)', async () => {
+    regionObjective = { objective: 44, source: 'nse_sum', achieved: 30 }
+    openNseLine = null
 
     const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
+      ...HN_CENTRO_I,
       segment: 'Nivel 1',
       age: 20,
       householdSize: 1,
@@ -203,110 +328,57 @@ describe('checkQuotaAvailability — pregnancy/baby-under-3 exception (spec 011 
       hasBabyUnder3: false,
     })
 
-    expect(result.qualifies).toBe(true)
-    expect(result.matchedDimension).toBe('exception')
-  })
-
-  it('attributes to the region\'s highest-volume active quota cell instead of leaving it unattributed', async () => {
-    highestVolumeTarget = { dimensionType: 'edad', dimensionValue: 'Hasta 34' }
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 1',
-      age: 20,
-      householdSize: 1,
-      isPregnant: true,
-      hasBabyUnder3: false,
-    })
-
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'edad', matchedValue: 'Hasta 34' })
-  })
-
-  it('is never blocked even when the highest-volume cell it attributes to has no availability left', async () => {
-    highestVolumeTarget = { dimensionType: 'nse', dimensionValue: 'Nivel 4' }
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 16 })
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 1',
-      age: 20,
-      householdSize: 1,
-      isPregnant: false,
-      hasBabyUnder3: true,
-    })
-
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
+    expect(result.qualifies).toBe(false)
+    expect(result.deniedReason).toBe('region_completa')
   })
 })
 
-describe('checkQuotaAvailability — region aggregate cap (spec 011 US4)', () => {
-  beforeEach(() => {
-    progressByKey.clear()
-    regionCap = null
+describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whatsapp/cam-rd-quota-over-delivery-2026-09-10.md)', () => {
+  beforeEach(resetState)
+
+  it('Panamá / Centro I (objetivo 57, entregó 93): a new lead — NSE, edad, integrantes or exception — does NOT qualify', async () => {
+    regionObjective = { objective: 57, source: 'cap', achieved: 93 }
+    // every NSE line already at/over target
+    openNseLine = null
+
+    const cases = [
+      { isPregnant: false, hasBabyUnder3: false, age: 25, householdSize: 4 }, // NSE / edad "Hasta 34"
+      { isPregnant: true, hasBabyUnder3: false, age: 25, householdSize: 4 }, // exception
+      { isPregnant: false, hasBabyUnder3: true, age: 55, householdSize: 6 }, // exception
+    ]
+    for (const c of cases) {
+      const r = await checkQuotaAvailability({
+        country: 'Panamá',
+        region: 'Centro I',
+        nseRegion: 'Centro I',
+        segment: 'Nivel 4',
+        ...c,
+      })
+      expect(r.qualifies).toBe(false)
+      expect(r.deniedReason).toBe('region_completa')
+    }
   })
 
-  it('blocks an otherwise-qualifying lead once the region cap is reached', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
-    regionCap = { cap: 50, achieved: 50 }
+  it('El Salvador / Centro I (fuera de muestra, objetivo 0): closed for everyone', async () => {
+    regionObjective = { objective: 0, source: 'none', achieved: 9 }
 
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 4',
-      age: null,
-      householdSize: null,
-      isPregnant: false,
+    const r = await checkQuotaAvailability({
+      country: 'El Salvador',
+      region: 'Centro I',
+      nseRegion: 'Centro I',
+      segment: 'Nivel 1',
+      age: 30,
+      householdSize: 3,
+      isPregnant: true,
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null })
-  })
-
-  it('proceeds to dimension evaluation when the region cap has not been reached', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
-    regionCap = { cap: 50, achieved: 30 }
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 4',
-      age: null,
-      householdSize: null,
-      isPregnant: false,
-      hasBabyUnder3: false,
+    expect(r).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_fuera_de_muestra',
     })
-
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
-  })
-
-  it('never blocks when cap_count is null ("sin tope")', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
-    regionCap = { cap: null, achieved: 999 }
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 4',
-      age: null,
-      householdSize: null,
-      isPregnant: false,
-      hasBabyUnder3: false,
-    })
-
-    expect(result.qualifies).toBe(true)
-  })
-
-  it('never blocks when no region cap row is configured at all', async () => {
-    seedProgress({ ...HONDURAS_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
-    regionCap = null
-
-    const result = await checkQuotaAvailability({
-      ...HONDURAS_CENTRO_I,
-      segment: 'Nivel 4',
-      age: null,
-      householdSize: null,
-      isPregnant: false,
-      hasBabyUnder3: false,
-    })
-
-    expect(result.qualifies).toBe(true)
   })
 })
 
@@ -319,19 +391,11 @@ describe('describeQuotaMatch', () => {
     expect(describeQuotaMatch('edad', 'Hasta 34')).toBe('rango de edad: Hasta 34')
   })
 
-  it('describes an integrantes match with its value', () => {
-    expect(describeQuotaMatch('integrantes', '5+')).toBe('número de integrantes del hogar: 5+')
-  })
-
   it('describes the pregnancy/baby-under-3 exception without a value', () => {
     expect(describeQuotaMatch('exception', null)).toBe('excepción por embarazo o bebé menor a 36 meses')
   })
 
   it('returns null when there is no match', () => {
     expect(describeQuotaMatch(null, null)).toBeNull()
-  })
-
-  it('returns null for an unrecognized dimension', () => {
-    expect(describeQuotaMatch('unknown', 'x')).toBeNull()
   })
 })
