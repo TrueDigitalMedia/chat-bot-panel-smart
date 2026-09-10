@@ -385,6 +385,36 @@ export const consentEvents = pgTable(
   (t) => [index('consent_events_lead_created_idx').on(t.leadId, t.createdAt)],
 )
 
+/**
+ * Persistent per-recipient send-suppression list (audit §3.2). A lead's opt-out lives on
+ * its own row as a terminal `statusReason` (OPT_OUT_STATUS_REASONS), but a returning
+ * phone that clicks a new click-to-WhatsApp ad becomes a *fresh* lead row with no memory
+ * of the earlier STOP — so the bot would message them again and Twilio would bounce the
+ * send with error 21610. This table is keyed by the contact identifier itself (not the
+ * lead) so the suppression outlives any single lead: `messaging/send.ts` checks it before
+ * every outbound send. Rows are added the moment `transitionLead` records an
+ * OPT_OUT_STATUS_REASONS reason, and removed only on a confirmed opt-out reversal.
+ */
+export const messagingSuppressions = pgTable(
+  'messaging_suppressions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    channel: channelEnum('channel').notNull(),
+    /** Normalized contact id: E.164 phone (`+<digits>`) for the common WhatsApp case,
+     *  else the raw channelUserId (a WhatsApp BSUID, a Telegram numeric id). */
+    identifier: varchar('identifier', { length: 128 }).notNull(),
+    /** The `statusReason` (or synthetic source tag) that triggered the suppression. */
+    reason: text('reason').notNull(),
+    /** Where the suppression was written from — 'state_transition' | 'twilio_stop' | manual. */
+    source: varchar('source', { length: 40 }).notNull(),
+    /** The lead row that triggered it, for audit — nullable + ON DELETE SET NULL so a
+     *  later lead cleanup never drops the suppression itself. */
+    leadId: uuid('lead_id').references(() => leads.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('messaging_suppressions_channel_identifier_idx').on(t.channel, t.identifier)],
+)
+
 /** Golden scenarios for qualification / quota QA (seeded examples). */
 export const evalFixtures = pgTable(
   'eval_fixtures',

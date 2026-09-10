@@ -12,6 +12,7 @@ import {
   getLastOutboundMessage,
   countOutboundSinceLastInbound,
 } from '@/lib/db/conversation-messages'
+import { isRecipientSuppressed } from '@/lib/db/suppressions'
 
 // Shared literal with gps-capture.ts's own GPS_MANUAL_CALLBACK (not imported — this
 // module is transport-only and shouldn't depend on conversation-domain modules, which
@@ -74,6 +75,56 @@ async function exceededOutboundCeiling(leadId: string | undefined): Promise<bool
     return true
   }
   return false
+}
+
+/**
+ * Persistent opt-out check (audit §3.2) — a contact who ever texted STOP / declined a
+ * re-engagement nudge / bounced a send with Twilio 21610 is on `messaging_suppressions`,
+ * keyed by phone (not lead), so a returning phone on a brand-new lead row is still
+ * honored. Runs on every outbound send alongside exceededOutboundCeiling. `web` has no
+ * external transport to suppress.
+ */
+async function recipientSuppressed(to: ChannelRecipient): Promise<boolean> {
+  if (to.channel === 'web') return false
+  const phoneNumber =
+    (to as ChannelRecipient & { phoneNumber?: string | null }).phoneNumber ?? null
+  const suppressed = await isRecipientSuppressed({
+    channel: to.channel,
+    channelUserId: to.channelUserId,
+    phoneNumber,
+  }).catch((err) => {
+    // Never let a suppression-list read error turn into a dropped (or thrown) send —
+    // fail open, the lead-level opt-out handling in flow-router is still the primary gate.
+    console.error('[messaging] suppression check failed — allowing send', {
+      leadId: leadIdOf(to) ?? null,
+      err: String(err),
+    })
+    return false
+  })
+  if (suppressed) {
+    console.warn('[messaging] recipient on suppression list — dropping send', {
+      leadId: leadIdOf(to) ?? null,
+      channel: to.channel,
+    })
+  }
+  return suppressed
+}
+
+/** Both pre-send gates: the persistent opt-out list and the per-lead no-reply ceiling.
+ *  `skipSuppressionCheck` is for the opt-out *confirmation* itself — the one-time
+ *  "entendido, no te contactamos más" reply must still reach a contact we just added to
+ *  the suppression list (callers pass `bypassSuppression: true` in extraMeta). */
+async function shouldSkipSend(
+  to: ChannelRecipient,
+  opts?: { skipSuppressionCheck?: boolean },
+): Promise<boolean> {
+  if (!opts?.skipSuppressionCheck && (await recipientSuppressed(to))) return true
+  return exceededOutboundCeiling(leadIdOf(to))
+}
+
+/** extraMeta flag the opt-out confirmation/acknowledgment sends set (see shouldSkipSend). */
+function bypassesSuppression(extraMeta?: Record<string, unknown>): boolean {
+  return extraMeta?.bypassSuppression === true || extraMeta?.optOutAck === true
 }
 
 interface DedupeResult {
@@ -139,7 +190,7 @@ export async function sendText(
   text: string,
   extraMeta?: Record<string, unknown>,
 ): Promise<void> {
-  if (await exceededOutboundCeiling(leadIdOf(to))) return
+  if (await shouldSkipSend(to, { skipSuppressionCheck: bypassesSuppression(extraMeta) })) return
   const { text: outText, meta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: meta.dedupeIndex })
@@ -169,7 +220,7 @@ export async function sendVideo(
   video: string,
   caption?: string,
 ): Promise<void> {
-  if (await exceededOutboundCeiling(leadIdOf(to))) return
+  if (await shouldSkipSend(to)) return
   switch (to.channel) {
     case 'telegram':
       await telegram.sendVideo(BigInt(to.channelUserId), video, caption)
@@ -194,7 +245,7 @@ export async function sendInlineKeyboard(
   buttons: InlineKeyboardButton[][],
   extraMeta?: Record<string, unknown>,
 ): Promise<void> {
-  if (await exceededOutboundCeiling(leadIdOf(to))) return
+  if (await shouldSkipSend(to)) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', {
@@ -246,7 +297,7 @@ export async function sendTemplateOrKeyboard(
   buttons: InlineKeyboardButton[][],
   opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
 ): Promise<void> {
-  if (await exceededOutboundCeiling(leadIdOf(to))) return
+  if (await shouldSkipSend(to)) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', {
@@ -296,7 +347,7 @@ export async function sendTemplateOrText(
   text: string,
   opts?: { contentVariables?: Record<string, string>; extraMeta?: Record<string, unknown> },
 ): Promise<void> {
-  if (await exceededOutboundCeiling(leadIdOf(to))) return
+  if (await shouldSkipSend(to)) return
   const { text: outText, meta: dedupeMeta, suppress } = await dedupeRepeat(leadIdOf(to), text)
   if (suppress) {
     console.warn('[messaging] repeat circuit breaker: suppressing send', { leadId: leadIdOf(to), dedupeIndex: dedupeMeta.dedupeIndex })

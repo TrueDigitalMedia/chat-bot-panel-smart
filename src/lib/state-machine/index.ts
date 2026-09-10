@@ -60,6 +60,32 @@ export async function transitionLead(
     })
   }
 
+  // Persistent send-suppression (audit §3.2) — when the reason means "the user asked us
+  // to stop" (OPT_OUT_STATUS_REASONS, via isOptOutReason), add the contact's phone to
+  // messaging_suppressions so a *future* lead row for the same phone (a returning
+  // click-to-WhatsApp click) is still honored. Centralized here, like the job-cancel
+  // above, so every current and future opt-out transition is covered — not just the
+  // three call sites (flow-router free-text, reengage "stop", handleTwilioStop) that
+  // record these reasons today. Fire-and-forget: a suppression-write failure must never
+  // fail the transition itself; the lead-row terminal status is still the primary gate.
+  void import('@/lib/db/suppressions')
+    .then(async ({ isOptOutReason, suppressRecipient }) => {
+      if (!isOptOutReason(reason)) return
+      const [row] = await db
+        .select({
+          channel: leads.channel,
+          channelUserId: leads.channelUserId,
+          phoneNumber: leads.phoneNumber,
+        })
+        .from(leads)
+        .where(eq(leads.id, leadId))
+      if (!row) return
+      await suppressRecipient(row, { reason, source: 'state_transition', leadId })
+    })
+    .catch((err) => {
+      console.error('[suppressions] transition suppress failed', { leadId, reason, err: String(err) })
+    })
+
   // Fire-and-forget Phase-1 qualification/quota eval (never blocks the chat)
   if (PHASE1_EVAL_REASONS.has(reason)) {
     void import('@/lib/eval/persist-eval')

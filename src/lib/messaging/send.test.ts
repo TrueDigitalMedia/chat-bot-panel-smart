@@ -7,6 +7,7 @@ const {
   getLastOutboundMessage,
   logConversationMessage,
   countOutboundSinceLastInbound,
+  isRecipientSuppressed,
 } = vi.hoisted(() => ({
   telegramSendText: vi.fn(),
   telegramSendContactRequest: vi.fn(),
@@ -14,6 +15,7 @@ const {
   getLastOutboundMessage: vi.fn(),
   logConversationMessage: vi.fn(),
   countOutboundSinceLastInbound: vi.fn(),
+  isRecipientSuppressed: vi.fn(),
 }))
 
 vi.mock('@/lib/telegram/send', () => ({ sendText: telegramSendText, sendContactRequest: telegramSendContactRequest }))
@@ -24,6 +26,7 @@ vi.mock('@/lib/db/conversation-messages', () => ({
   logConversationMessage,
   countOutboundSinceLastInbound,
 }))
+vi.mock('@/lib/db/suppressions', () => ({ isRecipientSuppressed }))
 
 import { sendText, sendPhoneRequest } from './send'
 import type { ChannelRecipient } from '@/types/channel'
@@ -44,6 +47,7 @@ beforeEach(() => {
   whatsappSendText.mockResolvedValue(undefined)
   logConversationMessage.mockResolvedValue(undefined)
   countOutboundSinceLastInbound.mockResolvedValue(0)
+  isRecipientSuppressed.mockResolvedValue(false)
 })
 
 describe('sendText — never repeats the same message verbatim', () => {
@@ -149,6 +153,37 @@ describe('sendText — never repeats the same message verbatim', () => {
 
     expect(telegramSendText).not.toHaveBeenCalled()
     expect(logConversationMessage).not.toHaveBeenCalled()
+  })
+
+  it('drops the send when the recipient is on the persistent suppression list (audit §3.2)', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    isRecipientSuppressed.mockResolvedValue(true)
+    const to = makeRecipient({ channel: 'whatsapp', channelUserId: '+50255551234' })
+
+    await sendText(to, 'un mensaje nuevo')
+
+    expect(whatsappSendText).not.toHaveBeenCalled()
+    expect(logConversationMessage).not.toHaveBeenCalled()
+  })
+
+  it('still sends the opt-out confirmation itself to a suppressed contact (bypassSuppression)', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    isRecipientSuppressed.mockResolvedValue(true)
+    const to = makeRecipient({ channel: 'whatsapp', channelUserId: '+50255551234' })
+
+    await sendText(to, 'Entendido, no te contactamos más.', { bypassSuppression: true })
+
+    expect(whatsappSendText).toHaveBeenCalledWith('+50255551234', 'Entendido, no te contactamos más.', undefined)
+  })
+
+  it('still sends when the suppression check throws (fail-open)', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    isRecipientSuppressed.mockRejectedValue(new Error('db down'))
+    const to = makeRecipient()
+
+    await sendText(to, 'hola')
+
+    expect(telegramSendText).toHaveBeenCalledWith(BigInt(123), 'hola')
   })
 
   it('skips the dedupe lookup entirely when the recipient has no lead id', async () => {

@@ -1,7 +1,7 @@
 /** Re-exports for Twilio + Meta verification helpers. */
 export {
   verifyTwilioSignature,
-  resolveTwilioWebhookUrl,
+  twilioWebhookUrlCandidates,
 } from '@/lib/whatsapp/providers/twilio/verify'
 export {
   verifyMetaHubChallenge,
