@@ -17,7 +17,7 @@ import {
 import { validateCountryGeoField, isSupportedGeoCountry } from '@/lib/geo/country-catalog'
 import { sendSurveyQuestion } from '../send-survey-question'
 import { matchButtonChoice } from '../match-button-choice'
-import { salvageEmail, isNoEmailAnswer, NO_EMAIL_HELP } from '../email-answer'
+import { resolveEmail, isNoEmailAnswer, NO_EMAIL_HELP } from '../email-answer'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import { isMinorAge } from '../age-eligibility'
@@ -401,7 +401,7 @@ export async function handlePhase1(
         await sendSurveyQuestion(to, idx, lead.id)
         return
       }
-      const salvaged = salvageEmail(messageText)
+      const salvaged = resolveEmail(messageText)
       if (salvaged) {
         fieldValue = salvaged
         emailResolved = true
@@ -468,7 +468,12 @@ export async function handlePhase1(
           // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
           fieldValue = messageText.trim()
         } else {
-          console.warn('[phase-1] extraction failed', { leadId: lead.id, field: question.fieldName })
+          console.warn('[phase-1] extraction failed', {
+            leadId: lead.id,
+            field: question.fieldName,
+            correlationId,
+            text: messageText.slice(0, 120),
+          })
           const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
           const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
           await sendSurveyQuestion(to, idx, lead.id, { retry: !answered })

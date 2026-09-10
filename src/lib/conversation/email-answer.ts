@@ -51,8 +51,21 @@ export function salvageEmail(raw: string): string | null {
     .replace(/\p{M}/gu, '')
     .replace(/\s*@\s*/g, '@') // "juan perez @gmail" → "juan perez@gmail"
 
-  // "&" / "arroba" where "@" belongs (phone keyboards, dictation) — only if no real "@"
-  if (!s.includes('@')) s = s.replace(/\s*&\s*/, '@').replace(/\s+arroba\s+/, '@')
+  // Dictated / spelled-out separators — "juan arroba gmail punto com",
+  // "ana guion bajo p punto perez arroba hotmail punto com". Aggressive on purpose:
+  // the z.string().email() gate at the end rejects anything this mangles, and the
+  // caller then just re-asks. Far cheaper (and more reliable) than a model round-trip.
+  s = s
+    .replace(/\s+gui[o]?n\s+bajo\s+/g, '_')
+    .replace(/\s+gui[o]?n\s+(?:medio\s+|del\s+medio\s+)?/g, '-')
+    .replace(/\s+(?:punto|dot)\s+/g, '.')
+    .replace(/\s*\.\s*/g, '.')
+  // "&" / "arroba" / "(at)" / " at " where "@" belongs — only if there's no real "@"
+  if (!s.includes('@')) {
+    s = s
+      .replace(/\s*&\s*/, '@')
+      .replace(/\s*\(?\s*(?:arroba|at)\s*\)?\s*/, '@')
+  }
 
   const at = s.indexOf('@')
   if (at !== -1) {
@@ -92,6 +105,26 @@ export function salvageEmail(raw: string): string | null {
 
   const candidate = `${local}@${domain}`
   return emailSchema.safeParse(candidate).success ? candidate : null
+}
+
+/**
+ * The single deterministic entry point for turning a survey reply into a valid email
+ * address, or `null`. Tries, in order:
+ *   1. a cleanly-typed address sitting anywhere in the text ("mi correo es ana@x.com"),
+ *   2. `salvageEmail` — near-miss repair (spaces, commas, missing TLD, provider typos,
+ *      dictated "arroba"/"punto"/"guion bajo").
+ * Validation is `z.string().email()` — the exact check the AI extraction schema used —
+ * so this fully replaces the model call for the email field. There is nothing an LLM
+ * adds here except an extra network hop that fails ~16% of the time under load.
+ */
+export function resolveEmail(raw: string): string | null {
+  if (!raw) return null
+  const direct = raw.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i)
+  if (direct) {
+    const candidate = direct[0].toLowerCase().replace(/^\.+|\.+$/g, '')
+    if (emailSchema.safeParse(candidate).success) return candidate
+  }
+  return salvageEmail(raw)
 }
 
 /** Shown when a lead says they have no email — a real address is required to

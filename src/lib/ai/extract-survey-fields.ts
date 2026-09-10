@@ -7,6 +7,7 @@ import { logCall } from '@/lib/db/call-log'
 import { generateCorrelationId } from '@/lib/correlation'
 import { env } from '@/lib/env'
 import { SHOPPING_CATEGORIES } from '@/lib/conversation/survey-questions'
+import { resolveEmail } from '@/lib/conversation/email-answer'
 
 interface ExtractionResult<T> {
   ok: boolean
@@ -56,33 +57,20 @@ export const FIELD_HINTS: Partial<Record<FieldSchemaKey, string>> = {
 }
 
 /**
- * Pulls a well-formed email token out of `text`, or `undefined` if there isn't one.
- * Strict on purpose — no typo repair, no gluing trailing words onto the domain (that's
- * salvageEmail's job, and callers already run it first). It just needs to recognize an
- * address the user typed cleanly, which is the overwhelming majority of answers to the
- * email question: `"juan.perez@gmail.com"`, `"mi correo: ana@empresa.com.mx"`.
- */
-function extractPlainEmail(text: string): string | undefined {
-  const m = text.match(/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i)
-  if (!m) return undefined
-  const candidate = m[0].toLowerCase().replace(/\.+$/, '')
-  return z.string().email().max(200).safeParse(candidate).success ? candidate : undefined
-}
-
-/**
  * A value we can extract without the model when the answer has an unambiguous shape —
  * a fast path that skips the model call, and with it the `AI_NoObjectGeneratedError`
- * (an empty / rate-limited API reply, not a model mistake) that was still hitting
- * `email` extraction after the in-line retry below. Returns `undefined` when there is
- * no confident deterministic value and the model should run.
+ * (an empty / rate-limited API reply, not a model mistake) that kept hitting
+ * `email` extraction. Returns `undefined` when there is no confident deterministic
+ * value.
  *
- * `email` only, for now: it's the field with a machine-checkable format
- * (`z.string().email()`, the same check the model schema uses) and a high share of
- * clean answers. Callers handle "no tengo correo" (isNoEmailAnswer) and typo repair
- * (salvageEmail) before ever reaching extractField.
+ * `email` is fully deterministic (see `resolveEmail`): a clean address anywhere in the
+ * text, or a near-miss repair (dictated "arroba"/"punto", spaces, provider typos,
+ * missing TLD). The validation is `z.string().email()` — byte-for-byte the check the
+ * model schema used — so the model never needs to see this field; `extractField`
+ * returns `ok: false` on a miss and the caller re-asks.
  */
 function deterministicValue(fieldName: FieldSchemaKey, text: string): string | undefined {
-  if (fieldName === 'email') return extractPlainEmail(text)
+  if (fieldName === 'email') return resolveEmail(text) ?? undefined
   return undefined
 }
 
@@ -116,6 +104,11 @@ export async function extractField(
   // failure rate — from the hot path for the fields it covers.
   const shortCircuit = deterministicValue(fieldName, sanitized)
   if (shortCircuit !== undefined) {
+    console.info('[extractField] resolved deterministically', {
+      correlationId,
+      leadId: opts?.leadId,
+      fieldName,
+    })
     await logCall({
       leadId: opts?.leadId,
       callType: 'field_extraction',
@@ -124,6 +117,28 @@ export async function extractField(
       correlationId,
     }).catch(() => {})
     return { ok: true, value: shortCircuit, correlationId }
+  }
+
+  // `email` is deterministic-only — never fall through to the model. `resolveEmail`
+  // above already ran every repair we have; if it still didn't produce a valid
+  // address the answer genuinely isn't one (e.g. "no me acuerdo", a phone number),
+  // so return a miss and let the caller re-ask. This is what removes
+  // AI_NoObjectGeneratedError from the email path for good.
+  if (fieldName === 'email') {
+    console.warn('[extractField] email not resolvable — re-ask', {
+      correlationId,
+      leadId: opts?.leadId,
+      textPreview: sanitized.slice(0, 120),
+    })
+    await logCall({
+      leadId: opts?.leadId,
+      callType: 'field_extraction',
+      model: 'deterministic',
+      latencyMs: Date.now() - start,
+      correlationId,
+      error: 'email_unresolved',
+    }).catch(() => {})
+    return { ok: false, correlationId }
   }
 
   try {
@@ -162,7 +177,13 @@ export async function extractField(
     return { ok: true, value, correlationId }
   } catch (err) {
     const latencyMs = Date.now() - start
-    console.error('[extractField] failed', { fieldName, error: String(err) })
+    console.error('[extractField] failed', {
+      fieldName,
+      correlationId,
+      leadId: opts?.leadId,
+      textPreview: sanitized.slice(0, 120),
+      error: String(err),
+    })
     await logCall({
       leadId: opts?.leadId,
       callType: 'field_extraction',
