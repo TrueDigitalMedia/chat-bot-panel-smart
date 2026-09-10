@@ -12,7 +12,7 @@ vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
 let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
-let highestVolumeNseTarget: { dimensionType: string; dimensionValue: string } | null = null
+let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
@@ -46,7 +46,7 @@ vi.mock('@/lib/quotas/quota-progress', () => ({
       return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
     },
   ),
-  getHighestVolumeNseTarget: vi.fn(async () => highestVolumeNseTarget),
+  getHighestVolumeNseTargetWithRoom: vi.fn(async () => openNseLine),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
@@ -62,7 +62,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
   beforeEach(() => {
     progressByKey.clear()
     regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
-    highestVolumeNseTarget = null
+    openNseLine = null
   })
 
   it('qualifies via the Ecuador "AB" NSE dimension (not a CAM "Nivel N" value)', async () => {
@@ -95,9 +95,10 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
     expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E' })
   })
 
-  it('falls through to edad/integrantes (shared bands, FR-012) when the Ecuador NSE cell is exhausted', async () => {
+  it('own NSE cell exhausted + edad demand → charged to another Ecuador NSE line with room', async () => {
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'nse', dimensionValue: 'C', target: 5, achieved: 5 })
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'edad', dimensionValue: '50+', target: 5, achieved: 0 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'D/E' }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -108,7 +109,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'edad', matchedValue: '50+' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E' })
   })
 
   it('does not qualify when nse, edad, and integrantes are all exhausted for the Ecuador region', async () => {
@@ -129,7 +130,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       qualifies: false,
       matchedDimension: null,
       matchedValue: null,
-      deniedReason: 'sin_cupo',
+      deniedReason: 'region_completa',
     })
   })
 
@@ -156,7 +157,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
 
   it('an Ecuador household reporting a pregnancy qualifies via the exception when the region still has room', async () => {
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'nse', dimensionValue: 'AB', target: 5, achieved: 5 })
-    highestVolumeNseTarget = null // no NSE line to attribute to — falls back to the unattributed marker
+    openNseLine = null // no NSE line to attribute to — falls back to the unattributed marker
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -171,7 +172,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
   })
 
   it('a baby-under-3 Ecuador household attributes to the region\'s highest-volume NSE line instead of going unattributed', async () => {
-    highestVolumeNseTarget = { dimensionType: 'nse', dimensionValue: 'C' }
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'C' }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,

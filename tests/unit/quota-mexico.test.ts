@@ -11,7 +11,7 @@ vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
 let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
-let highestVolumeNseTarget: { dimensionType: string; dimensionValue: string } | null = null
+let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
@@ -45,7 +45,7 @@ vi.mock('@/lib/quotas/quota-progress', () => ({
       return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
     },
   ),
-  getHighestVolumeNseTarget: vi.fn(async () => highestVolumeNseTarget),
+  getHighestVolumeNseTargetWithRoom: vi.fn(async () => openNseLine),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
@@ -61,7 +61,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
   beforeEach(() => {
     progressByKey.clear()
     regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
-    highestVolumeNseTarget = null
+    openNseLine = null
   })
 
   it('qualifies via the México "C+" NSE dimension (a 5-band AMAI value, not CAM Nivel N)', async () => {
@@ -80,13 +80,14 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
     expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E' })
   })
 
-  it('falls through to edad/integrantes (shared bands) when the México NSE cell is exhausted', async () => {
+  it('own NSE cell exhausted + integrantes demand → charged to another México NSE line with room', async () => {
     seedProgress({ ...MX_AMCM, dimensionType: 'nse', dimensionValue: 'D+', target: 5, achieved: 5 })
     seedProgress({ ...MX_AMCM, dimensionType: 'integrantes', dimensionValue: '5+', target: 5, achieved: 0 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'C+' }
     const result = await checkQuotaAvailability({
       ...MX_AMCM, segment: 'D+', age: 40, householdSize: 6, isPregnant: false, hasBabyUnder3: false,
     })
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'integrantes', matchedValue: '5+' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'C+' })
   })
 
   it('does not qualify when nse, edad, and integrantes are all exhausted for the México region', async () => {
@@ -96,7 +97,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
     const result = await checkQuotaAvailability({
       ...MX_AMCM, segment: 'AB', age: 20, householdSize: 1, isPregnant: false, hasBabyUnder3: false,
     })
-    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null, deniedReason: 'sin_cupo' })
+    expect(result).toEqual({ qualifies: false, matchedDimension: null, matchedValue: null, deniedReason: 'region_completa' })
   })
 
   it('the México region objective blocks an otherwise-qualifying lead once reached', async () => {
@@ -110,7 +111,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
 
   it('a baby-under-36-months México household qualifies via the exception even with every dimension exhausted', async () => {
     seedProgress({ ...MX_CENTRO, dimensionType: 'nse', dimensionValue: 'D+', target: 5, achieved: 5 })
-    highestVolumeNseTarget = null
+    openNseLine = null
     const result = await checkQuotaAvailability({
       ...MX_CENTRO, segment: 'D+', age: 20, householdSize: 1, isPregnant: false, hasBabyUnder3: true,
     })
@@ -118,7 +119,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
   })
 
   it('a pregnant México household attributes to the region\'s highest-volume active cell', async () => {
-    highestVolumeNseTarget = { dimensionType: 'nse', dimensionValue: 'C' }
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'C' }
     const result = await checkQuotaAvailability({
       ...MX_AMCM, segment: 'AB', age: 20, householdSize: 1, isPregnant: true, hasBabyUnder3: false,
     })

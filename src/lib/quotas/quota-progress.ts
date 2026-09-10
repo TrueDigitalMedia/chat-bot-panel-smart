@@ -102,22 +102,19 @@ async function countAchieved(
 }
 
 /**
- * The active **NSE** quota line with the highest configured target_count for this
- * country+region. Per the client's model (see docs/whatsapp/ + PUNTO 1 clarification
- * 2026-09-10) every lead that qualifies by a "second/third conditional" — the
- * pregnancy/baby-under-3 exception, or by edad/integrantes when its own NSE line is
- * full — must be *charged to the region's highest-volume NSE line* so that line still
- * advances toward its objective and deactivates on time, instead of being booked
- * against an edad/integrantes cell (which would let the region silently over-deliver).
- * Null only if the region has no active NSE line at all (objective then came from a
- * manual region cap — caller falls back to the unattributed 'exception' marker).
+ * The active **NSE** quota line with the highest configured target_count that still has
+ * room (available > 0). Used to charge a conditional-qualified lead (pregnancy/baby or
+ * edad/integrantes) to an NSE line WITHOUT pushing any line over its own objective —
+ * every country+region+NSE line is a hard cap that must deactivate on time (PUNTO 1
+ * clarification 2026-09-10: El Salvador Centro II / Nivel 4 went 14 → 20). Null when
+ * every NSE line in the region is already full — the lead then does not qualify.
  */
-export async function getHighestVolumeNseTarget(
+export async function getHighestVolumeNseTargetWithRoom(
   country: string,
   region: string,
 ): Promise<{ dimensionType: DimensionType; dimensionValue: string } | null> {
-  const [row] = await db
-    .select({ dimensionType: quotaTargets.dimensionType, dimensionValue: quotaTargets.dimensionValue })
+  const rows = await db
+    .select()
     .from(quotaTargets)
     .where(
       and(
@@ -128,10 +125,14 @@ export async function getHighestVolumeNseTarget(
       ),
     )
     .orderBy(desc(quotaTargets.targetCount))
-    .limit(1)
 
-  if (!row) return null
-  return { dimensionType: row.dimensionType as DimensionType, dimensionValue: row.dimensionValue }
+  for (const row of rows) {
+    const achieved = await countAchieved(row.country, row.region, 'nse', row.dimensionValue)
+    if (row.targetCount - achieved > 0) {
+      return { dimensionType: 'nse', dimensionValue: row.dimensionValue }
+    }
+  }
+  return null
 }
 
 /** Progress for a single country+region+dimension combination, or null if no target row exists. */

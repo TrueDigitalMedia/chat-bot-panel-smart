@@ -138,10 +138,14 @@ Honduras y Panamá. Correcciones vigentes:
 3. **La excepción de embarazo/bebé sigue salteando la celda puntual de NSE/edad/
    integrantes, pero NO el objetivo de la región.** Si la región llegó a su objetivo, el
    lead va a `quota_exhausted`. (Reemplaza US3 escenario 2 y FR-003 en ese punto.)
-4. **Los condicionales 2 y 3 "completan cuota", no la amplían.** Un lead que califica por
-   edad/integrantes (con su línea NSE llena) o por la excepción se imputa a la **línea NSE
-   de mayor volumen** de la región, para que esa línea avance a su objetivo y se
-   desactive a tiempo.
+4. **Cada línea país+región+NSE es TAMBIÉN un techo duro.** Al llegar a su objetivo se
+   desactiva: no se le carga ningún lead más, ni por NSE ni por condicional. Un lead que
+   califica por edad/integrantes (con su propia línea NSE llena) o por la excepción se
+   imputa a la **línea NSE de mayor volumen que todavía tenga cupo**. Si ninguna línea NSE
+   de la región tiene cupo, la región está completa y el lead va a `quota_exhausted`
+   (aunque el objetivo agregado manual todavía no se haya alcanzado). Los condicionales
+   "completan cuota", nunca la amplían. (Caso real: El Salvador Centro II / Nivel 4,
+   objetivo 14, entregó 20.)
 5. **Leads sin región identificada ⇒ `quota_exhausted`** (motivo `region_no_identificada`
    en el log `quota_check.denied_reason`).
 
