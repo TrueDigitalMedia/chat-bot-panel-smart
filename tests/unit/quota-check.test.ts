@@ -122,6 +122,33 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
     expect(result.deniedReason).toBe('region_completa')
   })
 
+  it('a conditional lead in a closed region does NOT borrow cupo from another region', async () => {
+    // Lead lives in Centro I (objetivo 0). Centro II / Nivel 1 has room — irrelevant:
+    // the region is fixed by geo and cross-region borrowing never happens.
+    regionObjective = { objective: 0, source: 'none', achieved: 0 }
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 1' } // "some other region has room"
+
+    const byException = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 1',
+      age: 55,
+      householdSize: 6,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+    const byBand = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 1',
+      age: 55,
+      householdSize: 6,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(byException.deniedReason).toBe('region_fuera_de_muestra')
+    expect(byBand.deniedReason).toBe('region_fuera_de_muestra')
+  })
+
   it('does NOT qualify once the region objective is reached — even with pregnancy / baby', async () => {
     regionObjective = { objective: 14, source: 'cap', achieved: 14 }
 
