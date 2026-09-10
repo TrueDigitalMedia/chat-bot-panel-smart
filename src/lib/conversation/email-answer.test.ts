@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { salvageEmail, isNoEmailAnswer } from './email-answer'
+import { salvageEmail, resolveEmail, isNoEmailAnswer } from './email-answer'
 
 describe('salvageEmail', () => {
   it('passes a clean address through (lowercased)', () => {
@@ -42,6 +42,35 @@ describe('salvageEmail', () => {
     expect(salvageEmail('No tengo')).toBeNull()
     expect(salvageEmail('41')).toBeNull()
     expect(salvageEmail('')).toBeNull()
+  })
+})
+
+describe('salvageEmail — dictated separators', () => {
+  it('resolves "arroba" / "punto" spelled out', () => {
+    expect(salvageEmail('juan arroba gmail punto com')).toBe('juan@gmail.com')
+    expect(salvageEmail('ana perez arroba hotmail punto com')).toBe('anaperez@hotmail.com')
+  })
+
+  it('resolves "guion bajo" / "guion" in the local part', () => {
+    expect(salvageEmail('ana guion bajo lopez arroba gmail punto com')).toBe('ana_lopez@gmail.com')
+    expect(salvageEmail('luis guion perez arroba yahoo punto com')).toBe('luis-perez@yahoo.com')
+  })
+})
+
+describe('resolveEmail', () => {
+  it('extracts a clean address from anywhere in the text', () => {
+    expect(resolveEmail('mi correo es ana@empresa.com.mx gracias')).toBe('ana@empresa.com.mx')
+    expect(resolveEmail('JUAN.PEREZ@GMAIL.COM')).toBe('juan.perez@gmail.com')
+  })
+
+  it('falls back to salvage for a near-miss', () => {
+    expect(resolveEmail('juan arroba gmail punto com')).toBe('juan@gmail.com')
+    expect(resolveEmail('Gamalielreyes701@gmail')).toBe('gamalielreyes701@gmail.com')
+  })
+
+  it('returns null when there is no recoverable address', () => {
+    expect(resolveEmail('no me acuerdo ahorita')).toBeNull()
+    expect(resolveEmail('5512345678')).toBeNull()
   })
 })
 

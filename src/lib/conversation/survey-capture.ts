@@ -7,7 +7,7 @@ import { isSupportedGeoCountry, validateCountryGeoField } from '@/lib/geo/countr
 import { BUTTON_FIELDS, FREE_TEXT_FIELDS, type SurveyFieldName } from '@/types/lead'
 import { resolveSurveyQuestions } from './survey-plan'
 import { matchButtonChoice } from './match-button-choice'
-import { salvageEmail, isNoEmailAnswer, NO_EMAIL_HELP } from './email-answer'
+import { resolveEmail, isNoEmailAnswer, NO_EMAIL_HELP } from './email-answer'
 
 // NOTE: `field: SurveyFieldName` below is the fixed CAM field-name union — this function
 // (used only by the correction flow, correction.ts) doesn't yet cover Ecuador's
@@ -78,7 +78,7 @@ export async function captureSurveyFieldValue(
   // "no tengo correo" gets the how-to message, never a null value.
   if (field === 'email') {
     if (isNoEmailAnswer(messageText)) return { ok: false, message: NO_EMAIL_HELP }
-    const salvaged = salvageEmail(messageText)
+    const salvaged = resolveEmail(messageText)
     if (salvaged) return { ok: true, value: salvaged }
   }
 

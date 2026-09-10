@@ -35,21 +35,17 @@ describe('extractField — email', () => {
     expect(generateObject).not.toHaveBeenCalled()
   })
 
-  it('does not accept a malformed address on the fast path — defers to the model', async () => {
-    generateObject.mockResolvedValue({ object: { value: 'juan@gmail.com' }, usage: {} })
-
+  it('repairs a dictated address deterministically — model never runs', async () => {
     const res = await extractField('email', 'juan arroba gmail punto com')
 
-    expect(generateObject).toHaveBeenCalled()
+    expect(generateObject).not.toHaveBeenCalled()
     expect(res).toMatchObject({ ok: true, value: 'juan@gmail.com' })
   })
 
-  it('consults the model when the text has no parseable address, and gives up if it fails', async () => {
-    generateObject.mockRejectedValue(new Error('AI_NoObjectGeneratedError: the model did not return a response'))
-
+  it('returns a miss without touching the model when the text has no address', async () => {
     const res = await extractField('email', 'no me acuerdo ahorita')
 
-    expect(generateObject).toHaveBeenCalled()
+    expect(generateObject).not.toHaveBeenCalled()
     expect(res.ok).toBe(false)
   })
 })
