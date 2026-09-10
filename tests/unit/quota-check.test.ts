@@ -333,6 +333,55 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
   })
 })
 
+describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whatsapp/cam-rd-quota-over-delivery-2026-09-10.md)', () => {
+  beforeEach(resetState)
+
+  it('Panamá / Centro I (objetivo 57, entregó 93): a new lead — NSE, edad, integrantes or exception — does NOT qualify', async () => {
+    regionObjective = { objective: 57, source: 'cap', achieved: 93 }
+    // every NSE line already at/over target
+    openNseLine = null
+
+    const cases = [
+      { isPregnant: false, hasBabyUnder3: false, age: 25, householdSize: 4 }, // NSE / edad "Hasta 34"
+      { isPregnant: true, hasBabyUnder3: false, age: 25, householdSize: 4 }, // exception
+      { isPregnant: false, hasBabyUnder3: true, age: 55, householdSize: 6 }, // exception
+    ]
+    for (const c of cases) {
+      const r = await checkQuotaAvailability({
+        country: 'Panamá',
+        region: 'Centro I',
+        nseRegion: 'Centro I',
+        segment: 'Nivel 4',
+        ...c,
+      })
+      expect(r.qualifies).toBe(false)
+      expect(r.deniedReason).toBe('region_completa')
+    }
+  })
+
+  it('El Salvador / Centro I (fuera de muestra, objetivo 0): closed for everyone', async () => {
+    regionObjective = { objective: 0, source: 'none', achieved: 9 }
+
+    const r = await checkQuotaAvailability({
+      country: 'El Salvador',
+      region: 'Centro I',
+      nseRegion: 'Centro I',
+      segment: 'Nivel 1',
+      age: 30,
+      householdSize: 3,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+
+    expect(r).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      deniedReason: 'region_fuera_de_muestra',
+    })
+  })
+})
+
 describe('describeQuotaMatch', () => {
   it('describes an nse match with its value', () => {
     expect(describeQuotaMatch('nse', 'Nivel 2')).toBe('nivel socioeconómico (NSE): Nivel 2')
