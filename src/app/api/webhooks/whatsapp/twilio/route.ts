@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
 import { isTwilioConfigured } from '@/lib/env'
-import { verifyTwilioSignature, resolveTwilioWebhookUrl } from '@/lib/whatsapp/verify'
+import { verifyTwilioSignature, twilioWebhookUrlCandidates } from '@/lib/whatsapp/verify'
 import { normalizeTwilioInbound, stripWhatsAppAddress } from '@/lib/whatsapp/normalize-inbound'
 import { getPendingWaChoices } from '@/lib/whatsapp/pending-choices'
 import { processWhatsAppInbound } from '@/lib/whatsapp/handle-inbound'
@@ -26,10 +26,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   })
 
   const signature = request.headers.get('X-Twilio-Signature')
-  const webhookUrl = resolveTwilioWebhookUrl(request.url)
 
-  if (!verifyTwilioSignature(signature, webhookUrl, params, request.url)) {
-    console.warn('[whatsapp/twilio:signature] invalid', { webhookUrl })
+  if (!verifyTwilioSignature(signature, twilioWebhookUrlCandidates(request), params)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
   }
 

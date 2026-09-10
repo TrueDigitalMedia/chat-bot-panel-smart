@@ -269,6 +269,17 @@ export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, co
         const fresh = await resetLeadConversation(lead.id)
         await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
         await cancelPendingRecontact(lead.id).catch(() => {})
+        // Confirmed re-entry — lift the persistent send-suppression (audit §3.2) so the
+        // resumed flow can actually message them again.
+        await import('@/lib/db/suppressions')
+          .then(({ unsuppressRecipient }) =>
+            unsuppressRecipient({
+              channel: lead.channel,
+              channelUserId: lead.channelUserId,
+              phoneNumber: lead.phoneNumber,
+            }),
+          )
+          .catch((err) => console.error('[suppressions] reversal unsuppress failed', { leadId: lead.id, err: String(err) }))
         await recordConsentEvent(lead.id, 'opt_out', lead.channel, true, OPT_OUT_REENTRY_TEXT, messageText)
         await sendText(fresh, OPT_OUT_REENTRY_TEXT)
         await handlePhase1(fresh, '', undefined, correlationId)
@@ -304,7 +315,9 @@ export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, co
       await cancelPendingRecontact(lead.id).catch(() => {})
       await transitionLead(lead.id, optOutTargetStatus(status), 'user_freetext_opt_out', correlationId)
       await recordConsentEvent(lead.id, 'opt_out', lead.channel, false, optOutConfirmation, messageText)
-      await sendText(lead, optOutConfirmation)
+      // bypassSuppression: transitionLead just added this contact to messaging_suppressions
+      // (§3.2) — the one-time confirmation of their own opt-out still needs to go through.
+      await sendText(lead, optOutConfirmation, { bypassSuppression: true })
       return
     }
   }

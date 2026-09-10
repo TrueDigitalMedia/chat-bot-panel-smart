@@ -20,6 +20,10 @@ vi.mock('@/lib/db/conversation-messages', () => ({
   countOutboundSinceLastInbound: vi.fn(async () => 0),
 }))
 
+vi.mock('@/lib/db/suppressions', () => ({
+  isRecipientSuppressed: vi.fn(async () => false),
+}))
+
 // Never actually called for channel 'web' — mocked only so importing send.ts doesn't
 // pull in real Telegram/WhatsApp SDK clients that need env credentials.
 vi.mock('@/lib/telegram/send', () => ({

@@ -103,6 +103,7 @@ vi.mock('@/lib/concurrency/lead-lock', () => ({
 vi.mock('./detect-opt-out-reversal', () => ({ detectOptOutReversalIntent }))
 vi.mock('./missing-phone-recovery', () => ({ isMissingPhoneForRegistration, handleMissingPhoneRecovery }))
 vi.mock('@/lib/db/conversation-messages', () => ({ hasSentOutboundMessage, getLastOutboundMessage }))
+vi.mock('@/lib/db/suppressions', () => ({ unsuppressRecipient: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/messaging/send', () => ({ sendText, sendInlineKeyboard }))
 vi.mock('./exit-messages', () => ({
   supportRedirect: () => 'support redirect',
@@ -495,7 +496,11 @@ describe('routeMessage — free-text opt-out', () => {
     expect(cancelPendingJobs).toHaveBeenCalledWith('lead-1', 1)
     expect(cancelPendingRecontact).toHaveBeenCalledWith('lead-1')
     expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'user_freetext_opt_out', 'corr-1')
-    expect(sendText).toHaveBeenCalledWith(lead, expect.stringContaining('No te seguiremos contactando'))
+    expect(sendText).toHaveBeenCalledWith(
+      lead,
+      expect.stringContaining('No te seguiremos contactando'),
+      { bypassSuppression: true },
+    )
     expect(handlePhase1).not.toHaveBeenCalled()
     expect(scheduleRecontact).not.toHaveBeenCalled()
   })

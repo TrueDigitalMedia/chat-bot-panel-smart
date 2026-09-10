@@ -47,6 +47,9 @@ describe('messaging/send — whatsapp branch selects the bound number', () => {
       getLastOutboundMessage: vi.fn().mockResolvedValue(null),
       countOutboundSinceLastInbound: vi.fn().mockResolvedValue(0),
     }))
+    vi.doMock('@/lib/db/suppressions', () => ({
+      isRecipientSuppressed: vi.fn().mockResolvedValue(false),
+    }))
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
     const { sendText } = await import('@/lib/messaging/send')
 

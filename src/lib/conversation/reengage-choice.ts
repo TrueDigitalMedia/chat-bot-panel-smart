@@ -50,9 +50,12 @@ export async function handleReengageChoice(
     }
     const reason = DECLINE_REASON_BY_ATTEMPT[lead.reEngagementCount] ?? 're_engagement_declined'
     await transitionLead(lead.id, 'abandono', reason, correlationId)
+    // bypassSuppression: transitionLead just suppressed this contact (§3.2); the one-time
+    // confirmation of their own "stop" still needs to go through.
     await sendText(
       lead,
       'Entendido, no hay problema 🙏. No te seguiremos contactando por este proceso. Si cambias de opinión, escríbenos aquí para retomarlo.',
+      { bypassSuppression: true },
     )
     return
   }
