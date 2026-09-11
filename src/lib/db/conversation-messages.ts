@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, isNull, ne } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, ilike, inArray, isNull, ne } from 'drizzle-orm'
 import { db } from './client'
 import { conversationMessages, leads, surveyProfiles } from './schema'
 import { getLatestEvalForLead, getLatestEvalsForLeads } from '@/lib/eval/persist-eval'
@@ -196,6 +196,8 @@ export interface ListConversationsOptions {
   status?: LeadStatus
   /** 'web:room:Ecuador' | 'web:room:México' | 'generic' (web, no room) — spec 016 T021. */
   acquisitionSource?: string
+  /** Partial, case-insensitive match against leads.phoneNumber. */
+  phone?: string
   limit?: number
   offset?: number
 }
@@ -215,6 +217,7 @@ export async function listConversations(
   } else if (opts.acquisitionSource) {
     conditions.push(eq(leads.acquisitionSource, opts.acquisitionSource))
   }
+  if (opts.phone) conditions.push(ilike(leads.phoneNumber, `%${opts.phone}%`))
 
   // Fetch one extra row to detect whether a next page exists, without a separate
   // COUNT(*) query — sliced back down to `limit` before any of the per-lead lookups

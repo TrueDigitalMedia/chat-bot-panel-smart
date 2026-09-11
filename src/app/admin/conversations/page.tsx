@@ -35,6 +35,7 @@ const PAGE_SIZE = 25
 interface SearchParams {
   status?: string
   source?: string
+  phone?: string
   page?: string
 }
 
@@ -91,19 +92,28 @@ export default async function ConversationsPage({
   const offset = (page - 1) * PAGE_SIZE
 
   const acquisitionSource = SOURCE_FILTERS.some((f) => f.value === params.source) ? params.source : undefined
+  const phone = params.phone?.trim() || undefined
 
   const { items: conversations, hasMore } = await listConversations({
     status,
     acquisitionSource,
+    phone,
     limit: PAGE_SIZE,
     offset,
   })
 
   function filterHref(next: Partial<SearchParams>): string {
-    const merged = { status: params.status, source: params.source, page: params.page, ...next }
+    const merged = {
+      status: params.status,
+      source: params.source,
+      phone: params.phone,
+      page: params.page,
+      ...next,
+    }
     const qs = new URLSearchParams()
     if (merged.status) qs.set('status', merged.status)
     if (merged.source) qs.set('source', merged.source)
+    if (merged.phone) qs.set('phone', merged.phone)
     if (merged.page) qs.set('page', merged.page)
     const s = qs.toString()
     return s ? `/admin/conversations?${s}` : '/admin/conversations'
@@ -139,6 +149,13 @@ export default async function ConversationsPage({
             </option>
           ))}
         </select>
+        <input
+          type="text"
+          name="phone"
+          defaultValue={phone ?? ''}
+          placeholder="Buscar por teléfono"
+          className={styles.filterSelect}
+        />
         <button type="submit" className={styles.filterSubmit}>
           Filtrar
         </button>
