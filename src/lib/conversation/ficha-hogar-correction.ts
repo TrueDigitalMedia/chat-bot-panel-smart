@@ -32,6 +32,7 @@ export const CORRECT_FH_CANCEL = 'correctfh:cancel'
 const FIELD_LABELS: Record<FichaHogarFieldName, string> = {
   conflictOfInterest: 'Conflicto de interés',
   hasInternet: 'Acceso a internet',
+  internetServiceType: 'Tipo de servicio de internet',
   relationshipToHoh: 'Parentesco con Jefe de Familia',
   dateOfBirth: 'Fecha de nacimiento',
   hasHealthCondition: 'Condición de salud',

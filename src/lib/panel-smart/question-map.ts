@@ -1,6 +1,6 @@
 import { SHOPPING_CATEGORIES } from '@/lib/conversation/survey-questions'
 import { resolveSurveyQuestions } from '@/lib/conversation/survey-plan'
-import { FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
+import { FICHA_HOGAR_QUESTIONS, MEXICO_FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
 import type { SurveyFieldName, FichaHogarFieldName } from '@/types/lead'
 import type { PanelSmartResponseItem } from './types'
 
@@ -9,9 +9,20 @@ export type SyncableFieldName = SurveyFieldName | FichaHogarFieldName
 // CAM question text only (legacy TDM/MySQL sync labels) — resolveSurveyQuestions(null)
 // falls back to the CAM config. Non-CAM (Ecuador) NSE-variable field names aren't in
 // this map; TDM sync for those countries is tracked separately (spec 014 US4).
+//
+// This map is keyed by field name only (not per-country), so a field that means the same
+// thing everywhere (dateOfBirth, petCount, ...) can share one label. But conflictOfInterest
+// has different wording in MEXICO_FICHA_HOGAR_QUESTIONS than in the shared FICHA_HOGAR_QUESTIONS
+// — spreading the whole México list here would silently overwrite CAM/Ecuador's label too, so
+// only internetServiceType (a field that doesn't exist in the shared list at all) is added from
+// it; relationshipToHoh/conflictOfInterest/etc keep the shared list's label for every country.
+const MEXICO_ONLY_FICHA_HOGAR_QUESTIONS = MEXICO_FICHA_HOGAR_QUESTIONS.filter(
+  (q) => !FICHA_HOGAR_QUESTIONS.some((shared) => shared.fieldName === q.fieldName),
+)
 const QUESTION_TEXT_BY_FIELD = new Map<string, string>([
   ...resolveSurveyQuestions(null).map((q) => [q.fieldName, q.text] as const),
   ...FICHA_HOGAR_QUESTIONS.map((q) => [q.fieldName, q.text] as const),
+  ...MEXICO_ONLY_FICHA_HOGAR_QUESTIONS.map((q) => [q.fieldName, q.text] as const),
 ])
 
 /**

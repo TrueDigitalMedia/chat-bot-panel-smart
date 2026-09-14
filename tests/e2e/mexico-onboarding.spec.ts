@@ -70,7 +70,6 @@ async function runFullMexicoJourney(
   await step(telegramText(chatId, u++, 'maria@example.com'))
   await step(telegramCallback(chatId, u++, 'gender:Femenino'))
   await step(telegramText(chatId, u++, '34'))
-  await step(telegramCallback(chatId, u++, 'conflictOfInterest:false'))
   await step(telegramCallback(chatId, u++, 'educationHoh:Primaria completa'))
   await step(telegramCallback(chatId, u++, 'fullBathrooms:1'))
   await step(telegramCallback(chatId, u++, 'vehicleCount:0'))
@@ -86,7 +85,7 @@ async function runFullMexicoJourney(
 test.describe('México onboarding — part 1 (T017): screening + household-profile block, Q2=México', () => {
   const chatId = 999015001
 
-  test('selecting México routes into the México conflict-of-interest screening', async ({ request }) => {
+  test('selecting México routes into the México household-profile block', async ({ request }) => {
     test.skip(!secret, 'TELEGRAM_WEBHOOK_SECRET required')
     let u = 1
     await sendUpdate(request, telegramText(chatId, u++, 'Hola'))
@@ -100,7 +99,10 @@ test.describe('México onboarding — part 1 (T017): screening + household-profi
     expect(status).toBeLessThan(500)
   })
 
-  test('the México sensitive-industry answer "Sí" does not crash the webhook (would set not_qualified)', async ({
+  // Sensitive-industry screening (conflictOfInterest) now lives only in the Ficha Hogar
+  // (Fase 4) for México — no longer a Phase-1 question, so it isn't asked twice. See
+  // ficha-hogar-plan.test.ts / country-config-registry.test.ts for the discard-gate coverage.
+  test('the México sensitive-industry answer "Sí" (Ficha Hogar) does not crash the webhook', async ({
     request,
   }) => {
     test.skip(!secret, 'TELEGRAM_WEBHOOK_SECRET required')

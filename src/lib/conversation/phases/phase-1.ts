@@ -70,19 +70,13 @@ const D3_BUTTONS: InlineKeyboardButton[][] = [
  */
 const NUMERIC_BUTTON_FIELDS = new Set(['householdSize', 'bedrooms'])
 // Yes/No button questions whose callback payload is `<field>:true` / `<field>:false` —
-// the value must be parsed to a real boolean, not left as the string "true"/"false"
-// (the conflictOfInterest disqualify gate compares `fieldValue === true` in-memory).
-const BOOLEAN_BUTTON_FIELDS = new Set([
-  'domesticHelp',
-  'conflictOfInterest',
-  'isPregnant',
-  'hasBabyUnder3',
-])
+// the value must be parsed to a real boolean, not left as the string "true"/"false".
+const BOOLEAN_BUTTON_FIELDS = new Set(['domesticHelp', 'isPregnant', 'hasBabyUnder3'])
 
 /**
  * Non-CAM NSE variables with no dedicated survey_profiles column — persisted into
- * scoring_answers_json instead (spec 014 R6). educationPsh/householdSize/conflictOfInterest
- * are real columns shared across countries, so they're NOT in this set.
+ * scoring_answers_json instead (spec 014 R6). educationPsh/householdSize are real columns
+ * shared across countries, so they're NOT in this set.
  */
 const NON_COLUMN_SCORING_FIELDS = new Set([
   // Ecuador
@@ -93,8 +87,8 @@ const NON_COLUMN_SCORING_FIELDS = new Set([
   'vehicleCount',
   'occupationPsh',
   'internetAccess',
-  // México (bedrooms/householdSize/conflictOfInterest/isPregnant/hasBabyUnder3 are real
-  // columns; vehicleCount is shared with Ecuador above)
+  // México (bedrooms/householdSize/isPregnant/hasBabyUnder3 are real columns; vehicleCount
+  // is shared with Ecuador above)
   'educationHoh',
   'fullBathrooms',
   'homeInternet',
@@ -591,15 +585,6 @@ export async function handlePhase1(
   // advancing to the next question.
   if (question.fieldName === 'age' && typeof fieldValue === 'number' && isMinorAge(fieldValue)) {
     await transitionLead(lead.id, 'not_qualified', 'age_minor', correlationId)
-    await sendText(to, EXIT_A)
-    return
-  }
-
-  // Sensitive-industry screening — only reached for a country that puts `conflictOfInterest`
-  // in its Phase-1 scoringQuestions (México today). CAM never has it; Ecuador moved it to
-  // the Ficha Hogar (doc §4 Q1) — so for those two this branch is unreachable in Phase 1.
-  if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
-    await transitionLead(lead.id, 'not_qualified', 'sensitive_industry', correlationId)
     await sendText(to, EXIT_A)
     return
   }
