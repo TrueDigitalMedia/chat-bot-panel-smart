@@ -1,5 +1,5 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
-import { buildNumberedChoices, type WaChoiceMap } from '@/lib/whatsapp/buttons'
+import { buildNumberedChoices, splitListRow, type WaChoiceMap } from '@/lib/whatsapp/buttons'
 import { toMetaRecipient } from '@/lib/whatsapp/phone'
 import { graphSend, requireMeta } from '@/lib/whatsapp/providers/meta/graph'
 
@@ -123,7 +123,7 @@ export async function sendMetaKeyboard(
                 title: 'Opciones',
                 rows: flat.map((b) => ({
                   id: truncate(b.callback_data, 200),
-                  title: truncate(b.text, 24),
+                  ...splitListRow(b.text),
                 })),
               },
             ],

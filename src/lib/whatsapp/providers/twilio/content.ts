@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { twilioContentCache } from '@/lib/db/schema'
 import { env, isTwilioConfigured } from '@/lib/env'
+import { splitListRow } from '@/lib/whatsapp/buttons'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
 // L1 cache for repeat calls within the same warm serverless instance — the DB
@@ -22,7 +23,11 @@ function truncate(s: string, max: number): string {
   return `${t.slice(0, max - 1)}…`
 }
 
-function cacheKey(kind: string, body: string, actions: { title: string; id: string }[]): string {
+function cacheKey(
+  kind: string,
+  body: string,
+  actions: { title: string; id: string; description?: string }[],
+): string {
   return createHash('sha256')
     .update(JSON.stringify({ kind, body, actions }))
     .digest('hex')
@@ -124,22 +129,22 @@ export async function getOrCreateListPickerContent(
   body: string,
   buttons: InlineKeyboardButton[],
 ): Promise<string> {
-  // `description` is optional — omitted, not copied from `item`, so WhatsApp's list
-  // confirmation bubble doesn't render the same label twice stacked on two lines.
+  // `description` holds the option text's detail (after the first comma) so a long
+  // label isn't lost to the 24-char `item` truncation — see splitListRow().
   const items = buttons.slice(0, 10).map((b) => ({
-    item: truncate(b.text, 24),
+    ...splitListRow(b.text),
     id: truncate(b.callback_data, 200),
-  }))
+  })).map(({ title, description, id }) => ({ item: title, description, id }))
   const bodyText = truncate(body, 1024)
-  // 'lp2' (not 'lp') so this never resolves to a Content SID cached under the old key
-  // shape from before description was dropped.
+  // 'lp3' (not 'lp2') so this never resolves to a Content SID cached under the old key
+  // shape from before description was reintroduced.
   const key = cacheKey(
-    'lp2',
+    'lp3',
     bodyText,
-    items.map((i) => ({ title: i.item, id: i.id })),
+    items.map((i) => ({ title: i.item, id: i.id, description: i.description })),
   )
 
-  return getOrCreatePersistedContent(key, 'lp2', () => ({
+  return getOrCreatePersistedContent(key, 'lp3', () => ({
     friendly_name: `lp_${key}`,
     language: 'es',
     types: {
