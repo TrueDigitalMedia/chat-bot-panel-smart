@@ -41,11 +41,24 @@ let fakeAchievedCount = 0
 
 vi.mock('@/lib/db/client', () => ({
   db: {
-    select: () => ({
+    select: (columns?: Record<string, unknown>) => ({
       from: () => ({
         where: () => Promise.resolve(targetRows),
         innerJoin: () => ({
-          where: () => Promise.resolve([{ count: fakeAchievedCount }]),
+          where: () => ({
+            groupBy: () =>
+              columns
+                ? Promise.resolve(
+                    targetRows.map((t) => ({
+                      country: t.country,
+                      region: t.region,
+                      dimensionType: t.dimensionType,
+                      dimensionValue: t.dimensionValue,
+                      count: fakeAchievedCount,
+                    })),
+                  )
+                : Promise.resolve([]),
+          }),
         }),
       }),
     }),

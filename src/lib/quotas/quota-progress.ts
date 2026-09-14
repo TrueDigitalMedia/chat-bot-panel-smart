@@ -69,6 +69,44 @@ interface AchievedFilters {
   dateTo?: Date
 }
 
+function achievedKey(country: string, region: string, dimensionType: string, dimensionValue: string): string {
+  return `${country} ${region} ${dimensionType} ${dimensionValue}`
+}
+
+/**
+ * Achieved counts for every (country, region, dimensionType, dimensionValue) cell in one
+ * grouped query, keyed by achievedKey(). Firing one countAchieved() per quota-target row
+ * (as listQuotaProgress used to, via Promise.all) sent that many concurrent HTTP requests
+ * through Neon's driver and blew past its connection limit ("Too many connections
+ * attempts") once there were more than a handful of target rows.
+ */
+async function countAchievedMap(extra: AchievedFilters = {}): Promise<Map<string, number>> {
+  const conditions: SQL[] = [inArray(leads.leadStatus, QUALIFIED_STATUSES)]
+  if (extra.channel) conditions.push(eq(leads.channel, extra.channel))
+  if (extra.dateFrom) conditions.push(gte(leads.createdAt, extra.dateFrom))
+  if (extra.dateTo) conditions.push(lte(leads.createdAt, extra.dateTo))
+
+  const rows = await db
+    .select({
+      country: surveyProfiles.country,
+      region: surveyProfiles.nseRegion,
+      dimensionType: leads.quotaMatchedDimension,
+      dimensionValue: leads.quotaMatchedValue,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(leads)
+    .innerJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
+    .where(and(...conditions))
+    .groupBy(surveyProfiles.country, surveyProfiles.nseRegion, leads.quotaMatchedDimension, leads.quotaMatchedValue)
+
+  const map = new Map<string, number>()
+  for (const r of rows) {
+    if (!r.country || !r.region || !r.dimensionType || !r.dimensionValue) continue
+    map.set(achievedKey(r.country, r.region, r.dimensionType, r.dimensionValue), r.count)
+  }
+  return map
+}
+
 /**
  * Counts leads attributed to this exact dimension cell — i.e. leads whose
  * `quota_matched_dimension`/`quota_matched_value` equal this cell, not merely leads that
@@ -193,12 +231,9 @@ export async function listQuotaProgress(filters: QuotaProgressFilters = {}): Pro
     dateTo: filters.dateTo,
   }
 
-  return Promise.all(
-    rows.map(async (row) =>
-      toProgress(
-        row,
-        await countAchieved(row.country, row.region, row.dimensionType, row.dimensionValue, achievedFilters),
-      ),
-    ),
+  const achievedMap = await countAchievedMap(achievedFilters)
+
+  return rows.map((row) =>
+    toProgress(row, achievedMap.get(achievedKey(row.country, row.region, row.dimensionType, row.dimensionValue)) ?? 0),
   )
 }
