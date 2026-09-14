@@ -99,12 +99,13 @@ export const FICHA_HOGAR_QUESTION_COUNT = FICHA_HOGAR_QUESTIONS.length
  * confirmed discard gates (see phase-4.ts + CountryConfig.fichaHogarHealthConditionDisqualifies).
  */
 /**
- * México Ficha Hogar (doc/mexico/flujo_preguntas_panelsmart.md §4) — Q1..Q7. Differs from
+ * México Ficha Hogar (doc/mexico/flujo_preguntas_panelsmart.md §4) — Q1..Q8. Differs from
  * the shared list: conflictOfInterest keeps México's own (longer, doc-accurate) wording and
  * is asked ONLY here — not in Phase 1 (it used to be duplicated there; see mexico.ts) —
- * relationshipToHoh has the full 8-option catalog from the doc instead of a 5-option
- * shortlist, and hasInternet is replaced by internetServiceType (3 options: Propio /
- * Gratuito del gobierno / Compartido) per doc §4 P2b.
+ * codigoPostal moved here too (doc §4 P2, right after the screening question; it used to be
+ * asked in Phase 1, in the wrong fase entirely) — relationshipToHoh has the full 8-option
+ * catalog from the doc instead of a 5-option shortlist, and hasInternet is replaced by
+ * internetServiceType (3 options: Propio / Gratuito del gobierno / Compartido) per doc §4 P2b.
  */
 export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
   {
@@ -121,6 +122,12 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
   },
   {
     index: 2,
+    fieldName: 'codigoPostal',
+    text: '¡Perfecto! Empecemos. 🏠\n\nLa primera pregunta es:\n¿Cuál es el código postal de tu domicilio? (5 dígitos)',
+    inputType: 'free_text',
+  },
+  {
+    index: 3,
     fieldName: 'internetServiceType',
     text: '¿Qué tipo de servicio de internet tienen en casa?',
     inputType: 'button',
@@ -133,7 +140,7 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
     ],
   },
   {
-    index: 3,
+    index: 4,
     fieldName: 'relationshipToHoh',
     text: '¿Cuál es tu parentesco con el Jefe de Familia?',
     inputType: 'button',
@@ -160,13 +167,13 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
     ],
   },
   {
-    index: 4,
+    index: 5,
     fieldName: 'dateOfBirth',
     text: '¿Cuál es tu fecha de nacimiento? (DD/MM/AAAA)',
     inputType: 'free_text',
   },
   {
-    index: 5,
+    index: 6,
     fieldName: 'hasHealthCondition',
     text: '¿Tienes alguna condición de salud permanente que no te permita contestar estudios?',
     inputType: 'button',
@@ -178,7 +185,7 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
     ],
   },
   {
-    index: 6,
+    index: 7,
     fieldName: 'unlimitedDataPlan',
     text: '¿Tu smartphone cuenta con un plan de datos móviles ilimitado?',
     inputType: 'button',
@@ -190,7 +197,7 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
     ],
   },
   {
-    index: 7,
+    index: 8,
     fieldName: 'petCount',
     text: '¿Cuántas mascotas (perros y/o gatos) hay en tu hogar? (escribe 0 si no tienes)',
     inputType: 'free_text',

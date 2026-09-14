@@ -395,11 +395,10 @@ export async function applyManualMunicipalityAllowlist(
   },
 ): Promise<{ nseRegion: string | null }> {
   const [manualProfile] = await db
-    .select({ neighborhood: surveyProfiles.neighborhood, scoringAnswersJson: surveyProfiles.scoringAnswersJson })
+    .select({ neighborhood: surveyProfiles.neighborhood })
     .from(surveyProfiles)
     .where(eq(surveyProfiles.leadId, lead.id))
     .limit(1)
-  const codigoPostal = (manualProfile?.scoringAnswersJson as Record<string, unknown> | null)?.codigoPostal ?? null
   const neighborhood = opts.neighborhoodOverride ?? manualProfile?.neighborhood ?? null
   const nseRegion = getCountryConfig(opts.country).resolveNseRegion({
     stateProvince: opts.stateProvince,
@@ -417,8 +416,6 @@ export async function applyManualMunicipalityAllowlist(
       // Ecuador's Q5 (parroquia) is a real answer that can change the resolved region
       // (Guayaquil/Quito split); null for CAM, where Q5 is hidden.
       neighborhood,
-      // México captures a Código Postal (geo fallback — spec 015 T021); null elsewhere.
-      codigo_postal: codigoPostal,
       matched_region: nseRegion,
     }),
   )

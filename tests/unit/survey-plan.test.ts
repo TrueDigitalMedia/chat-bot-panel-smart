@@ -68,28 +68,31 @@ describe('resolveSurveyQuestions / surveyQuestionCount — Ecuador', () => {
 describe('resolveSurveyQuestions / surveyQuestionCount — México (spec 015)', () => {
   const questions = resolveSurveyQuestions('México')
 
-  it('resolves prefix (8) + México scoring block (10) + suffix (4) = 22', () => {
-    expect(questions.length).toBe(22)
-    expect(surveyQuestionCount('México')).toBe(22)
+  it('resolves prefix (8) + México scoring block (9) + suffix (4) = 21', () => {
+    expect(questions.length).toBe(21)
+    expect(surveyQuestionCount('México')).toBe(21)
   })
 
-  it('places the 10 México-specific scoring fields between prefix and suffix, in spec order', () => {
-    expect(questions.slice(8, 18).map((q) => q.fieldName)).toEqual([
+  it('places the 9 México-specific scoring fields between prefix and suffix, in doc order (household size right after internet, matching the Excel)', () => {
+    expect(questions.slice(8, 17).map((q) => q.fieldName)).toEqual([
       'educationHoh',
       'fullBathrooms',
       'vehicleCount',
       'homeInternet',
+      'householdSize',
       'workers14Plus',
       'bedrooms',
-      'householdSize',
       'isPregnant',
       'hasBabyUnder3',
-      'codigoPostal',
     ])
   })
 
   it('does not ask conflictOfInterest in Phase 1 — it is asked once, in Ficha Hogar', () => {
     expect(questions.map((q) => q.fieldName)).not.toContain('conflictOfInterest')
+  })
+
+  it('does not ask codigoPostal in Phase 1 — it belongs to Ficha Hogar (doc §4 P2)', () => {
+    expect(questions.map((q) => q.fieldName)).not.toContain('codigoPostal')
   })
 
   it('shares the prefix and suffix with CAM; colonia (Q5) is a real field like Ecuador', () => {

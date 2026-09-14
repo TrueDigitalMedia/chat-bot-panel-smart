@@ -88,12 +88,11 @@ const NON_COLUMN_SCORING_FIELDS = new Set([
   'occupationPsh',
   'internetAccess',
   // México (bedrooms/householdSize/isPregnant/hasBabyUnder3 are real columns; vehicleCount
-  // is shared with Ecuador above)
+  // is shared with Ecuador above; codigoPostal is asked in Ficha Hogar now, not here)
   'educationHoh',
   'fullBathrooms',
   'homeInternet',
   'workers14Plus',
-  'codigoPostal',
 ])
 
 /**
@@ -457,9 +456,6 @@ export async function handlePhase1(
           // well-formed email — the schema's own check is z.string().email(), so a basic
           // shape match here is enough to accept the raw text. Mirrors survey-capture.ts.
           console.warn('[phase-1] extraction failed — using raw text for email', { leadId: lead.id })
-          fieldValue = messageText.trim()
-        } else if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
-          // A plain 5-digit CP needs no AI — accept it directly on transient model failure.
           fieldValue = messageText.trim()
         } else {
           console.warn('[phase-1] extraction failed', {

@@ -16,24 +16,36 @@ export type SyncableFieldName = SurveyFieldName | FichaHogarFieldName
 // — spreading the whole México list here would silently overwrite CAM/Ecuador's label too, so
 // only internetServiceType (a field that doesn't exist in the shared list at all) is added from
 // it; relationshipToHoh/conflictOfInterest/etc keep the shared list's label for every country.
+// codigoPostal moved from Phase 1 (survey_profiles.scoring_answers_json) to Ficha Hogar
+// (ficha_hogar_profiles.codigoPostal, spec 015 T031) — kept out of the generic label/code
+// spread below so its pre-existing Kantar sync contract (short label, snake_case code)
+// doesn't change: MEXICO_FICHA_HOGAR_QUESTIONS' own text is the long in-chat prompt, not a
+// sync label, and 'codigoPostal' the field name isn't the code Kantar was already sent.
 const MEXICO_ONLY_FICHA_HOGAR_QUESTIONS = MEXICO_FICHA_HOGAR_QUESTIONS.filter(
-  (q) => !FICHA_HOGAR_QUESTIONS.some((shared) => shared.fieldName === q.fieldName),
+  (q) => !FICHA_HOGAR_QUESTIONS.some((shared) => shared.fieldName === q.fieldName) && q.fieldName !== 'codigoPostal',
 )
 const QUESTION_TEXT_BY_FIELD = new Map<string, string>([
   ...resolveSurveyQuestions(null).map((q) => [q.fieldName, q.text] as const),
   ...FICHA_HOGAR_QUESTIONS.map((q) => [q.fieldName, q.text] as const),
   ...MEXICO_ONLY_FICHA_HOGAR_QUESTIONS.map((q) => [q.fieldName, q.text] as const),
+  ['codigoPostal', 'Código Postal'],
 ])
+
+const CODIGO_PREGUNTA_OVERRIDES: Partial<Record<SyncableFieldName, string>> = {
+  codigoPostal: 'codigo_postal',
+}
 
 /**
  * codigo_pregunta = our internal field name, for now. The task's sample payload uses
  * codes like "income"/"car" that don't map 1:1 onto this codebase's field names (e.g.
  * the car-ownership field is `cars`, there's no `income` field at all) — this is a
  * placeholder until Kantar hands over an official per-question code list. Centralized
- * here so remapping later is a single-file change.
+ * here so remapping later is a single-file change. `codigo_postal` (México) is the one
+ * field already sent under an explicit snake_case code (spec 015 T031) — preserved via
+ * CODIGO_PREGUNTA_OVERRIDES rather than the camelCase field name.
  */
 export function codigoPreguntaForField(fieldName: SyncableFieldName): string {
-  return fieldName
+  return CODIGO_PREGUNTA_OVERRIDES[fieldName] ?? fieldName
 }
 
 export function preguntaForField(fieldName: SyncableFieldName): string {

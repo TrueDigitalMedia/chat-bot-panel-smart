@@ -154,6 +154,8 @@ export interface FichaHogarProfile {
   questionIndex: number
   conflictOfInterest: boolean | null
   hasInternet: boolean | null
+  /** México only — see fichaHogarProfiles.codigoPostal. */
+  codigoPostal: string | null
   /** México only — see fichaHogarProfiles.internetServiceType. */
   internetServiceType: string | null
   relationshipToHoh: string | null
@@ -169,6 +171,7 @@ export interface FichaHogarProfile {
 export const FICHA_HOGAR_FIELDS = [
   'conflictOfInterest',
   'hasInternet',
+  'codigoPostal',
   'internetServiceType',
   'relationshipToHoh',
   'dateOfBirth',
@@ -188,4 +191,8 @@ export const FICHA_HOGAR_BUTTON_FIELDS = new Set<FichaHogarFieldName>([
   'unlimitedDataPlan',
 ])
 
-export const FICHA_HOGAR_FREE_TEXT_FIELDS = new Set<FichaHogarFieldName>(['dateOfBirth', 'petCount'])
+export const FICHA_HOGAR_FREE_TEXT_FIELDS = new Set<FichaHogarFieldName>([
+  'dateOfBirth',
+  'petCount',
+  'codigoPostal',
+])

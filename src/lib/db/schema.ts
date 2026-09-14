@@ -184,6 +184,9 @@ export const fichaHogarProfiles = pgTable(
     questionIndex: smallint('question_index').notNull().default(0),
     conflictOfInterest: boolean('conflict_of_interest'),
     hasInternet: boolean('has_internet'),
+    /** México only — moved here from the Phase-1 survey to match the doc's Fase 4 P2
+     *  (it's asked right after the sensitive-industry screening). Ecuador/CAM leave this null. */
+    codigoPostal: varchar('codigo_postal', { length: 5 }),
     /** México only — replaces hasInternet's Sí/No with a 3-option service type
      *  (Propio / Gratuito del gobierno / Compartido). Ecuador/CAM leave this null. */
     internetServiceType: varchar('internet_service_type', { length: 30 }),

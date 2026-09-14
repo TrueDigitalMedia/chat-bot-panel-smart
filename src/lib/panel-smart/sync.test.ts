@@ -371,8 +371,9 @@ describe('previewPanelSmartSync', () => {
     expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'nse_points')).toBe(false)
   })
 
-  // Spec 015 T031 — a México lead's Código Postal (scoring_answers_json.codigoPostal)
-  // reaches TDM in the answers sync.
+  // Spec 015 T031 — a México lead's Código Postal (ficha_hogar_profiles.codigoPostal —
+  // moved here from Phase 1's scoring_answers_json, since the doc puts it in Ficha Hogar)
+  // reaches TDM in the answers sync, under its pre-existing snake_case code.
   it('includes codigo_postal in the synced answers for a México lead', async () => {
     isPanelSmartSyncEnabled.mockReturnValue(true)
     dbMock.select
@@ -381,10 +382,10 @@ describe('previewPanelSmartSync', () => {
       )
       .mockReturnValueOnce(
         selectChain([
-          { ...PROFILE_ROW, country: 'México', nseRegion: 'AMCM', nsePoints: 105, scoringAnswersJson: { codigoPostal: '06700', educationHoh: 'Primaria completa' } },
+          { ...PROFILE_ROW, country: 'México', nseRegion: 'AMCM', nsePoints: 105, scoringAnswersJson: { educationHoh: 'Primaria completa' } },
         ]),
       )
-      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ codigoPostal: '06700' }]))
 
     const preview = await previewPanelSmartSync('lead-1', { force: true })
 
@@ -400,7 +401,7 @@ describe('previewPanelSmartSync', () => {
     })
   })
 
-  it('omits codigo_postal for a non-México lead (no codigoPostal in scoring_answers_json)', async () => {
+  it('omits codigo_postal for a non-México lead (no Ficha Hogar row / no codigoPostal)', async () => {
     isPanelSmartSyncEnabled.mockReturnValue(true)
     dbMock.select
       .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
