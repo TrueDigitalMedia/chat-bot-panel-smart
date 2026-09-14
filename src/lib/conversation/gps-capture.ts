@@ -388,6 +388,10 @@ export async function applyManualMunicipalityAllowlist(
     municipality: string
     geoSource: GeoSource
     correlationId: string
+    // The just-answered neighborhood (Q5), when this runs from the neighborhood question
+    // itself — at that point the DB row still has the old (usually null) value, since
+    // persistence happens after this call. Falls back to the persisted value otherwise.
+    neighborhoodOverride?: string
   },
 ): Promise<{ nseRegion: string | null }> {
   const [manualProfile] = await db
@@ -396,10 +400,11 @@ export async function applyManualMunicipalityAllowlist(
     .where(eq(surveyProfiles.leadId, lead.id))
     .limit(1)
   const codigoPostal = (manualProfile?.scoringAnswersJson as Record<string, unknown> | null)?.codigoPostal ?? null
+  const neighborhood = opts.neighborhoodOverride ?? manualProfile?.neighborhood ?? null
   const nseRegion = getCountryConfig(opts.country).resolveNseRegion({
     stateProvince: opts.stateProvince,
     municipality: opts.municipality,
-    neighborhood: manualProfile?.neighborhood ?? null,
+    neighborhood,
   })
   console.info(
     JSON.stringify({
@@ -411,7 +416,7 @@ export async function applyManualMunicipalityAllowlist(
       municipality: opts.municipality,
       // Ecuador's Q5 (parroquia) is a real answer that can change the resolved region
       // (Guayaquil/Quito split); null for CAM, where Q5 is hidden.
-      neighborhood: manualProfile?.neighborhood ?? null,
+      neighborhood,
       // México captures a Código Postal (geo fallback — spec 015 T021); null elsewhere.
       codigo_postal: codigoPostal,
       matched_region: nseRegion,

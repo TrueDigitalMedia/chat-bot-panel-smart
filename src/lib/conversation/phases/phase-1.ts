@@ -604,14 +604,17 @@ export async function handlePhase1(
     return
   }
 
-  // Manual path: NSE allowlist after municipality (before neighborhood)
-  if (question.fieldName === 'municipality') {
+  // Manual path: NSE allowlist after municipality (before neighborhood is known), and
+  // again after neighborhood — Quito/Guayaquil (Ecuador) resolve to different regions
+  // depending on the parroquia, so the municipality-only lookup above can miss even
+  // though the neighborhood answered a moment later would have matched.
+  if (question.fieldName === 'municipality' || question.fieldName === 'neighborhood') {
     const [profile] = await db
       .select()
       .from(surveyProfiles)
       .where(eq(surveyProfiles.leadId, lead.id))
       .limit(1)
-    if (profile?.country && profile.stateProvince) {
+    if (profile?.country && profile.stateProvince && profile.municipality) {
       const { applyManualMunicipalityAllowlist } = await import('../gps-capture')
       const fuzzyUsed = false // exact path here; fuzzy goes through geo confirm
       // A miss just means no NSE cell for quota attribution — checkQuotaAvailability
@@ -620,9 +623,10 @@ export async function handlePhase1(
       await applyManualMunicipalityAllowlist(lead, {
         country: profile.country,
         stateProvince: profile.stateProvince,
-        municipality: String(fieldValue),
+        municipality: question.fieldName === 'municipality' ? String(fieldValue) : profile.municipality,
         geoSource: fuzzyUsed ? 'text_fuzzy' : 'text_exact',
         correlationId,
+        neighborhoodOverride: question.fieldName === 'neighborhood' ? String(fieldValue) : undefined,
       })
     }
   }
