@@ -20,13 +20,14 @@ describe('resolveFichaHogarQuestions — per-country Ficha Hogar (Fase 4)', () =
     }
   })
 
-  it('México has its own 7-question list — internetServiceType instead of hasInternet, 8-option relationshipToHoh catalog', () => {
+  it('México has its own 8-question list — codigoPostal + internetServiceType instead of hasInternet, 8-option relationshipToHoh catalog', () => {
     const qs = resolveFichaHogarQuestions('México')
-    expect(qs).toHaveLength(7)
-    expect(fichaHogarQuestionCount('México')).toBe(7)
+    expect(qs).toHaveLength(8)
+    expect(fichaHogarQuestionCount('México')).toBe(8)
     qs.forEach((q, i) => expect(q.index).toBe(i + 1))
     expect(qs.map((q) => q.fieldName)).toEqual([
       'conflictOfInterest',
+      'codigoPostal',
       'internetServiceType',
       'relationshipToHoh',
       'dateOfBirth',

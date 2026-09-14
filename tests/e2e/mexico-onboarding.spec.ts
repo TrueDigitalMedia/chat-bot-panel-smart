@@ -46,7 +46,8 @@ async function sendUpdate(request: APIRequestContext, body: unknown): Promise<nu
   return res.status()
 }
 
-/** opt-in → last NSE question, via the live webhook. Geo answers parameterizable. */
+/** opt-in → last NSE question (hasBabyUnder3; codigoPostal moved to Ficha Hogar), via the
+ *  live webhook. Geo answers parameterizable. */
 async function runFullMexicoJourney(
   request: APIRequestContext,
   chatId: number,
@@ -74,12 +75,11 @@ async function runFullMexicoJourney(
   await step(telegramCallback(chatId, u++, 'fullBathrooms:1'))
   await step(telegramCallback(chatId, u++, 'vehicleCount:0'))
   await step(telegramCallback(chatId, u++, 'homeInternet:No tiene'))
+  await step(telegramCallback(chatId, u++, 'householdSize:4'))
   await step(telegramCallback(chatId, u++, 'workers14Plus:3'))
   await step(telegramCallback(chatId, u++, 'bedrooms:3'))
-  await step(telegramCallback(chatId, u++, 'householdSize:4'))
   await step(telegramCallback(chatId, u++, 'isPregnant:false'))
   await step(telegramCallback(chatId, u++, `hasBabyUnder3:${hasBabyUnder3}`))
-  await step(telegramText(chatId, u++, '06700'))
 }
 
 test.describe('México onboarding — part 1 (T017): screening + household-profile block, Q2=México', () => {

@@ -147,29 +147,22 @@ const HOUSEHOLD_SIZE_QUESTION: SurveyQuestion = {
   ],
 }
 
-const CODIGO_POSTAL_QUESTION: SurveyQuestion = {
-  index: 0,
-  fieldName: 'codigoPostal',
-  text: '¿Cuál es tu código postal? (5 dígitos)',
-  inputType: 'free_text',
-}
-
 /**
- * Order: the 6 AMAI NSE variables, household size, pregnancy/baby, and the México-only
- * Código Postal (geo fallback — not a scoring variable). Sensitive-industry screening
- * (conflictOfInterest) moved to the Ficha Hogar (Fase 4) — see MEXICO_FICHA_HOGAR_QUESTIONS —
- * so it isn't asked twice.
+ * Order: the 6 AMAI NSE variables plus household size, matching the doc's Fase 1 order
+ * exactly (P10-P14 then P15-P16), then pregnancy/baby. Sensitive-industry screening
+ * (conflictOfInterest) and Código Postal both moved to the Ficha Hogar (Fase 4) — see
+ * MEXICO_FICHA_HOGAR_QUESTIONS — so conflictOfInterest isn't asked twice, and codigoPostal
+ * is asked in the fase the doc actually puts it in.
  */
 const MEXICO_SCORING_QUESTIONS: SurveyQuestion[] = [
   EDUCATION_HOH_QUESTION,
   FULL_BATHROOMS_QUESTION,
   VEHICLE_COUNT_QUESTION,
   HOME_INTERNET_QUESTION,
+  HOUSEHOLD_SIZE_QUESTION,
   WORKERS_14_PLUS_QUESTION,
   BEDROOMS_QUESTION,
-  HOUSEHOLD_SIZE_QUESTION,
   ...PREGNANCY_BABY_QUESTIONS,
-  CODIGO_POSTAL_QUESTION,
 ]
 
 const MEXICO_GEO_HIERARCHY: GeoHierarchy = {

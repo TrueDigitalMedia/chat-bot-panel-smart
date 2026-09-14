@@ -162,16 +162,23 @@ export async function handleFichaHogar(
       { leadId: lead.id },
     )
     if (!result.ok) {
-      const { tryHandleFichaHogarCorrectionRequest } = await import('../ficha-hogar-correction')
-      if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, question.text)) {
+      // A plain 5-digit CP needs no AI — accept it directly on transient model failure
+      // (mirrors phase-1.ts's email/geo raw-text fallbacks).
+      if (question.fieldName === 'codigoPostal' && /^\d{5}$/.test(messageText.trim())) {
+        fieldValue = messageText.trim()
+      } else {
+        const { tryHandleFichaHogarCorrectionRequest } = await import('../ficha-hogar-correction')
+        if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, question.text)) {
+          return
+        }
+        const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
+        const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
+        await sendFichaHogarQuestion(to, idx, country, { retry: !answered })
         return
       }
-      const { tryAnswerFaqOnExtractionFailure } = await import('../faq-handler')
-      const answered = await tryAnswerFaqOnExtractionFailure(lead, messageText, correlationId, question.text)
-      await sendFichaHogarQuestion(to, idx, country, { retry: !answered })
-      return
+    } else {
+      fieldValue = result.value
     }
-    fieldValue = result.value
 
     if (question.fieldName === 'dateOfBirth' && !isPlausibleBirthDate(String(fieldValue))) {
       await sendText(to, 'Esa fecha no parece válida. ¿Puedes escribirla de nuevo en formato DD/MM/AAAA?')
