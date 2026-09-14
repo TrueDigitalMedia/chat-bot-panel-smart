@@ -154,6 +154,8 @@ export interface FichaHogarProfile {
   questionIndex: number
   conflictOfInterest: boolean | null
   hasInternet: boolean | null
+  /** México only — see fichaHogarProfiles.internetServiceType. */
+  internetServiceType: string | null
   relationshipToHoh: string | null
   dateOfBirth: string | null
   hasHealthCondition: boolean | null
@@ -167,6 +169,7 @@ export interface FichaHogarProfile {
 export const FICHA_HOGAR_FIELDS = [
   'conflictOfInterest',
   'hasInternet',
+  'internetServiceType',
   'relationshipToHoh',
   'dateOfBirth',
   'hasHealthCondition',
@@ -179,6 +182,7 @@ export type FichaHogarFieldName = (typeof FICHA_HOGAR_FIELDS)[number]
 export const FICHA_HOGAR_BUTTON_FIELDS = new Set<FichaHogarFieldName>([
   'conflictOfInterest',
   'hasInternet',
+  'internetServiceType',
   'relationshipToHoh',
   'hasHealthCondition',
   'unlimitedDataPlan',

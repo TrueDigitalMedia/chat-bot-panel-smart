@@ -199,8 +199,8 @@ describe('getCountryConfig — México (spec 015)', () => {
     })
   })
 
-  it('has a non-empty sensitive-industry screening question', () => {
-    expect(getCountryConfig('México').screeningIndustries.length).toBeGreaterThan(0)
+  it('has no Phase-1 sensitive-industry screening — México asks it in the Ficha Hogar instead', () => {
+    expect(getCountryConfig('México').screeningIndustries.length).toBe(0)
   })
 
   it('validatePhone strips 52 / trailing-1 / leading-0 and returns E.164 +52XXXXXXXXXX', () => {

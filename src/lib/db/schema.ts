@@ -184,7 +184,10 @@ export const fichaHogarProfiles = pgTable(
     questionIndex: smallint('question_index').notNull().default(0),
     conflictOfInterest: boolean('conflict_of_interest'),
     hasInternet: boolean('has_internet'),
-    relationshipToHoh: varchar('relationship_to_hoh', { length: 20 }),
+    /** México only — replaces hasInternet's Sí/No with a 3-option service type
+     *  (Propio / Gratuito del gobierno / Compartido). Ecuador/CAM leave this null. */
+    internetServiceType: varchar('internet_service_type', { length: 30 }),
+    relationshipToHoh: varchar('relationship_to_hoh', { length: 40 }),
     dateOfBirth: varchar('date_of_birth', { length: 10 }),
     hasHealthCondition: boolean('has_health_condition'),
     unlimitedDataPlan: boolean('unlimited_data_plan'),

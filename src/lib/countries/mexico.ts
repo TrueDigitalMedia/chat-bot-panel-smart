@@ -11,23 +11,10 @@
 import type { InlineKeyboardButton } from '@/types/telegram'
 import type { SurveyQuestion } from '@/lib/conversation/survey-questions'
 import { PREGNANCY_BABY_QUESTIONS } from '@/lib/conversation/survey-questions'
-import { FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
+import { MEXICO_FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
 import { computeMexicoNse } from '@/lib/scoring/mexico-nse'
 import { lookupMexicoNseRegion, MEXICO_REGIONS } from '@/lib/geo/mexico-nse-catalog'
 import type { CountryConfig, GeoHierarchy } from './types'
-
-const CONFLICT_OF_INTEREST_QUESTION: SurveyQuestion = {
-  index: 0,
-  fieldName: 'conflictOfInterest',
-  text: 'Muchas gracias por su interés en participar de nuestro proyecto.\n\n¿Usted o algún integrante de su hogar trabaja en: agencia de publicidad, empresa de investigación de mercado, radio/periódico/TV, o es propietario de industria o comercio de alimentos, bebidas, higiene personal, limpieza del hogar, ropa o zapatos?',
-  inputType: 'button',
-  buttons: [
-    [
-      { text: 'Sí', callback_data: 'conflictOfInterest:true' },
-      { text: 'No', callback_data: 'conflictOfInterest:false' },
-    ],
-  ],
-}
 
 const EDUCATION_HOH_QUESTION: SurveyQuestion = {
   index: 0,
@@ -168,11 +155,12 @@ const CODIGO_POSTAL_QUESTION: SurveyQuestion = {
 }
 
 /**
- * Order: screening first, then the 6 AMAI NSE variables, household size, pregnancy/baby,
- * and the México-only Código Postal (geo fallback — not a scoring variable).
+ * Order: the 6 AMAI NSE variables, household size, pregnancy/baby, and the México-only
+ * Código Postal (geo fallback — not a scoring variable). Sensitive-industry screening
+ * (conflictOfInterest) moved to the Ficha Hogar (Fase 4) — see MEXICO_FICHA_HOGAR_QUESTIONS —
+ * so it isn't asked twice.
  */
 const MEXICO_SCORING_QUESTIONS: SurveyQuestion[] = [
-  CONFLICT_OF_INTEREST_QUESTION,
   EDUCATION_HOH_QUESTION,
   FULL_BATHROOMS_QUESTION,
   VEHICLE_COUNT_QUESTION,
@@ -190,7 +178,8 @@ const MEXICO_GEO_HIERARCHY: GeoHierarchy = {
   neighborhoodLabel: 'colonia',
 }
 
-const MEXICO_SCREENING_INDUSTRIES: InlineKeyboardButton[][] = CONFLICT_OF_INTEREST_QUESTION.buttons!
+// Sensitive-industry screening moved to the Ficha Hogar (Fase 4, doc §4 Q1) for México.
+const MEXICO_SCREENING_INDUSTRIES: InlineKeyboardButton[][] = []
 
 function mexicoValidatePhone(raw: string): { ok: boolean; normalized: string | null } {
   let digits = raw.replace(/\D/g, '')
@@ -212,7 +201,7 @@ export const mexicoConfig: CountryConfig = {
   geoHierarchy: MEXICO_GEO_HIERARCHY,
   scoringQuestions: MEXICO_SCORING_QUESTIONS,
   screeningIndustries: MEXICO_SCREENING_INDUSTRIES,
-  fichaHogarQuestions: FICHA_HOGAR_QUESTIONS,
+  fichaHogarQuestions: MEXICO_FICHA_HOGAR_QUESTIONS,
   computeNse: (answers) => {
     const result = computeMexicoNse(answers as Parameters<typeof computeMexicoNse>[0])
     return { points: result.points, level: result.level }
