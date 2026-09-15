@@ -329,14 +329,23 @@ export async function syncPendingPanelSmartAnswers(
   correlationId: string,
   opts: PanelSmartSyncOptions,
 ): Promise<boolean> {
-  return Promise.race([
-    runPanelSmartSync(leadId, correlationId, opts),
-    new Promise<boolean>((resolve) => setTimeout(() => {
+  // `setTimeout` isn't cancelled just because runPanelSmartSync wins the race first — left
+  // alone, a call that finishes just under the deadline still fires this timer later,
+  // logging a misleading "deadline exceeded" (and an extra failed logCall row) for a sync
+  // that actually succeeded. clearTimeout in `finally` cancels it once either side settles.
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<boolean>((resolve) => {
+    timeoutId = setTimeout(() => {
       console.error('[panel-smart-sync] deadline exceeded', { leadId, correlationId, deadlineMs: SYNC_DEADLINE_MS })
       void logCall({ leadId, callType: 'panel_smart_sync', latencyMs: SYNC_DEADLINE_MS, correlationId, error: 'sync deadline exceeded' }).catch(() => {})
       resolve(false)
-    }, SYNC_DEADLINE_MS)),
-  ])
+    }, SYNC_DEADLINE_MS)
+  })
+  try {
+    return await Promise.race([runPanelSmartSync(leadId, correlationId, opts), deadline])
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 async function runPanelSmartSync(
