@@ -156,6 +156,13 @@ function camValidatePhone(raw: string): { ok: boolean; normalized: string | null
 /** No Phase-1 sensitive-industry screening exists for CAM today — unchanged. */
 const CAM_SCREENING_INDUSTRIES: InlineKeyboardButton[][] = []
 
+/** Shared by all 7 CAM/RD markets — one panelsmart-cenam.com site, not per-country. */
+const CAM_LEGAL_LINKS: CountryConfig['legalLinks'] = {
+  terms: 'https://www.panelsmart-cenam.com/terminos-y-condiciones',
+  privacyPolicy: 'https://www.panelsmart-cenam.com/politica-de-privacidad',
+  dataDeletion: 'https://www.panelsmart-cenam.com/eliminacion-de-datos',
+}
+
 /**
  * Costa Rica calls its second administrative division "cantón", not "municipio", and
  * Guatemala's first-division question names the country explicitly — the two pieces of
@@ -190,6 +197,7 @@ export function makeCamConfig(country: string): CountryConfig {
           : CAM_GEO_HIERARCHY,
     scoringQuestions: CAM_SCORING_QUESTIONS,
     screeningIndustries: CAM_SCREENING_INDUSTRIES,
+    legalLinks: CAM_LEGAL_LINKS,
     fichaHogarQuestions: FICHA_HOGAR_QUESTIONS,
     computeNse: camComputeNse,
     resolveNseRegion: (geo) => lookupNseRegion(country, geo.stateProvince ?? '', geo.municipality ?? ''),

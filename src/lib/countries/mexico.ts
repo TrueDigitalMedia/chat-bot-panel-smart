@@ -194,6 +194,11 @@ export const mexicoConfig: CountryConfig = {
   geoHierarchy: MEXICO_GEO_HIERARCHY,
   scoringQuestions: MEXICO_SCORING_QUESTIONS,
   screeningIndustries: MEXICO_SCREENING_INDUSTRIES,
+  legalLinks: {
+    terms: 'https://www.panelsmart-mexico.com/terminos-y-condiciones',
+    privacyPolicy: 'https://www.panelsmart-mexico.com/politica-de-privacidad',
+    dataDeletion: 'https://www.panelsmart-mexico.com/eliminacion-de-datos',
+  },
   fichaHogarQuestions: MEXICO_FICHA_HOGAR_QUESTIONS,
   computeNse: (answers) => {
     const result = computeMexicoNse(answers as Parameters<typeof computeMexicoNse>[0])

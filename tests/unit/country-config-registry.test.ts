@@ -229,3 +229,35 @@ describe('getCountryConfig — México (spec 015)', () => {
     expect(resolveSurveyQuestions('Ecuador').length).toBe(23)
   })
 })
+
+// D1 (T&C gate) sends `getCountryConfig(country).legalLinks.terms` — each country must
+// point at its own panelsmart-<country>.com site, never at another country's or at CAM's.
+describe('CountryConfig.legalLinks — every country points at its own panelsmart site', () => {
+  it('México uses panelsmart-mexico.com for all three legal pages', () => {
+    const { terms, privacyPolicy, dataDeletion } = getCountryConfig('México').legalLinks
+    expect(terms).toBe('https://www.panelsmart-mexico.com/terminos-y-condiciones')
+    expect(privacyPolicy).toBe('https://www.panelsmart-mexico.com/politica-de-privacidad')
+    expect(dataDeletion).toBe('https://www.panelsmart-mexico.com/eliminacion-de-datos')
+  })
+
+  it('Ecuador uses panelsmart-ecuador.com for all three legal pages', () => {
+    const { terms, privacyPolicy, dataDeletion } = getCountryConfig('Ecuador').legalLinks
+    expect(terms).toBe('https://www.panelsmart-ecuador.com/terminos-y-condiciones')
+    expect(privacyPolicy).toBe('https://www.panelsmart-ecuador.com/politica-de-privacidad')
+    expect(dataDeletion).toBe('https://www.panelsmart-ecuador.com/eliminacion-de-datos')
+  })
+
+  it('every CAM/RD country shares panelsmart-cenam.com, not México/Ecuador\'s domain', () => {
+    for (const name of CAM_COUNTRY_NAMES) {
+      const links = getCountryConfig(name).legalLinks
+      expect(links.terms).toBe('https://www.panelsmart-cenam.com/terminos-y-condiciones')
+      expect(links.privacyPolicy).toBe('https://www.panelsmart-cenam.com/politica-de-privacidad')
+      expect(links.dataDeletion).toBe('https://www.panelsmart-cenam.com/eliminacion-de-datos')
+    }
+  })
+
+  it('an unknown/null country falls back to the CAM legal links, not México/Ecuador\'s', () => {
+    expect(getCountryConfig(null).legalLinks).toEqual(getCountryConfig('Guatemala').legalLinks)
+    expect(getCountryConfig('Narnia').legalLinks).toEqual(getCountryConfig('Guatemala').legalLinks)
+  })
+})

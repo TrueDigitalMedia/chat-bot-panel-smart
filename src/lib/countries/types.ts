@@ -25,9 +25,19 @@ export interface GeoHierarchy {
   neighborhoodLabel: string | null
 }
 
+/** panelsmart-<country>.com legal-page URLs for this country — see buildD1Text (phase-1.ts). */
+export interface CountryLegalLinks {
+  terms: string
+  privacyPolicy: string
+  dataDeletion: string
+}
+
 export interface CountryConfig {
   /** Canonical country name — the exact string stored on leads/survey_profiles/quota rows. */
   country: string
+  /** Términos y condiciones / política de privacidad / eliminación de datos — one
+   *  panelsmart-<country>.com site per country; CAM shares panelsmart-cenam.com. */
+  legalLinks: CountryLegalLinks
   /** Ordered high -> low. The exact strings written to `leads.quota_segment`. */
   nseLevels: readonly string[]
   geoHierarchy: GeoHierarchy
