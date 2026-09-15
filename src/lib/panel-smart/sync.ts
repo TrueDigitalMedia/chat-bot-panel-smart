@@ -9,7 +9,7 @@ import {
 } from '@/lib/db/schema'
 import { logCall } from '@/lib/db/call-log'
 import { isPanelSmartSyncEnabled } from '@/lib/env'
-import { SURVEY_FIELDS, FICHA_HOGAR_FIELDS } from '@/types/lead'
+import { SURVEY_FIELDS, FICHA_HOGAR_FIELDS, NON_COLUMN_SCORING_FIELDS } from '@/types/lead'
 import type { Lead, SurveyProfile, FichaHogarProfile } from '@/types/lead'
 import { buildResponseItem, type SyncableFieldName } from './question-map'
 import { syncToPanelSmart } from './client'
@@ -64,8 +64,9 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return a === b
 }
 
-/** Diffs current survey + ficha-hogar answers against the last-synced snapshot. */
-function computePendingFields(
+/** Diffs current survey + ficha-hogar answers against the last-synced snapshot. Exported
+ *  for direct unit testing (pure — no db/network access). */
+export function computePendingFields(
   profile: SurveyProfile | null,
   fichaHogar: FichaHogarProfile | null,
   synced: Record<string, unknown> | null,
@@ -85,6 +86,19 @@ function computePendingFields(
   if (fichaHogar) {
     const rec = fichaHogar as unknown as Record<string, unknown>
     for (const field of FICHA_HOGAR_FIELDS) {
+      const value = rec[field]
+      if (!hasValue(value)) continue
+      if (!valuesEqual(value, snapshot[field])) pending.push({ field, value })
+    }
+  }
+
+  // Ecuador/México NSE-scoring answers with no dedicated column — persisted merged into
+  // survey_profiles.scoring_answers_json (see phase-1.ts). Diffed the same way as the real
+  // columns above so they actually reach TDM instead of only the aggregate nsePoints total
+  // sent further down in computePendingSync.
+  if (profile?.scoringAnswersJson) {
+    const rec = profile.scoringAnswersJson as Record<string, unknown>
+    for (const field of NON_COLUMN_SCORING_FIELDS) {
       const value = rec[field]
       if (!hasValue(value)) continue
       if (!valuesEqual(value, snapshot[field])) pending.push({ field, value })

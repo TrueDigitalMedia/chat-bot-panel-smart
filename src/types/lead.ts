@@ -182,6 +182,29 @@ export const FICHA_HOGAR_FIELDS = [
 
 export type FichaHogarFieldName = (typeof FICHA_HOGAR_FIELDS)[number]
 
+// NSE scoring fields with no dedicated survey_profiles column — persisted merged into
+// scoringAnswersJson instead (see phase-1.ts's persistence branch). Single source of
+// truth for both phase-1.ts (which field names route into the JSON blob) and the TDM
+// sync (panel-smart/sync.ts + question-map.ts), so a field collected here is guaranteed
+// to also be diffed/synced there.
+export const NON_COLUMN_SCORING_FIELDS = [
+  // Ecuador (spec 014)
+  'healthInsurancePsh',
+  'monthlyIncome',
+  'dwellingFinishes',
+  'floorMaterial',
+  'vehicleCount',
+  'occupationPsh',
+  'internetAccess',
+  // México (spec 015) — vehicleCount shared with Ecuador above
+  'educationHoh',
+  'fullBathrooms',
+  'homeInternet',
+  'workers14Plus',
+] as const
+
+export type NonColumnScoringFieldName = (typeof NON_COLUMN_SCORING_FIELDS)[number]
+
 export const FICHA_HOGAR_BUTTON_FIELDS = new Set<FichaHogarFieldName>([
   'conflictOfInterest',
   'hasInternet',

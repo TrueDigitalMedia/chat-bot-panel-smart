@@ -22,6 +22,7 @@ import { interpretButtonAnswer } from '../interpret-button-answer'
 import { proceedAfterShopperYes, handlePhoneCapture, needsPhoneCapture } from '../phone-capture'
 import { isMinorAge } from '../age-eligibility'
 import type { Lead } from '@/types/lead'
+import { NON_COLUMN_SCORING_FIELDS as NON_COLUMN_SCORING_FIELDS_LIST } from '@/types/lead'
 
 import type { ChannelRecipient } from '@/types/channel'
 import type { InlineKeyboardButton } from '@/types/telegram'
@@ -76,24 +77,10 @@ const BOOLEAN_BUTTON_FIELDS = new Set(['domesticHelp', 'isPregnant', 'hasBabyUnd
 /**
  * Non-CAM NSE variables with no dedicated survey_profiles column — persisted into
  * scoring_answers_json instead (spec 014 R6). educationPsh/householdSize are real columns
- * shared across countries, so they're NOT in this set.
+ * shared across countries, so they're NOT in this set. Field list lives in @/types/lead so
+ * the TDM sync (panel-smart/sync.ts) stays in lockstep with what actually gets persisted here.
  */
-const NON_COLUMN_SCORING_FIELDS = new Set([
-  // Ecuador
-  'healthInsurancePsh',
-  'monthlyIncome',
-  'dwellingFinishes',
-  'floorMaterial',
-  'vehicleCount',
-  'occupationPsh',
-  'internetAccess',
-  // México (bedrooms/householdSize/isPregnant/hasBabyUnder3 are real columns; vehicleCount
-  // is shared with Ecuador above; codigoPostal is asked in Ficha Hogar now, not here)
-  'educationHoh',
-  'fullBathrooms',
-  'homeInternet',
-  'workers14Plus',
-])
+const NON_COLUMN_SCORING_FIELDS = new Set<string>(NON_COLUMN_SCORING_FIELDS_LIST)
 
 /**
  * Decision-point gates (opt-in/D1/D2/D3) only ever expect a button tap — free text

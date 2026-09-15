@@ -1,14 +1,38 @@
 import { SHOPPING_CATEGORIES } from '@/lib/conversation/survey-questions'
 import { resolveSurveyQuestions } from '@/lib/conversation/survey-plan'
 import { FICHA_HOGAR_QUESTIONS, MEXICO_FICHA_HOGAR_QUESTIONS } from '@/lib/conversation/ficha-hogar-questions'
-import type { SurveyFieldName, FichaHogarFieldName } from '@/types/lead'
+import type { SurveyFieldName, FichaHogarFieldName, NonColumnScoringFieldName } from '@/types/lead'
 import type { PanelSmartResponseItem } from './types'
 
-export type SyncableFieldName = SurveyFieldName | FichaHogarFieldName
+export type SyncableFieldName = SurveyFieldName | FichaHogarFieldName | NonColumnScoringFieldName
+
+// Explicit short labels for the Ecuador/México NSE-scoring fields that have no
+// survey_profiles column (see @/types/lead's NON_COLUMN_SCORING_FIELDS) — sourced from
+// docs/ecuador/Cuestionario Ecuador.docx and docs/mexico/Cuestionario Mexico.docx, kept
+// short rather than pulled from the countries' `text` (which, for educationHoh, carries a
+// multi-line in-chat intro banner not fit for a sync label). Field-name-keyed like the
+// rest of this file, so vehicleCount (shared by both countries with different in-chat
+// wording) gets one consistent TDM label instead of whichever country's text won a spread
+// collision.
+const NON_COLUMN_SCORING_FIELD_LABELS: Record<NonColumnScoringFieldName, string> = {
+  // Ecuador
+  healthInsurancePsh: 'Seguro de Salud (PSH)',
+  monthlyIncome: 'Ingresos Mensuales del Hogar',
+  dwellingFinishes: 'Acabados de la Vivienda',
+  floorMaterial: 'Material de Piso',
+  vehicleCount: 'Vehículos del Hogar',
+  occupationPsh: 'Ocupación del Principal Sostén del Hogar (PSH)',
+  internetAccess: 'Acceso a Internet',
+  // México
+  educationHoh: 'Educación del Jefe de Hogar',
+  fullBathrooms: 'Baños Completos en la Vivienda',
+  homeInternet: 'Internet en el Hogar',
+  workers14Plus: 'Personas de 14+ Años que Trabajaron',
+}
 
 // CAM question text only (legacy TDM/MySQL sync labels) — resolveSurveyQuestions(null)
-// falls back to the CAM config. Non-CAM (Ecuador) NSE-variable field names aren't in
-// this map; TDM sync for those countries is tracked separately (spec 014 US4).
+// falls back to the CAM config. Non-CAM (Ecuador/México) NSE-variable field names aren't
+// in this map; their labels come from NON_COLUMN_SCORING_FIELD_LABELS above instead.
 //
 // This map is keyed by field name only (not per-country), so a field that means the same
 // thing everywhere (dateOfBirth, petCount, ...) can share one label. But conflictOfInterest
@@ -49,7 +73,11 @@ export function codigoPreguntaForField(fieldName: SyncableFieldName): string {
 }
 
 export function preguntaForField(fieldName: SyncableFieldName): string {
-  return QUESTION_TEXT_BY_FIELD.get(fieldName) ?? fieldName
+  return (
+    NON_COLUMN_SCORING_FIELD_LABELS[fieldName as NonColumnScoringFieldName] ??
+    QUESTION_TEXT_BY_FIELD.get(fieldName) ??
+    fieldName
+  )
 }
 
 function mapShoppingCategoryLabels(ids: number[]): string {
