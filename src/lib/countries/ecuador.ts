@@ -233,6 +233,11 @@ export const ecuadorConfig: CountryConfig = {
   scoringQuestions: ECUADOR_SCORING_QUESTIONS,
   // Sensitive-industry screening moved to the Ficha Hogar (Fase 4, doc §4 Q1) for Ecuador.
   screeningIndustries: [],
+  legalLinks: {
+    terms: 'https://www.panelsmart-ecuador.com/terminos-y-condiciones',
+    privacyPolicy: 'https://www.panelsmart-ecuador.com/politica-de-privacidad',
+    dataDeletion: 'https://www.panelsmart-ecuador.com/eliminacion-de-datos',
+  },
   skipPregnancyWhenMale: true,
   fichaHogarQuestions: ECUADOR_FICHA_HOGAR_QUESTIONS,
   fichaHogarHealthConditionDisqualifies: true,

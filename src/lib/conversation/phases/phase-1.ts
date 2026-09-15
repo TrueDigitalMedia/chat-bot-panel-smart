@@ -27,12 +27,31 @@ import { NON_COLUMN_SCORING_FIELDS as NON_COLUMN_SCORING_FIELDS_LIST } from '@/t
 import type { ChannelRecipient } from '@/types/channel'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
-const TNC_LINK = 'https://www.panelsmart-cenam.com/terminos-y-condiciones'
-
 const GREETING_TEXT =
   '¡Hola! Soy el asistente virtual de PanelSmart 🙂\n\nTe invitamos a unirte a nuestro panel de encuestas y ganar premios por compartir tu opinión.\n\nAl responder SÍ, aceptás recibir encuestas y notificaciones de PanelSmart por este canal. Podés darte de baja en cualquier momento respondiendo STOP.\n\n¿Querés inscribirte?'
 const OPT_IN_TEXT = '¿Querés inscribirte?'
-const D1_TEXT = `✅ Antes de continuar, revisá nuestros Términos y Condiciones del programa:\n\n${TNC_LINK}\n\n¿Confirmás que los leíste y aceptás participar?`
+
+/**
+ * D1 (T&C gate) fires before the "¿En qué país…?" survey question, so the lead's country
+ * isn't always answered yet — but it IS already known for a country-scoped WhatsApp number
+ * or web room (spec 017/016 pre-set `survey_profiles.country` on first contact, before
+ * routeMessage). Falls back to the CAM link (getCountryConfig(null)) for a generic
+ * number/room, same as the pre-existing single hardcoded link.
+ */
+async function resolveKnownCountry(leadId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ country: surveyProfiles.country })
+    .from(surveyProfiles)
+    .where(eq(surveyProfiles.leadId, leadId))
+    .limit(1)
+  return row?.country ?? null
+}
+
+function buildD1Text(country: string | null): string {
+  const { terms } = getCountryConfig(country).legalLinks
+  return `✅ Antes de continuar, revisá nuestros Términos y Condiciones del programa:\n\n${terms}\n\n¿Confirmás que los leíste y aceptás participar?`
+}
+
 const REENGAGEMENT_CONSENT_TEXT =
   '📋 Para mejorar tu experiencia, nos gustaría poder contactarte si dejás el registro a mitad del proceso.\n\n¿Autorizás que te contactemos en ese caso?\n\nPodés revocar este permiso en cualquier momento respondiendo STOP.'
 const D3_TEXT = '¿Eres quién administra y organiza las compras del hogar?'
@@ -172,7 +191,7 @@ export async function handlePhase1(
     if (decision === 'accept') {
       await db.update(leads).set({ optInAccepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
       await recordConsentEvent(lead.id, 'opt_in', lead.channel, true, GREETING_TEXT, messageText)
-      await sendD1(to)
+      await sendD1(to, buildD1Text(await resolveKnownCountry(lead.id)))
     } else if (decision === 'decline') {
       await recordConsentEvent(lead.id, 'opt_in', lead.channel, false, GREETING_TEXT, messageText)
       await transitionLead(lead.id, 'not_qualified', 'opt_in_decline', correlationId)
@@ -188,27 +207,28 @@ export async function handlePhase1(
 
   // D1: T&C
   if (!lead.d1Accepted) {
+    const d1Text = buildD1Text(await resolveKnownCountry(lead.id))
     const decision = await resolveGateDecision(
       D1_BUTTONS,
       messageText,
       callbackData,
       'd1:accept',
       'd1:decline',
-      D1_TEXT,
+      d1Text,
       correlationId,
       lead.id,
     )
     if (decision === 'accept') {
       await db.update(leads).set({ d1Accepted: true, updatedAt: new Date() }).where(eq(leads.id, lead.id))
-      await recordConsentEvent(lead.id, 'terms', lead.channel, true, D1_TEXT, messageText)
+      await recordConsentEvent(lead.id, 'terms', lead.channel, true, d1Text, messageText)
       await sendReEngagementConsent(to)
     } else if (decision === 'decline') {
-      await recordConsentEvent(lead.id, 'terms', lead.channel, false, D1_TEXT, messageText)
+      await recordConsentEvent(lead.id, 'terms', lead.channel, false, d1Text, messageText)
       await transitionLead(lead.id, 'not_qualified', 'd1_decline', correlationId)
       await sendText(to, EXIT_A)
     } else {
-      const answered = await maybeAnswerFaq(lead, messageText, correlationId, D1_TEXT)
-      await sendD1(to, !answered)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, d1Text)
+      await sendD1(to, d1Text, !answered)
     }
     return
   }
@@ -723,8 +743,8 @@ async function sendOptIn(to: ChannelRecipient, retry?: boolean): Promise<void> {
   await sendInlineKeyboard(to, withRetryPrefix(OPT_IN_TEXT, retry), OPT_IN_BUTTONS)
 }
 
-async function sendD1(to: ChannelRecipient, retry?: boolean): Promise<void> {
-  await sendInlineKeyboard(to, withRetryPrefix(D1_TEXT, retry), D1_BUTTONS)
+async function sendD1(to: ChannelRecipient, text: string, retry?: boolean): Promise<void> {
+  await sendInlineKeyboard(to, withRetryPrefix(text, retry), D1_BUTTONS)
 }
 
 async function sendReEngagementConsent(to: ChannelRecipient, retry?: boolean): Promise<void> {
