@@ -18,11 +18,14 @@
  *   npx tsx scripts/backfill-tdm-sync.ts --dry-run     # print what would be sent, send nothing
  *   npx tsx scripts/backfill-tdm-sync.ts --limit 50    # cap the number of leads
  *   npx tsx scripts/backfill-tdm-sync.ts --delay 500   # ms between leads (default 250)
+ *   npx tsx scripts/backfill-tdm-sync.ts --country Ecuador   # only leads whose
+ *                                                             # survey_profiles.country matches
+ *                                                             # (exact string, e.g. "Ecuador"/"México")
  *
  * Needs the prod env (DATABASE_URL, PANEL_SMART_SYNC_URL, PANEL_SMART_SYNC_ENABLED,
  * TDM_OAUTH_*). Reads .env / .env.local automatically.
  */
-import { isNotNull } from 'drizzle-orm'
+import { and, eq, isNotNull } from 'drizzle-orm'
 
 for (const file of ['.env', '.env.local']) {
   try {
@@ -38,12 +41,16 @@ async function main(): Promise<void> {
   const dryRun = args.includes('--dry-run')
   const limitArg = args.find((a) => a.startsWith('--limit'))
   const delayArg = args.find((a) => a.startsWith('--delay'))
+  const countryArg = args.find((a) => a.startsWith('--country'))
   const limit = limitArg ? Number(limitArg.split(/[=\s]/)[1] ?? args[args.indexOf(limitArg) + 1]) : undefined
   const delayMs = delayArg ? Number(delayArg.split(/[=\s]/)[1] ?? args[args.indexOf(delayArg) + 1]) : 250
+  const country = countryArg
+    ? (countryArg.includes('=') ? countryArg.split('=')[1] : args[args.indexOf(countryArg) + 1])
+    : undefined
 
   // Imported after loadEnvFile so env.ts reads the populated process.env.
   const { db } = await import('../src/lib/db/client')
-  const { leads } = await import('../src/lib/db/schema')
+  const { leads, surveyProfiles } = await import('../src/lib/db/schema')
   const { isPanelSmartSyncEnabled } = await import('../src/lib/env')
   const { generateCorrelationId } = await import('../src/lib/correlation')
   const {
@@ -61,15 +68,24 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  const rows = await db
-    .select({ id: leads.id, lastSyncAt: leads.panelSmartLastSyncAt })
-    .from(leads)
-    .where(all ? undefined : isNotNull(leads.panelSmartLastSyncAt))
+  const syncedCondition = all ? undefined : isNotNull(leads.panelSmartLastSyncAt)
+  const rows = country
+    ? await db
+        .select({ id: leads.id, lastSyncAt: leads.panelSmartLastSyncAt })
+        .from(leads)
+        .innerJoin(surveyProfiles, eq(surveyProfiles.leadId, leads.id))
+        .where(
+          syncedCondition ? and(eq(surveyProfiles.country, country), syncedCondition) : eq(surveyProfiles.country, country),
+        )
+    : await db
+        .select({ id: leads.id, lastSyncAt: leads.panelSmartLastSyncAt })
+        .from(leads)
+        .where(syncedCondition)
 
   const targets = (limit && limit > 0 ? rows.slice(0, limit) : rows).map((r) => r.id)
 
   console.log(
-    `[backfill-tdm-sync] mode=${all ? 'all' : 'already-synced'} dryRun=${dryRun} ` +
+    `[backfill-tdm-sync] mode=${all ? 'all' : 'already-synced'} country=${country ?? '(any)'} dryRun=${dryRun} ` +
       `delayMs=${delayMs} targets=${targets.length}`,
   )
   if (targets.length === 0) {
