@@ -52,16 +52,19 @@ export async function persistSurveyFieldAndAdvance(
       const { applyManualMunicipalityAllowlist } = await import(
         '@/lib/conversation/gps-capture'
       )
-      // A miss just means no NSE cell for quota attribution — checkQuotaAvailability
-      // decides at survey end (still qualifies via the pregnancy/baby exception, if it
-      // applies), so the survey always continues from here.
-      await applyManualMunicipalityAllowlist(lead, {
+      // A miss (no allowlist match) just means no NSE cell for quota attribution —
+      // checkQuotaAvailability decides at survey end (still qualifies via the
+      // pregnancy/baby exception, if it applies). But a resolved region that's already
+      // closed ends the conversation right here (see rejectIfRegionClosed) instead of
+      // asking the remaining questions only to reject at the very end.
+      const { rejected } = await applyManualMunicipalityAllowlist(lead, {
         country: profile.country,
         stateProvince: profile.stateProvince,
         municipality: String(value),
         geoSource: 'text_fuzzy',
         correlationId,
       })
+      if (rejected) return
     }
   }
 

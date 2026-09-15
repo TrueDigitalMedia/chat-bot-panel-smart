@@ -16,6 +16,9 @@ import { getCountryConfig } from '@/lib/countries/registry'
 import { sendSurveyQuestion } from '@/lib/conversation/send-survey-question'
 import { matchButtonChoice } from './match-button-choice'
 import { interpretButtonAnswer } from './interpret-button-answer'
+import { checkRegionQuota } from '@/lib/scoring/quota'
+import { transitionLead } from '@/lib/state-machine'
+import { EXIT_B, EXIT_B_THANKS } from './exit-messages'
 import type { Lead } from '@/types/lead'
 import type { InlineKeyboardButton } from '@/types/telegram'
 
@@ -308,19 +311,58 @@ export async function handleGpsCapture(
 }
 
 /**
- * A municipality outside the NSE allowlist no longer dead-ends the conversation here —
- * it only means quota can't be attributed to a specific NSE/edad/integrantes cell.
- * checkQuotaAvailability's pregnancy/baby-under-3 exception (scoring/quota.ts) always
- * qualifies regardless of region, but that check only runs at the end of the survey;
- * isPregnant/hasBabyUnder3 aren't asked until Q13/Q14, well after municipality (Q4), so
- * rejecting immediately here shut out exception-qualified leads before the bot ever
- * knew they applied. Saving inQuotaGeo: false and continuing lets the real quota check
- * decide once every answer — including the exception — is in.
+ * Once `nseRegion` resolves to a real (non-null) region, the region-objective ceiling
+ * (PUNTO 1 "primer condicional" — checkRegionQuota/scoring/quota.ts) already fully decides
+ * the lead when it's closed: nothing later in the survey (NSE segment, edad, integrantes,
+ * even the pregnancy/baby exception) can ever turn that into a qualify. Ending the
+ * conversation right here — instead of asking the remaining ~10 questions only to reject at
+ * survey end — cuts wasted message volume/spam and a bad experience for a lead that was
+ * never going to qualify. Only ever called with a non-null `nseRegion` — see
+ * checkRegionQuota's docstring for why a null (not-yet-resolved, e.g. Quito/Guayaquil
+ * pending the parroquia answer) region must NOT short-circuit here.
+ */
+async function rejectIfRegionClosed(
+  lead: Lead,
+  country: string,
+  nseRegion: string,
+  correlationId: string,
+): Promise<boolean> {
+  const status = await checkRegionQuota(country, nseRegion)
+  if (status.open) return false
+  console.info(
+    JSON.stringify({
+      event: 'quota_exhausted_early_exit',
+      lead_id: lead.id,
+      country,
+      region: nseRegion,
+      denied_reason: status.deniedReason,
+      correlation_id: correlationId,
+    }),
+  )
+  await transitionLead(lead.id, 'quota_exhausted', 'region_closed_early_exit', correlationId)
+  await sendText(lead, EXIT_B)
+  await sendText(lead, EXIT_B_THANKS)
+  return true
+}
+
+/**
+ * A municipality that doesn't resolve to any NSE region at all (nseRegion null — no match
+ * in the allowlist) does NOT dead-end the conversation here: checkQuotaAvailability's
+ * pregnancy/baby-under-3 exception (scoring/quota.ts) still needs a chance to apply, and
+ * isPregnant/hasBabyUnder3 aren't asked until Q13/Q14, well after municipality (Q4).
+ * Saving inQuotaGeo: false and continuing lets the real quota check decide once every
+ * answer — including the exception — is in.
+ *
+ * But a municipality that DOES resolve to a real, known region that's already closed
+ * (out of the client's sample, or its objective already met) is a different case: that
+ * outcome can never change no matter what the rest of the survey answers (see
+ * rejectIfRegionClosed) — so that one ends the conversation immediately instead of
+ * asking the remaining ~10 questions first.
  */
 async function applyAllowlistAfterConfirm(
   lead: Lead,
   proposal: PlaceProposal,
-  _correlationId: string,
+  correlationId: string,
 ): Promise<void> {
   const country = canonicalCountry(proposal.country) ?? proposal.country
   const nseRegion = getCountryConfig(country).resolveNseRegion({
@@ -362,6 +404,10 @@ async function applyAllowlistAfterConfirm(
 
   await setGpsState(lead.id, { gpsGateStatus: 'done', gpsProposal: null })
 
+  if (nseRegion && (await rejectIfRegionClosed(lead, country, nseRegion, correlationId))) {
+    return
+  }
+
   // Skip straight to email (Q6)
   await db
     .update(leads)
@@ -375,10 +421,13 @@ async function applyAllowlistAfterConfirm(
 }
 
 /**
- * After saving municipality on the manual path — allowlist lookup. A miss no longer
- * ends the conversation (see applyAllowlistAfterConfirm above for why); it just means
- * this lead won't attribute to a specific quota cell unless the pregnancy/baby
- * exception applies, decided later by checkQuotaAvailability at survey end.
+ * After saving municipality on the manual path — allowlist lookup. A miss (nseRegion
+ * null) no longer ends the conversation (see applyAllowlistAfterConfirm above for why);
+ * it just means this lead won't attribute to a specific quota cell unless the
+ * pregnancy/baby exception applies, decided later by checkQuotaAvailability at survey
+ * end. But a resolved-and-closed region ends it right here — see rejectIfRegionClosed.
+ * Callers MUST check the returned `rejected` flag and stop (not advance to the next
+ * question) when it's true — the exit message has already been sent.
  */
 export async function applyManualMunicipalityAllowlist(
   lead: Lead,
@@ -393,7 +442,7 @@ export async function applyManualMunicipalityAllowlist(
     // persistence happens after this call. Falls back to the persisted value otherwise.
     neighborhoodOverride?: string
   },
-): Promise<{ nseRegion: string | null }> {
+): Promise<{ nseRegion: string | null; rejected: boolean }> {
   const [manualProfile] = await db
     .select({ neighborhood: surveyProfiles.neighborhood })
     .from(surveyProfiles)
@@ -427,5 +476,8 @@ export async function applyManualMunicipalityAllowlist(
       inQuotaGeo: nseRegion !== null,
     })
     .where(eq(surveyProfiles.leadId, lead.id))
-  return { nseRegion }
+
+  const rejected =
+    nseRegion !== null && (await rejectIfRegionClosed(lead, opts.country, nseRegion, opts.correlationId))
+  return { nseRegion, rejected }
 }

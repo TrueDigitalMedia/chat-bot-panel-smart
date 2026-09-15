@@ -52,7 +52,7 @@ vi.mock('@/lib/quotas/region-caps', () => ({
   getRegionObjective: vi.fn(async () => regionObjective),
 }))
 
-import { checkQuotaAvailability, describeQuotaMatch } from '@/lib/scoring/quota'
+import { checkQuotaAvailability, checkRegionQuota, describeQuotaMatch } from '@/lib/scoring/quota'
 
 const HN_NOR_OCC_I = { country: 'Honduras', region: 'Nor Occidente I', nseRegion: 'Nor Occidente I' }
 const HN_CENTRO_I = { country: 'Honduras', region: 'Centro I', nseRegion: 'Centro I' }
@@ -379,6 +379,77 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
       matchedValue: null,
       deniedReason: 'region_fuera_de_muestra',
     })
+  })
+})
+
+// checkRegionQuota is the standalone region-only check the survey flow calls as soon as
+// nseRegion resolves (gps-capture.ts's rejectIfRegionClosed) — it MUST agree with
+// checkQuotaAvailability's own steps 0-1 for every scenario, since checkQuotaAvailability
+// delegates to it internally. These pin that single source of truth.
+describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () => {
+  beforeEach(resetState)
+
+  it('is open when the region objective still has room', async () => {
+    regionObjective = { objective: 1000, source: 'cap', achieved: 5 }
+    const status = await checkRegionQuota('Honduras', 'Centro I')
+    expect(status).toEqual({ open: true, regionObjective: 1000, regionAchieved: 5, regionSource: 'cap' })
+  })
+
+  it('is closed (region_completa) once achieved reaches the objective', async () => {
+    regionObjective = { objective: 20, source: 'cap', achieved: 20 }
+    const status = await checkRegionQuota('Honduras', 'Centro I')
+    expect(status).toEqual({
+      open: false,
+      deniedReason: 'region_completa',
+      regionObjective: 20,
+      regionAchieved: 20,
+      regionSource: 'cap',
+    })
+  })
+
+  it('is closed (region_fuera_de_muestra) when the region has no objective at all', async () => {
+    regionObjective = { objective: 0, source: 'none', achieved: 9 }
+    const status = await checkRegionQuota('El Salvador', 'Centro I')
+    expect(status).toEqual({
+      open: false,
+      deniedReason: 'region_fuera_de_muestra',
+      regionObjective: 0,
+      regionAchieved: 9,
+      regionSource: 'none',
+    })
+  })
+
+  it('is closed (region_no_identificada) for a null nseRegion, without even querying getRegionObjective', async () => {
+    const status = await checkRegionQuota('Honduras', null)
+    expect(status).toEqual({
+      open: false,
+      deniedReason: 'region_no_identificada',
+      regionObjective: null,
+      regionAchieved: null,
+      regionSource: null,
+    })
+  })
+
+  it('agrees with checkQuotaAvailability on every closed-region scenario (same deniedReason, same qualifies: false)', async () => {
+    for (const scenario of [
+      { objective: 0, source: 'none' as const, achieved: 0 },
+      { objective: 10, source: 'cap' as const, achieved: 10 },
+      { objective: 10, source: 'nse_sum' as const, achieved: 15 },
+    ]) {
+      regionObjective = { ...scenario }
+      const regionStatus = await checkRegionQuota('Honduras', 'Centro I')
+      const fullDecision = await checkQuotaAvailability({
+        ...HN_CENTRO_I,
+        segment: 'Nivel 1',
+        age: 30,
+        householdSize: 3,
+        isPregnant: true, // even the exception must not save it — PUNTO 1
+        hasBabyUnder3: false,
+      })
+      expect(regionStatus.open).toBe(false)
+      expect(fullDecision.qualifies).toBe(false)
+      expect(fullDecision.deniedReason).toBe(regionStatus.deniedReason)
+    }
   })
 })
 
