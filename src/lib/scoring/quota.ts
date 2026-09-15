@@ -28,6 +28,71 @@ export interface QuotaDecision {
   deniedReason?: QuotaDeniedReason
 }
 
+export interface RegionQuotaStatus {
+  open: boolean
+  deniedReason?: 'region_no_identificada' | 'region_fuera_de_muestra' | 'region_completa'
+  /** null only when `nseRegion` itself was null (never looked up). */
+  regionObjective: number | null
+  regionAchieved: number | null
+  /** Where `regionObjective` came from — see getRegionObjective. Null only when never looked up. */
+  regionSource: 'cap' | 'nse_sum' | 'none' | null
+}
+
+/**
+ * The region-objective ceiling alone (PUNTO 1 "primer condicional", steps 0-1 of
+ * checkQuotaAvailability below) — the hard ceiling for EVERY lead, exception included, so
+ * once it says closed nothing later in the survey (NSE segment, edad, integrantes, even the
+ * pregnancy/baby exception) can ever turn that into a qualify. Exported so the geo-capture
+ * flow (gps-capture.ts) can end the conversation as soon as `nseRegion` resolves to a
+ * closed region, instead of asking the rest of the survey only to reject at the very end —
+ * that's wasted message volume and a worse experience for a lead that was never going to
+ * qualify. checkQuotaAvailability calls this same function for its own steps 0-1, so the
+ * early-exit and the end-of-survey decision can never drift apart.
+ *
+ * Deliberately does NOT special-case a null `nseRegion` any differently from a resolved-but-
+ * closed one — both already end a lead identically in checkQuotaAvailability. Callers that
+ * want to keep asking while the region is merely *unresolved* (Ecuador's Quito/Guayaquil,
+ * whose canton alone is ambiguous until the parroquia/Q5 answer splits it — see
+ * gps-capture.ts's applyManualMunicipalityAllowlist) should only call this once `nseRegion`
+ * is non-null, not on every intermediate geo answer.
+ */
+export async function checkRegionQuota(country: string, nseRegion: string | null): Promise<RegionQuotaStatus> {
+  if (!nseRegion) {
+    return {
+      open: false,
+      deniedReason: 'region_no_identificada',
+      regionObjective: null,
+      regionAchieved: null,
+      regionSource: null,
+    }
+  }
+  const region = await getRegionObjective(country, nseRegion)
+  if (region.objective <= 0) {
+    return {
+      open: false,
+      deniedReason: 'region_fuera_de_muestra',
+      regionObjective: 0,
+      regionAchieved: region.achieved,
+      regionSource: region.source,
+    }
+  }
+  if (region.achieved >= region.objective) {
+    return {
+      open: false,
+      deniedReason: 'region_completa',
+      regionObjective: region.objective,
+      regionAchieved: region.achieved,
+      regionSource: region.source,
+    }
+  }
+  return {
+    open: true,
+    regionObjective: region.objective,
+    regionAchieved: region.achieved,
+    regionSource: region.source,
+  }
+}
+
 /**
  * Evaluated in this fixed order (research.md R5, spec 011 Q2): a lead qualifies via the
  * FIRST dimension in this list that has available quota, and only that dimension's
@@ -85,51 +150,30 @@ function logQuotaCheck(
 export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParams): Promise<QuotaDecision> {
   const { country, nseRegion } = params
 
-  // 0. The region (PUNTO 1 "primer condicional") must be identified at all.
-  if (!nseRegion) {
+  // 0-1. The region (PUNTO 1 "primer condicional") must be identified AND still have room —
+  // the hard ceiling for EVERY lead, exception included. Same check the survey flow already
+  // ran earlier, as soon as `nseRegion` resolved (gps-capture.ts) — repeated here so this
+  // function stays correct standalone, and for the leads whose region wasn't resolvable yet
+  // at that point (Ecuador's Quito/Guayaquil, pending the parroquia/Q5 answer).
+  const regionStatus = await checkRegionQuota(country, nseRegion || null)
+  if (!regionStatus.open) {
     const decision: QuotaDecision = {
       qualifies: false,
       matchedDimension: null,
       matchedValue: null,
-      deniedReason: 'region_no_identificada',
-    }
-    logQuotaCheck(params, decision, { regionObjective: null, regionAchieved: null, regionBlocked: true })
-    return decision
-  }
-
-  // 1. Region objective — the hard ceiling for EVERY lead, exception included.
-  const region = await getRegionObjective(country, nseRegion)
-
-  if (region.objective <= 0) {
-    // No demand configured for this region → out of the client sample → closed.
-    const decision: QuotaDecision = {
-      qualifies: false,
-      matchedDimension: null,
-      matchedValue: null,
-      deniedReason: 'region_fuera_de_muestra',
-    }
-    logQuotaCheck(params, decision, { regionObjective: 0, regionAchieved: region.achieved, regionBlocked: true })
-    return decision
-  }
-
-  if (region.achieved >= region.objective) {
-    const decision: QuotaDecision = {
-      qualifies: false,
-      matchedDimension: null,
-      matchedValue: null,
-      deniedReason: 'region_completa',
+      deniedReason: regionStatus.deniedReason,
     }
     logQuotaCheck(params, decision, {
-      regionObjective: region.objective,
-      regionAchieved: region.achieved,
+      regionObjective: regionStatus.regionObjective,
+      regionAchieved: regionStatus.regionAchieved,
       regionBlocked: true,
     })
     return decision
   }
 
   const logExtra = {
-    regionObjective: region.objective,
-    regionAchieved: region.achieved,
+    regionObjective: regionStatus.regionObjective,
+    regionAchieved: regionStatus.regionAchieved,
     regionBlocked: false,
   }
 
@@ -152,7 +196,7 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
       logQuotaCheck(params, decision, logExtra)
       return decision
     }
-    if (region.source === 'cap') {
+    if (regionStatus.regionSource === 'cap') {
       const decision: QuotaDecision = { qualifies: true, matchedDimension: 'exception', matchedValue: null }
       logQuotaCheck(params, decision, logExtra)
       return decision

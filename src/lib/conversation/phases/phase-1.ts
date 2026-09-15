@@ -605,10 +605,12 @@ export async function handlePhase1(
     if (profile?.country && profile.stateProvince && profile.municipality) {
       const { applyManualMunicipalityAllowlist } = await import('../gps-capture')
       const fuzzyUsed = false // exact path here; fuzzy goes through geo confirm
-      // A miss just means no NSE cell for quota attribution — checkQuotaAvailability
-      // decides at survey end (still qualifies via the pregnancy/baby exception, if it
-      // applies), so the survey always continues from here.
-      await applyManualMunicipalityAllowlist(lead, {
+      // A miss (no allowlist match) just means no NSE cell for quota attribution —
+      // checkQuotaAvailability decides at survey end (still qualifies via the
+      // pregnancy/baby exception, if it applies). But a resolved region that's already
+      // closed ends the conversation right here (see rejectIfRegionClosed) instead of
+      // asking the remaining questions only to reject at the very end.
+      const { rejected } = await applyManualMunicipalityAllowlist(lead, {
         country: profile.country,
         stateProvince: profile.stateProvince,
         municipality: question.fieldName === 'municipality' ? String(fieldValue) : profile.municipality,
@@ -616,6 +618,7 @@ export async function handlePhase1(
         correlationId,
         neighborhoodOverride: question.fieldName === 'neighborhood' ? String(fieldValue) : undefined,
       })
+      if (rejected) return
     }
   }
 
