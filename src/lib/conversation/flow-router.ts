@@ -39,16 +39,31 @@ const BUTTON_PREFIXES = [
 // branch in routeMessage below.
 const ACCEPT_CALLBACKS = new Set(['optin:accept', 'd1:accept', 'd3:yes'])
 
-/** WhatsApp-friendly: /start, hola, reiniciar, empezar de nuevo, reiniciar flujo, etc. */
-function isRestartRequest(text: string): boolean {
+/** A bare greeting and nothing else ("hola", "buenas!"). Restarts the flow for an
+ *  ordinary lead, but is NOT treated as one for a lead who opted out: saying hello is
+ *  not consent to be re-enrolled — see the hasOptedOut branch in routeMessageLocked. */
+function isGreetingOnly(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (!t) return false
+  return /^(hola|buenas|buen[oa]s)\b[!?.]*$/.test(t)
+}
+
+/** An unambiguous "start this over" ("/start", "reiniciar", "empezar de nuevo"). Unlike
+ *  a bare greeting this does express intent about the process itself, so for an
+ *  opted-out lead it's a candidate re-entry (still gated by the AI confirmation). */
+function isExplicitRestartRequest(text: string): boolean {
   const t = text.trim().toLowerCase()
   if (!t) return false
   if (/^\/start\b/.test(t)) return true
-  if (/^(hola|buenas|buen[oa]s)\b[!?.]*$/.test(t)) return true
   if (/^(reiniciar|reset|restart)\b/.test(t)) return true
   if (/^(empezar|comenzar)(\s+de\s+nuevo)?(\s+(el\s+)?flujo)?\b/.test(t)) return true
   if (/^(de\s+nuevo|otra\s+vez)\b/.test(t)) return true
   return false
+}
+
+/** WhatsApp-friendly: /start, hola, reiniciar, empezar de nuevo, reiniciar flujo, etc. */
+function isRestartRequest(text: string): boolean {
+  return isGreetingOnly(text) || isExplicitRestartRequest(text)
 }
 
 /** Free-text opt-out ("ya no me escriban", "STOP", etc.) — deliberately multi-word/
@@ -233,25 +248,6 @@ export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, co
     await cancelPendingRecontact(lead.id).catch(() => {})
   }
 
-  // Allow restart from any state (including terminal) — avoids support-message loop.
-  // Only applies once the bot has actually said something to this lead before — a brand
-  // new lead's first "hola" is a greeting, not a restart request, and routing it through
-  // here would send the restart ack before handlePhase1 runs, which would make its own
-  // hasSentOutboundMessage check (the one gating the bootstrap GREETING_TEXT) see a
-  // message that was never really part of the conversation.
-  if (messageText && isRestartRequest(messageText) && (await hasSentOutboundMessage(lead.id))) {
-    const fresh = await resetLeadConversation(lead.id)
-    // cancelPendingJobs (phase-scoped) also cancels functional jobs (e.g.
-    // request_registration_code) the lead may have had pending mid-registration;
-    // cancelPendingRecontact (action-scoped, cross-phase) is defense-in-depth so no
-    // stray recontact job survives a restart regardless of which phase it was filed under.
-    await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
-    await cancelPendingRecontact(lead.id).catch(() => {})
-    await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
-    await handlePhase1(fresh, '', undefined, correlationId)
-    return
-  }
-
   // A lead who already opted out (explicit "STOP" / "No, gracias" on a nudge — see
   // OPT_OUT_STATUS_REASONS) keeps their terminal status, but every later message from
   // them fell through to the terminal / NEVER_REENGAGE branches below, which reply with
@@ -260,10 +256,25 @@ export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, co
   // explicit STOP, and in one real case the AI even phrased it as confirming fresh
   // consent. Handled here, ahead of every other branch: an explicit re-entry request
   // restarts the flow; anything else gets one fixed acknowledgment, once, then silence.
-  // Checked before the free-text opt-out block below so the *first* opt-out still runs
+  //
+  // Deliberately checked BEFORE the restart branch below: that branch restarts "from any
+  // state (including terminal)" and isRestartRequest counts a bare "hola" as a restart,
+  // so an opted-out lead saying hello was getting the whole onboarding (greeting, T&C,
+  // contact permission) replayed at them with no re-consent whatsoever — 5 real cases
+  // over 3 leads in the 2026-09-16 audit window, the one clear policy violation it found.
+  // The re-entry path here does everything the restart branch does *plus* lifting the
+  // send-suppression and recording the consent event, so nothing is lost by shadowing it.
+  // Still checked before the free-text opt-out block below so the *first* opt-out runs
   // through there (hasOptedOut is only true once the transition has already happened).
   if (hasOptedOut(lead)) {
-    if (messageText.trim() && !isRestartRequest(messageText) && OPT_OUT_REENTRY_HINT.test(messageText)) {
+    // A greeting is not consent, so it never reaches the AI gate — only wording that says
+    // something about the process itself does ("quiero volver", "reiniciar", "/start").
+    // The AI confirmation is the actual gate, and it fails closed: anything it can't
+    // confirm as an explicit return leaves the lead opted out with the fixed ack.
+    const mightBeReEntry =
+      !isGreetingOnly(messageText) &&
+      (OPT_OUT_REENTRY_HINT.test(messageText) || isExplicitRestartRequest(messageText))
+    if (messageText.trim() && mightBeReEntry) {
       const { detectOptOutReversalIntent } = await import('./detect-opt-out-reversal')
       if (await detectOptOutReversalIntent(messageText, { leadId: lead.id, correlationId })) {
         const fresh = await resetLeadConversation(lead.id)
@@ -289,6 +300,27 @@ export async function routeMessageLocked(lead: Lead, inbound: ChannelInbound, co
     if (!(await alreadySentOptOutAck(lead.id))) {
       await sendText(lead, OPT_OUT_ACK_TEXT, { closing: true, optOutAck: true })
     }
+    return
+  }
+
+  // Allow restart from any state (including terminal) — avoids support-message loop.
+  // Unreachable for an opted-out lead: the branch above owns those, and re-entry there
+  // goes through an explicit consent check instead of this unconditional reset.
+  // Only applies once the bot has actually said something to this lead before — a brand
+  // new lead's first "hola" is a greeting, not a restart request, and routing it through
+  // here would send the restart ack before handlePhase1 runs, which would make its own
+  // hasSentOutboundMessage check (the one gating the bootstrap GREETING_TEXT) see a
+  // message that was never really part of the conversation.
+  if (messageText && isRestartRequest(messageText) && (await hasSentOutboundMessage(lead.id))) {
+    const fresh = await resetLeadConversation(lead.id)
+    // cancelPendingJobs (phase-scoped) also cancels functional jobs (e.g.
+    // request_registration_code) the lead may have had pending mid-registration;
+    // cancelPendingRecontact (action-scoped, cross-phase) is defense-in-depth so no
+    // stray recontact job survives a restart regardless of which phase it was filed under.
+    await cancelPendingJobs(lead.id, lead.currentPhase).catch(() => {})
+    await cancelPendingRecontact(lead.id).catch(() => {})
+    await sendText(fresh, '¡Listo! Empezamos de nuevo 🚀')
+    await handlePhase1(fresh, '', undefined, correlationId)
     return
   }
 

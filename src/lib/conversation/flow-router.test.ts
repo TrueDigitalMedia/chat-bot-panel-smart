@@ -622,6 +622,70 @@ describe('routeMessage — lead who has already opted out keeps writing', () => 
     expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
   })
 
+  // Regression — audit 2026-09-16 §3: the restart branch ran ahead of this one and
+  // isRestartRequest counts a bare "hola" as a restart, so an opted-out lead saying hello
+  // got the entire onboarding replayed (greeting, T&C, contact permission) with no
+  // re-consent. Real case: +57 301 776 9002, opted out 2026-08-24, restarted twice on
+  // 2026-09-14 after writing "Hola".
+  it('a bare "hola" from an opted-out lead never restarts the flow — saying hello is not consent', async () => {
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'incomplete', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'Hola' }), 'corr-1')
+
+    expect(resetLeadConversation).not.toHaveBeenCalled()
+    expect(handlePhase1).not.toHaveBeenCalled()
+    expect(detectOptOutReversalIntent).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
+  })
+
+  it('a second "hola" after the ack gets silence, not another restart', async () => {
+    getLastOutboundMessage.mockResolvedValue({ meta: { optOutAck: true } })
+    const lead = makeLead({ leadStatus: 'incomplete', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'hola' }), 'corr-1')
+
+    expect(sendText).not.toHaveBeenCalled()
+    expect(resetLeadConversation).not.toHaveBeenCalled()
+  })
+
+  it('an explicit "reiniciar" is a re-entry candidate, but still gated by the AI confirmation', async () => {
+    detectOptOutReversalIntent.mockResolvedValue(false)
+    getLastOutboundMessage.mockResolvedValue(null)
+    const lead = makeLead({ leadStatus: 'incomplete', statusReason: 'user_freetext_opt_out', currentPhase: 1 })
+
+    await routeMessage(lead, makeInbound({ text: 'reiniciar' }), 'corr-1')
+
+    expect(detectOptOutReversalIntent).toHaveBeenCalled()
+    expect(resetLeadConversation).not.toHaveBeenCalled()
+    expect(sendText).toHaveBeenCalledWith(lead, 'opt-out ack', { closing: true, optOutAck: true })
+  })
+
+  it('an explicit "reiniciar" the AI confirms goes through the consented re-entry path', async () => {
+    detectOptOutReversalIntent.mockResolvedValue(true)
+    const fresh = makeLead({ leadStatus: 'incomplete', currentPhase: 1 })
+    resetLeadConversation.mockResolvedValue(fresh)
+    const lead = makeLead({
+      leadStatus: 'incomplete',
+      statusReason: 'user_freetext_opt_out',
+      currentPhase: 1,
+      channel: 'whatsapp',
+    })
+
+    await routeMessage(lead, makeInbound({ text: 'empezar de nuevo' }), 'corr-1')
+
+    expect(recordConsentEvent).toHaveBeenCalledWith(
+      'lead-1',
+      'opt_out',
+      'whatsapp',
+      true,
+      'opt-out reentry',
+      'empezar de nuevo',
+    )
+    expect(sendText).toHaveBeenCalledWith(fresh, 'opt-out reentry')
+    expect(sendText).not.toHaveBeenCalledWith(fresh, '¡Listo! Empezamos de nuevo 🚀')
+  })
+
   it('treats a re-engagement decline reason the same as a free-text opt-out', async () => {
     const lead = makeLead({ leadStatus: 'abandono', statusReason: 're_engagement_declined_2nd_attempt', currentPhase: 1 })
     getLastOutboundMessage.mockResolvedValue(null)
