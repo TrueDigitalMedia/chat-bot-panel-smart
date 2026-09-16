@@ -1,10 +1,19 @@
 /**
- * Source of truth for the 29 WhatsApp templates that need Meta approval — the messages
+ * Source of truth for the 12 WhatsApp templates that need Meta approval — the messages
  * genuinely business-initiated (a cron job or an external webhook, not a reply to a
  * fresh inbound message). Body text here is already corrected: no false urgency/
  * scarcity language ("última oportunidad", "expira pronto", the 🚨 emoji), and
  * "premio(s)" (lottery/sweepstakes-adjacent in LatAm Spanish) swapped for
  * "recompensa(s)" (reads as compensation for an action) where it appeared.
+ *
+ * Solo intento 1 (`a1_v1..v3` por pool). Los intentos 2 y 3 se borraron el 2026-09-16
+ * (auditoría `docs/whatsapp/auditoria-alerta-spam-2026-09-16.md` §6.3): con
+ * MAX_REENGAGEMENT_ATTEMPTS = 1 eran inalcanzables desde el 01-sep, pero seguían
+ * aprobados y visibles en Meta, donde se leían como una cadena de 3 toques de marketing
+ * con lenguaje de urgencia ("Último recordatorio", "¿Lo dejamos?") — la lectura exacta
+ * que hizo la revisión de la consola de Meta. Si alguna vez se sube esa constante, hay
+ * que volver a crear y hacer aprobar los intentos que se agreguen: no los recrees acá
+ * sin decidir primero que el multi-toque vuelve a ser aceptable.
  *
  * `logicalId` must match reengageTemplateLogicalId()/the fixed constants in
  * src/lib/whatsapp/providers/twilio/template-ids.ts exactly — it's both the Twilio
@@ -67,42 +76,6 @@ export const TEMPLATES: TemplateConfig[] = [
     body: '📱 Casi lo logras! Solo falta terminar tu perfil para acceder a recompensas exclusivas ⚡',
     buttons: REENGAGE_BUTTONS,
   },
-  {
-    logicalId: 'phase1_reengage_a2_v1',
-    category: 'MARKETING',
-    body: '💚 Todavía tienes tiempo de unirte a PanelSmart. Miles ganan recompensas compartiendo sus compras 🛍️ Completa ahora 👉',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase1_reengage_a2_v2',
-    category: 'MARKETING',
-    body: '🎯 Ya casi terminas tu registro en PanelSmart. Solo toma 2 minutos finalizarlo y acceder a recompensas 💰',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase1_reengage_a2_v3',
-    category: 'MARKETING',
-    body: '🚀 Aún hay cupo para ti en PanelSmart! Termina tu perfil hoy y comienza a canjear puntos 🏆',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase1_reengage_a3_v1',
-    category: 'MARKETING',
-    body: '⏰ Recordatorio: tu inscripción a PanelSmart sigue disponible. ¡Complétala ahora! 💪',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase1_reengage_a3_v2',
-    category: 'MARKETING',
-    body: '🔔 Recordatorio: tu acceso a recompensas de PanelSmart sigue abierto. Termina tu inscripción 👇',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase1_reengage_a3_v3',
-    category: 'MARKETING',
-    body: '⚡ ¿Lo dejamos? Puedes retomar tu registro en PanelSmart cuando quieras y empezar a ganar 🎉',
-    buttons: REENGAGE_BUTTONS,
-  },
 
   // --- phase2_link_reminder ---
   {
@@ -123,42 +96,6 @@ export const TEMPLATES: TemplateConfig[] = [
     body: `✨ Tu cupo en PanelSmart ya está confirmado, solo falta la app para activarlo 🚀${APP_LINKS}`,
     buttons: REENGAGE_BUTTONS,
   },
-  {
-    logicalId: 'phase2_link_reminder_a2_v1',
-    category: 'MARKETING',
-    body: `⏳ Sigue pendiente descargar la app de PanelSmart para recibir tu código de registro. No tardes mucho 👇${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase2_link_reminder_a2_v2',
-    category: 'MARKETING',
-    body: `💚 Miles de personas ya están ganando recompensas en PanelSmart compartiendo sus compras. Descarga la app y súmate 🛍️${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase2_link_reminder_a2_v3',
-    category: 'MARKETING',
-    body: `🔔 Recordatorio: tu código de registro te espera. Descarga la app cuando puedas y te lo enviamos al instante ⚡${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase2_link_reminder_a3_v1',
-    category: 'MARKETING',
-    body: `⏰ Recordatorio final: descarga la app de PanelSmart para recibir tu código de registro.${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase2_link_reminder_a3_v2',
-    category: 'MARKETING',
-    body: `⚡ ¿Lo dejamos aquí? Descarga la app cuando quieras para continuar en PanelSmart.${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase2_link_reminder_a3_v3',
-    category: 'MARKETING',
-    body: `📲 Último recordatorio: descarga la app para activar tu registro en PanelSmart.${APP_LINKS}`,
-    buttons: REENGAGE_BUTTONS,
-  },
 
   // --- phase4_ficha_hogar ---
   {
@@ -177,42 +114,6 @@ export const TEMPLATES: TemplateConfig[] = [
     logicalId: 'phase4_ficha_hogar_a1_v3',
     category: 'MARKETING',
     body: '✨ Un último paso para tu Ficha Hogar y quedas listo para empezar a ganar recompensas en PanelSmart 🎁',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a2_v1',
-    category: 'MARKETING',
-    body: '💚 Tu Ficha Hogar sigue incompleta — termínala en un par de minutos y no te pierdas tus recompensas.',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a2_v2',
-    category: 'MARKETING',
-    body: '🎯 Estás muy cerca: solo faltan algunas preguntas de tu Ficha Hogar para activar tu cupo por completo.',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a2_v3',
-    category: 'MARKETING',
-    body: '🚀 Completa tu Ficha Hogar hoy y empieza a disfrutar de todos los beneficios de PanelSmart.',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a3_v1',
-    category: 'MARKETING',
-    body: '⏰ Último recordatorio: completa tu Ficha Hogar para terminar tu registro en el panel.',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a3_v2',
-    category: 'MARKETING',
-    body: '🔔 Recordatorio final: tu Ficha Hogar quedó a medias. Termínala cuando puedas.',
-    buttons: REENGAGE_BUTTONS,
-  },
-  {
-    logicalId: 'phase4_ficha_hogar_a3_v3',
-    category: 'MARKETING',
-    body: '⚡ ¿Seguimos? Tu Ficha Hogar está casi lista — solo falta este último paso.',
     buttons: REENGAGE_BUTTONS,
   },
 

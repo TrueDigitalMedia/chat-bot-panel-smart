@@ -1,5 +1,5 @@
 /**
- * Creates the 29 approved-template candidates (scripts/twilio-templates.config.ts) as
+ * Creates the 12 approved-template candidates (scripts/twilio-templates.config.ts) as
  * Twilio Content resources and submits each for WhatsApp approval — idempotent: a
  * logicalId that already has a row in whatsapp_templates is skipped, so re-running
  * this never creates duplicates (unlike the old in-memory-cache bug that flooded the
