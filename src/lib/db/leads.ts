@@ -243,6 +243,11 @@ export async function applyPhoneRemediation(leadId: string, phone: string): Prom
 /**
  * Hard-reset a lead so they can start the recruitment flow again (/start).
  * Clears survey answers and flow/correction state.
+ *
+ * `statusReason` is cleared along with the status it explains: leaving it behind meant a
+ * lead who opted out and then confirmed an explicit re-entry still matched hasOptedOut on
+ * their very next turn, so the flow they just consented to resume answered them with the
+ * opt-out acknowledgment and then went silent. A reset conversation has no prior reason.
  */
 export async function resetLeadConversation(leadId: string): Promise<Lead> {
   const now = new Date()
@@ -251,6 +256,7 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
     .update(leads)
     .set({
       leadStatus: 'incomplete',
+      statusReason: null,
       currentPhase: 1,
       surveyQuestionIndex: 0,
       quotaSegment: null,
