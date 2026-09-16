@@ -6,6 +6,21 @@ const { dbMock, publishJSON, messagesDelete, countOutboundSinceLastInbound } = v
   messagesDelete: vi.fn(),
   countOutboundSinceLastInbound: vi.fn().mockResolvedValue(0),
 }))
+// Recontact is OFF in prod (MAX_REENGAGEMENT_ATTEMPTS = 0). The nudge path it replaced
+// still exists and must keep working if it's ever switched back on, so the flag is made
+// togglable here instead of letting the prod value delete that coverage. Read through a
+// getter so each access inside scheduleRecontact sees the current value.
+const regime = vi.hoisted(() => ({ recontactDisabled: false }))
+vi.mock('./constants', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./constants')>()
+  return {
+    ...actual,
+    get RECONTACT_DISABLED() {
+      return regime.recontactDisabled
+    },
+  }
+})
+
 vi.mock('@/lib/db/client', () => ({ db: dbMock }))
 vi.mock('@/lib/db/conversation-messages', () => ({ countOutboundSinceLastInbound }))
 vi.mock('@/lib/env', () => ({
@@ -64,6 +79,9 @@ beforeEach(() => {
   vi.resetAllMocks()
   publishJSON.mockResolvedValue({ messageId: 'qstash-msg-1' })
   countOutboundSinceLastInbound.mockResolvedValue(0)
+  // Default to the nudge regime so the existing cases keep asserting that path; the
+  // disabled-regime block below opts in explicitly.
+  regime.recontactDisabled = false
 })
 
 describe('scheduleJob', () => {
@@ -210,6 +228,59 @@ describe('scheduleRecontact', () => {
     dbMock.select.mockReturnValueOnce(selectChain([]))
 
     await scheduleRecontact('missing-lead', 'corr-1')
+
+    expect(dbMock.insert).not.toHaveBeenCalled()
+    expect(publishJSON).not.toHaveBeenCalled()
+  })
+})
+
+// The prod regime since 2026-09-16 — no nudges at all (audit §3, Meta spam alert).
+describe('scheduleRecontact — recontact disabled (MAX_REENGAGEMENT_ATTEMPTS = 0)', () => {
+  beforeEach(() => {
+    regime.recontactDisabled = true
+  })
+
+  it('arms a silent_abandon close-out instead of a re-engage nudge', async () => {
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ leadStatus: 'link_sent', currentPhase: 2 }]))
+      .mockReturnValueOnce(selectChain([]))
+    dbMock.update.mockReturnValue(updateChain([]))
+    const insertCaptured: { values?: Record<string, unknown> } = {}
+    dbMock.insert.mockReturnValue(insertChain(insertCaptured))
+
+    await scheduleRecontact('lead-1', 'corr-1')
+
+    expect(insertCaptured.values).toMatchObject({
+      leadId: 'lead-1',
+      phase: 2,
+      attemptNumber: 97,
+      action: 'silent_abandon',
+    })
+    // Nothing that could produce a message was scheduled.
+    expect(publishJSON).toHaveBeenCalledTimes(1)
+    expect(publishJSON.mock.calls[0][0]).toMatchObject({ body: { action: 'silent_abandon' } })
+  })
+
+  it('still closes out a lead buried in unanswered outbound — the ceiling guards sends, and this sends nothing', async () => {
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ leadStatus: 'link_sent', currentPhase: 2 }]))
+      .mockReturnValueOnce(selectChain([]))
+    dbMock.update.mockReturnValue(updateChain([]))
+    const insertCaptured: { values?: Record<string, unknown> } = {}
+    dbMock.insert.mockReturnValue(insertChain(insertCaptured))
+    countOutboundSinceLastInbound.mockResolvedValue(9) // way past REENGAGE_OUTBOUND_CEILING
+
+    await scheduleRecontact('lead-1', 'corr-1')
+
+    expect(insertCaptured.values).toMatchObject({ action: 'silent_abandon' })
+  })
+
+  it('still schedules nothing for a lead already in a terminal status', async () => {
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ leadStatus: 'not_qualified', currentPhase: 1 }]))
+      .mockReturnValueOnce(selectChain([]))
+
+    await scheduleRecontact('lead-1', 'corr-1')
 
     expect(dbMock.insert).not.toHaveBeenCalled()
     expect(publishJSON).not.toHaveBeenCalled()

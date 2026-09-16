@@ -17,25 +17,39 @@ export const REENGAGEMENT_CADENCE_SECONDS = [
 
 /**
  * The single knob for how many recontact nudges the bot sends before giving up.
- * Currently 1: send one nudge (with its Continue/Stop buttons), then wait
- * RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS for a reply before abandoning — no 2nd/3rd nudge.
  *
- * To change it, set this to any value from 1..REENGAGEMENT_CADENCE_SECONDS.length and
- * nothing else needs editing. To go higher, first add matching entries to
- * REENGAGEMENT_CADENCE_SECONDS above and to getFallbackMessage in scheduler/messages.ts.
+ * **Currently 0 — recontact is off.** Nobody gets an unsolicited nudge; a lead who goes
+ * quiet is closed out silently by the `silent_abandon` job below (no message sent) so
+ * the funnel still distinguishes "in progress" from "dropped off". Set 2026-09-16 in
+ * response to the Meta "Sending spam" alert: every nudge is a MARKETING-category template
+ * to someone who already stopped replying, which is the highest block/report-rate
+ * message we send. See `docs/whatsapp/auditoria-alerta-spam-2026-09-16.md`.
+ *
+ * Values:
+ *   0                      → no nudges at all; scheduleRecontact arms silent_abandon.
+ *   1..CADENCE_SECONDS.length → send that many nudges, then RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS
+ *                            before abandoning.
+ *
+ * To go above REENGAGEMENT_CADENCE_SECONDS.length, first add matching entries to that
+ * array and to getFallbackMessage in scheduler/messages.ts. Raising it above 0 at all is
+ * a policy decision, not just a tuning one — the a2/a3 templates were deleted from Meta
+ * on 2026-09-16, so anything above 1 also needs templates recreated and re-approved.
  */
-export const MAX_REENGAGEMENT_ATTEMPTS = 1
+export const MAX_REENGAGEMENT_ATTEMPTS = 0
 
 if (
-  MAX_REENGAGEMENT_ATTEMPTS < 1 ||
+  MAX_REENGAGEMENT_ATTEMPTS < 0 ||
   MAX_REENGAGEMENT_ATTEMPTS > REENGAGEMENT_CADENCE_SECONDS.length
 ) {
   throw new Error(
-    `MAX_REENGAGEMENT_ATTEMPTS (${MAX_REENGAGEMENT_ATTEMPTS}) must be between 1 and ` +
+    `MAX_REENGAGEMENT_ATTEMPTS (${MAX_REENGAGEMENT_ATTEMPTS}) must be between 0 (disabled) and ` +
       `REENGAGEMENT_CADENCE_SECONDS.length (${REENGAGEMENT_CADENCE_SECONDS.length}) — ` +
       `add cadence + fallback-copy entries before raising it further.`,
   )
 }
+
+/** True when recontact is switched off entirely (MAX_REENGAGEMENT_ATTEMPTS = 0). */
+export const RECONTACT_DISABLED = MAX_REENGAGEMENT_ATTEMPTS === 0
 
 // If a lead has already received this many outbound messages since their last inbound
 // reply, the re-engage job (and scheduleRecontact, and every other job action) stops the
@@ -52,6 +66,19 @@ export const REENGAGE_OUTBOUND_CEILING = 4
 // nudge — distinct from the 1-3 attempt numbers themselves, so its
 // re_engagement_schedules row never collides with the nudge's own row.
 export const RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER = 96
+
+// Sentinel attemptNumber for the silent_abandon job (recontact disabled). Distinct from
+// 95/96/99 so its re_engagement_schedules row never collides with the others'.
+export const SILENT_ABANDON_ATTEMPT_NUMBER = 97
+
+/**
+ * How long a lead can stay idle before the silent close-out marks them abandoned, when
+ * recontact is disabled. Deliberately the same total wall-clock as the old nudge path
+ * (first-nudge delay 75m + RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS 12h) so turning recontact
+ * off changes *what the lead receives* — nothing — without shifting when the funnel
+ * considers them dropped off, keeping the before/after numbers comparable.
+ */
+export const SILENT_ABANDON_DELAY_SECONDS = REENGAGEMENT_CADENCE_SECONDS[0] + 43200 // 13h15m
 
 // How long to wait, after sending the re-engagement nudge (with its own
 // Continue/Stop buttons), before giving up on a lead who never taps either one. Must

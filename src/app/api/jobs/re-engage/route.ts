@@ -4,7 +4,7 @@ import { and, eq, isNull, lt } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { leads, reEngagementSchedules } from '@/lib/db/schema'
 import { transitionLead } from '@/lib/state-machine'
-import { isTerminal, NEVER_REENGAGE_STATUSES } from '@/lib/state-machine/transitions'
+import { isTerminal, NEVER_REENGAGE_STATUSES, validateTransition } from '@/lib/state-machine/transitions'
 import { requestRegistrationCodeForLead } from '@/lib/onboarding/request-registration-code'
 import { sendTemplateOrKeyboard } from '@/lib/messaging/send'
 import { REENGAGE_CALLBACK_CONTINUE, REENGAGE_CALLBACK_STOP } from '@/lib/conversation/reengage-choice'
@@ -15,6 +15,7 @@ import {
   RE_ENGAGEMENT_TIMEOUT_ATTEMPT_NUMBER,
   RE_ENGAGEMENT_FINAL_TIMEOUT_SECONDS,
   REENGAGE_OUTBOUND_CEILING,
+  RECONTACT_DISABLED,
 } from '@/lib/scheduler/constants'
 import { getNextMessageVariant, resolveMessagePool } from '@/lib/scheduler/messages'
 import { countOutboundSinceLastInbound } from '@/lib/db/conversation-messages'
@@ -112,6 +113,63 @@ async function stopForOutboundCeiling(
   return true
 }
 
+/**
+ * Closes an idle lead out without sending anything — the whole of what recontact does
+ * once MAX_REENGAGEMENT_ATTEMPTS is 0. Its only purpose is keeping the funnel honest:
+ * with no nudge left to eventually abandon a lead, a phase-1 drop-off would otherwise sit
+ * in `incomplete` forever and quietly rot the dashboard and the quota counts.
+ *
+ * Guards mirror re_engagement_timeout's. `lastActivityAt` newer than the job's own
+ * `scheduledAt` means the lead came back — scheduleRecontact re-arms this on every turn,
+ * so that can only be a turn whose cancel didn't land in time.
+ *
+ * Shared by the 'silent_abandon' action and by any legacy 're-engage' job still in flight
+ * from before recontact was switched off, so those leads get closed out too instead of
+ * being left in limbo by a branch that now only knows how to skip.
+ */
+async function closeOutSilently(
+  lead: typeof leads.$inferSelect,
+  payload: JobPayload,
+  correlationId: string,
+): Promise<NextResponse> {
+  if (isTerminal(lead.leadStatus as LeadStatus)) {
+    return NextResponse.json({ outcome: 'already_terminal' })
+  }
+  const [job] = await db
+    .select({ scheduledAt: reEngagementSchedules.scheduledAt })
+    .from(reEngagementSchedules)
+    .where(
+      and(
+        eq(reEngagementSchedules.leadId, lead.id),
+        eq(reEngagementSchedules.phase, payload.phase),
+        eq(reEngagementSchedules.attemptNumber, payload.attemptNumber),
+      ),
+    )
+  if (job?.scheduledAt && lead.lastActivityAt && lead.lastActivityAt > job.scheduledAt) {
+    return NextResponse.json({ outcome: 'skipped_already_responded' })
+  }
+  // A lead already excluded from re-engagement (declined registration, or frozen after
+  // code delivery) is closed enough — silently flipping them to abandono would lose the
+  // more specific status they carry, and a late registration tap is still honored there.
+  if (NEVER_REENGAGE_STATUSES.has(lead.leadStatus as LeadStatus)) {
+    return NextResponse.json({ outcome: 'skipped_never_reengage' })
+  }
+  // Same target mapping as the opt-out/freeze paths: a lead past code delivery can still
+  // act on their code later, so it lands in code_delivered_no_response rather than
+  // abandono; everything earlier in the funnel gives up as abandono.
+  const target: LeadStatus =
+    lead.leadStatus === 'waiting_for_code' ? 'code_delivered_no_response' : 'abandono'
+  // transitionLead throws on an illegal edge. With today's ALLOWED_TRANSITIONS this is
+  // unreachable — every non-terminal status that gets past the NEVER_REENGAGE check above
+  // does have an edge to `target` — but it's kept as a cheap guard so a future edit to
+  // the transitions table can't turn this background job into a 500 loop.
+  if (!validateTransition(lead.leadStatus as LeadStatus, target)) {
+    return NextResponse.json({ outcome: 'skipped_invalid_transition' })
+  }
+  await transitionLead(lead.id, target, 'idle_no_recontact', correlationId)
+  return NextResponse.json({ outcome: 'marked_abandono_silently' })
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text()
   const signature = request.headers.get('Upstash-Signature') ?? ''
@@ -196,6 +254,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ outcome: 'freeze_applied' })
   }
 
+  // --- Silent close-out (recontact disabled, MAX_REENGAGEMENT_ATTEMPTS = 0) ---
+  if (payload.action === 'silent_abandon') {
+    return closeOutSilently(lead, payload, correlationId)
+  }
+
   // --- Re-engagement timeout — the nudge's Continue/Stop buttons went
   // unanswered long enough that we give up. Only abandons if the lead genuinely never
   // responded: isTerminal already covers an explicit "No, gracias" tap (handled
@@ -231,6 +294,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // consent+idle-gated cadence; message content is picked by resolveMessagePool from
   // the lead's *current* status, not the phase the job happened to be filed under) ---
   if (payload.action === 're-engage') {
+    // Recontact was switched off after this job was armed (1.159 of them were still in
+    // flight at the 2026-09-16 deploy). The attempts-exhausted guard further down would
+    // already stop the send — 0 >= 0 — but it would also leave the lead in limbo, with
+    // no nudge coming and no close-out scheduled. Route it to the silent close-out that
+    // replaced this path instead.
+    if (RECONTACT_DISABLED) {
+      return closeOutSilently(lead, payload, correlationId)
+    }
+
     // The lead may have completed/abandoned/moved to a terminal status since this job
     // was scheduled (e.g. it self-resolved through a different channel) — every other
     // action in this file already self-guards on status; this one previously didn't.
