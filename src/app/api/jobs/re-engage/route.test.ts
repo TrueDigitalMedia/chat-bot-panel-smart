@@ -52,6 +52,24 @@ vi.mock('@/lib/db/conversation-messages', () => ({
 }))
 vi.mock('@/lib/correlation', () => ({ generateCorrelationId: () => 'corr-1' }))
 
+// Prod runs with MAX_REENGAGEMENT_ATTEMPTS = 0 (recontact off since 2026-09-16, Meta
+// spam alert). The nudge branch still exists and must keep working if it's switched back
+// on, so the value is togglable here rather than letting the prod 0 silently delete that
+// coverage: the nudge cases below run at 1, the silent_abandon cases at 0.
+const regime = vi.hoisted(() => ({ maxAttempts: 1 }))
+vi.mock('@/lib/scheduler/constants', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/scheduler/constants')>()
+  return {
+    ...actual,
+    get MAX_REENGAGEMENT_ATTEMPTS() {
+      return regime.maxAttempts
+    },
+    get RECONTACT_DISABLED() {
+      return regime.maxAttempts === 0
+    },
+  }
+})
+
 import { and, eq, lt } from 'drizzle-orm'
 import { POST } from './route'
 import { reEngagementSchedules, leads } from '@/lib/db/schema'
@@ -109,6 +127,8 @@ const BASE_LEAD = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  // Default to the nudge regime; the silent_abandon block opts into 0 explicitly.
+  regime.maxAttempts = 1
   verify.mockResolvedValue(true)
   countOutboundSinceLastInbound.mockResolvedValue(0)
   claimResult = [{ id: 'sched-1' }]
@@ -334,6 +354,116 @@ describe('POST /api/jobs/re-engage', () => {
 
     expect(transitionLead).toHaveBeenCalledWith('lead-1', 'code_delivered_no_response', 'inactivity_freeze', 'corr-1')
     expect(body.outcome).toBe('freeze_applied')
+  })
+
+  // --- Recontact disabled (MAX_REENGAGEMENT_ATTEMPTS = 0), the prod regime since
+  // 2026-09-16. scheduleRecontact arms silent_abandon instead of a nudge; this job must
+  // close the lead out without ever producing a message.
+  describe('silent_abandon', () => {
+    beforeEach(() => {
+      regime.maxAttempts = 0
+    })
+
+    it('marks an idle phase-1 lead abandono without sending anything', async () => {
+      dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'incomplete' }]))
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+      const body = await res.json()
+
+      expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'idle_no_recontact', 'corr-1')
+      expect(sendText).not.toHaveBeenCalled()
+      expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
+      expect(body.outcome).toBe('marked_abandono_silently')
+    })
+
+    it('sends a waiting_for_code lead to code_delivered_no_response, not abandono', async () => {
+      dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'waiting_for_code' }]))
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+
+      expect(transitionLead).toHaveBeenCalledWith(
+        'lead-1',
+        'code_delivered_no_response',
+        'idle_no_recontact',
+        'corr-1',
+      )
+      expect(await res.json()).toMatchObject({ outcome: 'marked_abandono_silently' })
+    })
+
+    it('skips a lead already terminal', async () => {
+      dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'not_qualified' }]))
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+
+      expect(transitionLead).not.toHaveBeenCalled()
+      expect(await res.json()).toMatchObject({ outcome: 'already_terminal' })
+    })
+
+    it('skips a NEVER_REENGAGE lead instead of overwriting its more specific status', async () => {
+      dbMock.select.mockReturnValue(
+        selectChain([{ ...BASE_LEAD, leadStatus: 'code_delivered_not_registered' }]),
+      )
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+
+      expect(transitionLead).not.toHaveBeenCalled()
+      expect(await res.json()).toMatchObject({ outcome: 'skipped_never_reengage' })
+    })
+
+    // transitionLead throws on an illegal edge, and this job can fire from any
+    // non-terminal status — code_delivered_no_response has no edge to abandono.
+    it('skips rather than throwing when the lead has no legal edge to the give-up status', async () => {
+      dbMock.select.mockReturnValue(
+        selectChain([{ ...BASE_LEAD, leadStatus: 'code_delivered_no_response' }]),
+      )
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 2, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+
+      expect(transitionLead).not.toHaveBeenCalled()
+      // NEVER_REENGAGE catches this one first — either way, nothing throws and nothing sends.
+      expect(await res.json()).toMatchObject({ outcome: 'skipped_never_reengage' })
+    })
+
+    // 1.159 're-engage' jobs were still in flight when recontact was switched off.
+    it('a legacy re-engage job still in flight closes the lead out instead of sending or leaving it in limbo', async () => {
+      dbMock.select.mockReturnValue(selectChain([{ ...BASE_LEAD, leadStatus: 'incomplete' }]))
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 1, action: 're-engage' }),
+      )
+
+      expect(sendTemplateOrKeyboard).not.toHaveBeenCalled()
+      expect(transitionLead).toHaveBeenCalledWith('lead-1', 'abandono', 'idle_no_recontact', 'corr-1')
+      expect(await res.json()).toMatchObject({ outcome: 'marked_abandono_silently' })
+    })
+
+    it('backs off when the lead came back after the job was armed', async () => {
+      const armedAt = new Date(Date.now() - 60 * 60 * 1000)
+      dbMock.select
+        .mockReturnValueOnce(
+          selectChain([
+            { ...BASE_LEAD, leadStatus: 'incomplete', lastActivityAt: new Date() },
+          ]),
+        )
+        .mockReturnValueOnce(selectChain([{ scheduledAt: armedAt }]))
+
+      const res = await POST(
+        fakeRequest({ leadId: 'lead-1', phase: 1, attemptNumber: 97, action: 'silent_abandon' }),
+      )
+
+      expect(transitionLead).not.toHaveBeenCalled()
+      expect(await res.json()).toMatchObject({ outcome: 'skipped_already_responded' })
+    })
   })
 
   it('re-engage: stops the cadence and abandons the lead when too many outbound messages have piled up without a reply', async () => {

@@ -1,10 +1,16 @@
 import { Client } from '@upstash/qstash'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { reEngagementSchedules, leads } from '@/lib/db/schema'
 import { env, appBaseUrl } from '@/lib/env'
 import { isTerminal } from '@/lib/state-machine/transitions'
-import { reengagementDelaySeconds, REENGAGE_OUTBOUND_CEILING } from './constants'
+import {
+  reengagementDelaySeconds,
+  REENGAGE_OUTBOUND_CEILING,
+  RECONTACT_DISABLED,
+  SILENT_ABANDON_ATTEMPT_NUMBER,
+  SILENT_ABANDON_DELAY_SECONDS,
+} from './constants'
 import { countOutboundSinceLastInbound } from '@/lib/db/conversation-messages'
 import type { LeadStatus } from '@/types/lead'
 
@@ -20,6 +26,9 @@ export interface JobPayload {
     | 're-engage'
     | 're_engagement_timeout'
     | 'freeze_registration'
+    // Closes out an idle lead without sending anything — the replacement for the
+    // 're-engage' nudge when RECONTACT_DISABLED (scheduler/constants.ts).
+    | 'silent_abandon'
 }
 
 export async function scheduleJob(
@@ -98,6 +107,11 @@ export async function cancelPendingJobs(leadId: string, phase: number): Promise<
  * in phase 1, moments before a transition to phase 2 within the same turn). Leaves
  * functional jobs (request_registration_code/registration_code_timeout/
  * freeze_registration) untouched even if they share a phase with a cancelled row.
+ *
+ * Covers 'silent_abandon' alongside 're-engage' because it occupies the same slot when
+ * recontact is disabled: both are armed by scheduleRecontact at the end of a turn and
+ * must be cancelled at the start of the next one, so the idle clock restarts while the
+ * lead is actively replying instead of firing mid-conversation.
  */
 export async function cancelPendingRecontact(leadId: string): Promise<void> {
   const pending = await db
@@ -106,7 +120,7 @@ export async function cancelPendingRecontact(leadId: string): Promise<void> {
     .where(
       and(
         eq(reEngagementSchedules.leadId, leadId),
-        eq(reEngagementSchedules.action, 're-engage'),
+        inArray(reEngagementSchedules.action, ['re-engage', 'silent_abandon']),
       ),
     )
 
@@ -134,6 +148,27 @@ export async function scheduleRecontact(leadId: string, correlationId: string): 
   await cancelPendingRecontact(leadId).catch(() => {})
 
   if (isTerminal(lead.leadStatus as LeadStatus)) return
+
+  // Recontact switched off: never arm a nudge, just the silent close-out so the lead
+  // doesn't sit in `incomplete` forever. Checked before the outbound ceiling on purpose —
+  // a lead buried in unanswered outbound is exactly one we still want closed out, and
+  // this path sends nothing, so the ceiling (a send guard) has nothing to guard against.
+  if (RECONTACT_DISABLED) {
+    await scheduleJob(
+      leadId,
+      lead.currentPhase,
+      SILENT_ABANDON_ATTEMPT_NUMBER,
+      SILENT_ABANDON_DELAY_SECONDS,
+      'silent_abandon',
+    ).catch((err) => {
+      console.error('[scheduler] scheduleRecontact (silent_abandon) failed', {
+        leadId,
+        correlationId,
+        err: String(err),
+      })
+    })
+    return
+  }
 
   // Don't arm another nudge cadence for a lead already buried in unanswered outbound —
   // stop the spaced burst at the source instead of after the job has already sent one.
