@@ -324,10 +324,18 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
 
   // Regression (2026-09-23): Rep. Dominicana Santiago / Sureste were deactivated in the admin
   // panel (every NSE line `active = false`) but kept their manual cap row, so getRegionObjective
-  // still reported them open as `source: 'cap'` and the exception below kept letting
-  // baby-under-3 leads into them. getRegionObjective now returns objective 0 for those, which
-  // closes the region before the exception is ever considered.
-  it('does NOT qualify a baby-under-3 lead in a deactivated region (objective forced to 0)', async () => {
+  // still reported them open as `source: 'cap'` and the exception below kept letting leads into
+  // them. getRegionObjective now returns objective 0 for those, which closes the region before
+  // the exception is ever considered.
+  //
+  // Both halves of the exception are covered: only baby-under-3 leads actually leaked in prod
+  // (685 profiles answered it vs 83 pregnancies — volume, not logic), but `isPregnant ||
+  // hasBabyUnder3` is a single condition, so a pregnancy would have gone through the same door.
+  it.each([
+    ['a baby-under-3 lead', { isPregnant: false, hasBabyUnder3: true }],
+    ['a pregnant lead', { isPregnant: true, hasBabyUnder3: false }],
+    ['a pregnant lead who also has a baby under 3', { isPregnant: true, hasBabyUnder3: true }],
+  ])('does NOT qualify %s in a deactivated region (objective forced to 0)', async (_label, exception) => {
     regionObjective = objective({ objective: 0, source: 'none', achieved: 16, deactivated: true })
     openNseLine = null
 
@@ -336,8 +344,7 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       segment: 'Nivel 2',
       age: 30,
       householdSize: 3,
-      isPregnant: false,
-      hasBabyUnder3: true,
+      ...exception,
     })
 
     expect(result.qualifies).toBe(false)
