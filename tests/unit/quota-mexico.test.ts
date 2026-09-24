@@ -10,7 +10,7 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
-let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0, deactivated: false }
 let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
@@ -60,7 +60,7 @@ const MX_CENTRO = { country: 'México', region: 'CENTRO', nseRegion: 'CENTRO' }
 describe('checkQuotaAvailability — México (spec 015 T030, no code change from spec 011)', () => {
   beforeEach(() => {
     progressByKey.clear()
-    regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+    regionObjective = { objective: 1000, source: 'cap', achieved: 0, deactivated: false }
     openNseLine = null
   })
 
@@ -102,7 +102,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
 
   it('the México region objective blocks an otherwise-qualifying lead once reached', async () => {
     seedProgress({ ...MX_CENTRO, dimensionType: 'nse', dimensionValue: 'C', target: 10, achieved: 0 })
-    regionObjective = { objective: 20, source: 'cap', achieved: 20 }
+    regionObjective = { objective: 20, source: 'cap', achieved: 20, deactivated: false }
     const result = await checkQuotaAvailability({
       ...MX_CENTRO, segment: 'C', age: 30, householdSize: 3, isPregnant: false, hasBabyUnder3: false,
     })
@@ -127,7 +127,7 @@ describe('checkQuotaAvailability — México (spec 015 T030, no code change from
   })
 
   it('the exception IS blocked once the México region objective is reached (PUNTO 1)', async () => {
-    regionObjective = { objective: 10, source: 'cap', achieved: 10 }
+    regionObjective = { objective: 10, source: 'cap', achieved: 10, deactivated: false }
     const result = await checkQuotaAvailability({
       ...MX_CENTRO, segment: 'AB', age: 20, householdSize: 1, isPregnant: false, hasBabyUnder3: true,
     })
