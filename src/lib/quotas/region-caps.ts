@@ -69,20 +69,36 @@ export async function getRegionCapProgress(country: string, region: string): Pro
   return { cap: row.capCount, achieved }
 }
 
-/** Sum of the active NSE line targets for a country+region (0 if none configured). */
-async function sumActiveNseTargets(country: string, region: string): Promise<number> {
+interface NseLineStats {
+  /** NSE line rows configured for the region, active or not. */
+  lineCount: number
+  /** How many of those rows are active. 0 with `lineCount > 0` means the region was deactivated. */
+  activeLineCount: number
+  /** Sum of the ACTIVE NSE line targets (0 if none active). */
+  activeSum: number
+}
+
+/** NSE line rows for a country+region, split by active/inactive — see getRegionObjective. */
+async function getNseLineStats(country: string, region: string): Promise<NseLineStats> {
   const [row] = await db
-    .select({ sum: sql<number>`coalesce(sum(${quotaTargets.targetCount}), 0)::int` })
+    .select({
+      lineCount: sql<number>`count(*)::int`,
+      activeLineCount: sql<number>`count(*) filter (where ${quotaTargets.active})::int`,
+      activeSum: sql<number>`coalesce(sum(${quotaTargets.targetCount}) filter (where ${quotaTargets.active}), 0)::int`,
+    })
     .from(quotaTargets)
     .where(
       and(
         eq(quotaTargets.country, country),
         eq(quotaTargets.region, region),
-        eq(quotaTargets.active, true),
         eq(quotaTargets.dimensionType, 'nse'),
       ),
     )
-  return row?.sum ?? 0
+  return {
+    lineCount: row?.lineCount ?? 0,
+    activeLineCount: row?.activeLineCount ?? 0,
+    activeSum: row?.activeSum ?? 0,
+  }
 }
 
 export interface RegionObjective {
@@ -92,6 +108,8 @@ export interface RegionObjective {
   source: 'cap' | 'nse_sum' | 'none'
   /** Every QUALIFIED_STATUSES lead for this country+region, any matched dimension (incl. exception). */
   achieved: number
+  /** Every NSE line row of the region is inactive: the region was deactivated in the admin panel. */
+  deactivated: boolean
 }
 
 /**
@@ -100,6 +118,14 @@ export interface RegionObjective {
  * for EVERYONE — NSE lines, the pregnancy/baby exception, and edad/integrantes alike.
  *
  * Resolution order:
+ *  0. A DEACTIVATED region — it has NSE line rows but every one of them is `active = false`,
+ *     which is how the admin panel closes a region — is CLOSED, objective 0, even if a
+ *     manual cap row from the original client sample is still sitting there. Deactivating
+ *     the lines is the explicit, later operator decision; the cap row is the stale one.
+ *     Without this, a deactivated region kept `source: 'cap'` and stayed "open", which let
+ *     the pregnancy/baby-under-3 exception in scoring/quota.ts keep qualifying leads into
+ *     regions the operator had already closed (bug 2026-09-23: Rep. Dominicana Santiago
+ *     and Sureste, every one of those leads matched as 'exception').
  *  1. An explicit manual `quota_region_caps.cap_count` (the region objective loaded from
  *     the client sample) wins when present.
  *  2. Otherwise the Σ of the region's active NSE line targets (they should add up to the
@@ -109,7 +135,9 @@ export interface RegionObjective {
  *     default, which was letting out-of-sample regions (e.g. Centro I) over-deliver.
  */
 export async function getRegionObjective(country: string, region: string): Promise<RegionObjective> {
-  if (!country || !region) return { objective: 0, source: 'none', achieved: 0 }
+  if (!country || !region) {
+    return { objective: 0, source: 'none', achieved: 0, deactivated: false }
+  }
 
   const [capRow] = await db
     .select({ capCount: quotaRegionCaps.capCount })
@@ -118,17 +146,23 @@ export async function getRegionObjective(country: string, region: string): Promi
     .limit(1)
 
   const achieved = await countRegionAchieved(country, region)
+  const nse = await getNseLineStats(country, region)
+  const deactivated = nse.lineCount > 0 && nse.activeLineCount === 0
+  const base = { achieved, deactivated }
+
+  if (deactivated) {
+    return { objective: 0, source: 'none', ...base }
+  }
 
   if (capRow?.capCount != null) {
-    return { objective: capRow.capCount, source: 'cap', achieved }
+    return { objective: capRow.capCount, source: 'cap', ...base }
   }
 
-  const nseSum = await sumActiveNseTargets(country, region)
-  if (nseSum > 0) {
-    return { objective: nseSum, source: 'nse_sum', achieved }
+  if (nse.activeSum > 0) {
+    return { objective: nse.activeSum, source: 'nse_sum', ...base }
   }
 
-  return { objective: 0, source: 'none', achieved }
+  return { objective: 0, source: 'none', ...base }
 }
 
 export async function listRegionCaps(): Promise<(RegionCapRow & { achieved: number })[]> {
@@ -149,6 +183,8 @@ export interface RegionObjectiveRow {
   complete: boolean
   /** A manual cap is set AND the Σ of NSE lines disagrees with it — worth the admin's attention. */
   mismatch: boolean
+  /** Every NSE line of the region is inactive — the region is closed regardless of `capCount`. */
+  deactivated: boolean
   nseSum: number
   capCount: number | null
 }
@@ -159,28 +195,39 @@ export interface RegionObjectiveRow {
  */
 export async function listRegionObjectives(): Promise<RegionObjectiveRow[]> {
   const capRows = await db.select().from(quotaRegionCaps)
+  // Every NSE line row, active or not — a region whose rows are ALL inactive is deactivated
+  // and must show as closed here too, the same way getRegionObjective now decides it.
   const nseRows = await db
     .select({
       country: quotaTargets.country,
       region: quotaTargets.region,
-      sum: sql<number>`coalesce(sum(${quotaTargets.targetCount}), 0)::int`,
+      lineCount: sql<number>`count(*)::int`,
+      activeLineCount: sql<number>`count(*) filter (where ${quotaTargets.active})::int`,
+      activeSum: sql<number>`coalesce(sum(${quotaTargets.targetCount}) filter (where ${quotaTargets.active}), 0)::int`,
     })
     .from(quotaTargets)
-    .where(and(eq(quotaTargets.active, true), eq(quotaTargets.dimensionType, 'nse')))
+    .where(eq(quotaTargets.dimensionType, 'nse'))
     .groupBy(quotaTargets.country, quotaTargets.region)
 
-  const nseSumByKey = new Map(nseRows.map((r) => [`${r.country}|${r.region}`, r.sum ?? 0]))
+  const nseByKey = new Map(nseRows.map((r) => [`${r.country}|${r.region}`, r]))
   const capByKey = new Map(capRows.map((r) => [`${r.country}|${r.region}`, r.capCount]))
-  const keys = new Set<string>([...nseSumByKey.keys(), ...capByKey.keys()])
+  const keys = new Set<string>([...nseByKey.keys(), ...capByKey.keys()])
 
   return Promise.all(
     [...keys].map(async (k) => {
       const [country, region] = k.split('|')
-      const nseSum = nseSumByKey.get(k) ?? 0
+      const nse = nseByKey.get(k)
+      const nseSum = nse?.activeSum ?? 0
+      const deactivated = (nse?.lineCount ?? 0) > 0 && (nse?.activeLineCount ?? 0) === 0
       const capCount = capByKey.get(k) ?? null
-      const objective = capCount != null ? capCount : nseSum
-      const source: RegionObjectiveRow['source'] =
-        capCount != null ? 'cap' : nseSum > 0 ? 'nse_sum' : 'none'
+      const objective = deactivated ? 0 : capCount != null ? capCount : nseSum
+      const source: RegionObjectiveRow['source'] = deactivated
+        ? 'none'
+        : capCount != null
+          ? 'cap'
+          : nseSum > 0
+            ? 'nse_sum'
+            : 'none'
       const achieved = await countRegionAchieved(country, region)
       return {
         country,
@@ -189,8 +236,10 @@ export async function listRegionObjectives(): Promise<RegionObjectiveRow[]> {
         source,
         achieved,
         available: Math.max(0, objective - achieved),
+        // A deactivated region is closed, not "complete" — `objective > 0` already excludes it.
         complete: objective > 0 && achieved >= objective,
-        mismatch: capCount != null && nseSum > 0 && capCount !== nseSum,
+        mismatch: !deactivated && capCount != null && nseSum > 0 && capCount !== nseSum,
+        deactivated,
         nseSum,
         capCount,
       }

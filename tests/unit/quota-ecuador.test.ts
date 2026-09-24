@@ -11,7 +11,7 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
-let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0, deactivated: false }
 let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
@@ -61,7 +61,7 @@ const ECUADOR_GUAYAQUIL_NORTE = { country: 'Ecuador', region: 'Guayaquil Norte',
 describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from spec 011)', () => {
   beforeEach(() => {
     progressByKey.clear()
-    regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+    regionObjective = { objective: 1000, source: 'cap', achieved: 0, deactivated: false }
     openNseLine = null
   })
 
@@ -136,7 +136,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
 
   it('the Ecuador region objective blocks an otherwise-qualifying lead once reached', async () => {
     seedProgress({ ...ECUADOR_CUENCA, dimensionType: 'nse', dimensionValue: 'C', target: 10, achieved: 0 })
-    regionObjective = { objective: 20, source: 'cap', achieved: 20 }
+    regionObjective = { objective: 20, source: 'cap', achieved: 20, deactivated: false }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,
@@ -187,7 +187,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
   })
 
   it('the pregnancy/baby exception IS blocked once the Ecuador region objective is reached (PUNTO 1)', async () => {
-    regionObjective = { objective: 10, source: 'cap', achieved: 10 }
+    regionObjective = { objective: 10, source: 'cap', achieved: 10, deactivated: false }
 
     const result = await checkQuotaAvailability({
       ...ECUADOR_CUENCA,

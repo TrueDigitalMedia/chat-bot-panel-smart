@@ -180,11 +180,13 @@ export default async function QuotasPage({
                     <td>{r.region}</td>
                     <td>{r.objective}</td>
                     <td>
-                      {r.source === 'cap'
-                        ? 'manual'
-                        : r.source === 'nse_sum'
-                          ? 'Σ NSE'
-                          : '— sin config'}
+                      {r.deactivated
+                        ? `desactivada${r.capCount != null ? ` (tope manual ${r.capCount} ignorado)` : ''}`
+                        : r.source === 'cap'
+                          ? 'manual'
+                          : r.source === 'nse_sum'
+                            ? 'Σ NSE'
+                            : '— sin config'}
                       {r.mismatch ? ` ⚠️ Σ NSE = ${r.nseSum}` : ''}
                     </td>
                     <td>{r.achieved}</td>

@@ -8,8 +8,15 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 vi.mock('@/lib/env', () => ({ env: {} }))
 
 const progressByKey = new Map<string, QuotaProgress>()
+/** A region objective fixture — `deactivated` defaults to false, the normal case. */
+function objective(
+  o: Partial<RegionObjective> & Pick<RegionObjective, 'objective' | 'source' | 'achieved'>,
+): RegionObjective {
+  return { deactivated: false, ...o }
+}
+
 /** The region objective (PUNTO 1) — the single hard ceiling. Default: wide open. */
-let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+let regionObjective: RegionObjective = objective({ objective: 1000, source: 'cap', achieved: 0 })
 /** The highest-volume NSE line in the region that STILL HAS ROOM (null = all lines full). */
 let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
@@ -59,7 +66,7 @@ const HN_CENTRO_I = { country: 'Honduras', region: 'Centro I', nseRegion: 'Centr
 
 function resetState() {
   progressByKey.clear()
-  regionObjective = { objective: 1000, source: 'cap', achieved: 0 }
+  regionObjective = objective({ objective: 1000, source: 'cap', achieved: 0 })
   openNseLine = null
 }
 
@@ -67,7 +74,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
   beforeEach(resetState)
 
   it('does NOT qualify when the region has no objective configured (out of the client sample)', async () => {
-    regionObjective = { objective: 0, source: 'none', achieved: 0 }
+    regionObjective = objective({ objective: 0, source: 'none', achieved: 0 })
     seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 4', target: 16, achieved: 0 })
 
     const result = await checkQuotaAvailability({
@@ -107,7 +114,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
   })
 
   it('does NOT qualify once the region objective is reached — plain NSE lead', async () => {
-    regionObjective = { objective: 93, source: 'cap', achieved: 93 }
+    regionObjective = objective({ objective: 93, source: 'cap', achieved: 93 })
     openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 2' }
 
     const result = await checkQuotaAvailability({
@@ -125,7 +132,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
   it('a conditional lead in a closed region does NOT borrow cupo from another region', async () => {
     // Lead lives in Centro I (objetivo 0). Centro II / Nivel 1 has room — irrelevant:
     // the region is fixed by geo and cross-region borrowing never happens.
-    regionObjective = { objective: 0, source: 'none', achieved: 0 }
+    regionObjective = objective({ objective: 0, source: 'none', achieved: 0 })
     openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 1' } // "some other region has room"
 
     const byException = await checkQuotaAvailability({
@@ -150,7 +157,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
   })
 
   it('does NOT qualify once the region objective is reached — even with pregnancy / baby', async () => {
-    regionObjective = { objective: 14, source: 'cap', achieved: 14 }
+    regionObjective = objective({ objective: 14, source: 'cap', achieved: 14 })
 
     const pregnant = await checkQuotaAvailability({
       ...HN_NOR_OCC_I,
@@ -300,7 +307,7 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
   })
 
   it('falls back to the unattributed exception marker only for a manual-cap region with no NSE lines', async () => {
-    regionObjective = { objective: 20, source: 'cap', achieved: 3 }
+    regionObjective = objective({ objective: 20, source: 'cap', achieved: 3 })
     openNseLine = null
 
     const result = await checkQuotaAvailability({
@@ -315,8 +322,30 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
     expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
   })
 
+  // Regression (2026-09-23): Rep. Dominicana Santiago / Sureste were deactivated in the admin
+  // panel (every NSE line `active = false`) but kept their manual cap row, so getRegionObjective
+  // still reported them open as `source: 'cap'` and the exception below kept letting
+  // baby-under-3 leads into them. getRegionObjective now returns objective 0 for those, which
+  // closes the region before the exception is ever considered.
+  it('does NOT qualify a baby-under-3 lead in a deactivated region (objective forced to 0)', async () => {
+    regionObjective = objective({ objective: 0, source: 'none', achieved: 16, deactivated: true })
+    openNseLine = null
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 2',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: true,
+    })
+
+    expect(result.qualifies).toBe(false)
+    expect(result.deniedReason).toBe('region_fuera_de_muestra')
+  })
+
   it('IS blocked when every NSE line of the region is full (nse_sum objective)', async () => {
-    regionObjective = { objective: 44, source: 'nse_sum', achieved: 30 }
+    regionObjective = objective({ objective: 44, source: 'nse_sum', achieved: 30 })
     openNseLine = null
 
     const result = await checkQuotaAvailability({
@@ -337,7 +366,7 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
   beforeEach(resetState)
 
   it('Panamá / Centro I (objetivo 57, entregó 93): a new lead — NSE, edad, integrantes or exception — does NOT qualify', async () => {
-    regionObjective = { objective: 57, source: 'cap', achieved: 93 }
+    regionObjective = objective({ objective: 57, source: 'cap', achieved: 93 })
     // every NSE line already at/over target
     openNseLine = null
 
@@ -360,7 +389,7 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
   })
 
   it('El Salvador / Centro I (fuera de muestra, objetivo 0): closed for everyone', async () => {
-    regionObjective = { objective: 0, source: 'none', achieved: 9 }
+    regionObjective = objective({ objective: 0, source: 'none', achieved: 9 })
 
     const r = await checkQuotaAvailability({
       country: 'El Salvador',
@@ -390,13 +419,18 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
   beforeEach(resetState)
 
   it('is open when the region objective still has room', async () => {
-    regionObjective = { objective: 1000, source: 'cap', achieved: 5 }
+    regionObjective = objective({ objective: 1000, source: 'cap', achieved: 5 })
     const status = await checkRegionQuota('Honduras', 'Centro I')
-    expect(status).toEqual({ open: true, regionObjective: 1000, regionAchieved: 5, regionSource: 'cap' })
+    expect(status).toEqual({
+      open: true,
+      regionObjective: 1000,
+      regionAchieved: 5,
+      regionSource: 'cap',
+    })
   })
 
   it('is closed (region_completa) once achieved reaches the objective', async () => {
-    regionObjective = { objective: 20, source: 'cap', achieved: 20 }
+    regionObjective = objective({ objective: 20, source: 'cap', achieved: 20 })
     const status = await checkRegionQuota('Honduras', 'Centro I')
     expect(status).toEqual({
       open: false,
@@ -408,7 +442,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
   })
 
   it('is closed (region_fuera_de_muestra) when the region has no objective at all', async () => {
-    regionObjective = { objective: 0, source: 'none', achieved: 9 }
+    regionObjective = objective({ objective: 0, source: 'none', achieved: 9 })
     const status = await checkRegionQuota('El Salvador', 'Centro I')
     expect(status).toEqual({
       open: false,
@@ -436,7 +470,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
       { objective: 10, source: 'cap' as const, achieved: 10 },
       { objective: 10, source: 'nse_sum' as const, achieved: 15 },
     ]) {
-      regionObjective = { ...scenario }
+      regionObjective = objective({ ...scenario })
       const regionStatus = await checkRegionQuota('Honduras', 'Centro I')
       const fullDecision = await checkQuotaAvailability({
         ...HN_CENTRO_I,
