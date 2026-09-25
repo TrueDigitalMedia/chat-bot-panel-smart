@@ -182,11 +182,31 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
   // If every NSE line is full the region is done — even the pregnancy/baby exception.
   const openNseLine = await getHighestVolumeNseTargetWithRoom(country, nseRegion)
 
-  // 2. Pregnancy / baby-under-36-months exception — skips the lead's own NSE/edad/
-  // integrantes cell, but is still bounded by the region objective AND by there being an
-  // open NSE line to charge it to. Falls back to the unattributed 'exception' marker only
-  // when the region's objective is a manual cap with no NSE lines at all.
+  // The lead's own NSE line — looked up before the exception branch so a conditional lead
+  // is booked against the level they actually are whenever that level still has room.
+  const ownNse = await getQuotaProgressForTarget(country, nseRegion, 'nse', params.segment)
+  const ownNseHasRoom = ownNse != null && ownNse.active && ownNse.available > 0
+
+  // 2. Pregnancy / baby-under-36-months exception — skips the *demand* check on the lead's
+  // own NSE/edad/integrantes cell (that's what the exception is for), but is still bounded
+  // by the region objective AND by there being an open NSE line to charge it to.
+  //
+  // Booked to the lead's OWN NSE line while that line has room, and only to the fallback
+  // line when it doesn't (2026-09-25). Charging every exception to the region's biggest
+  // line regardless was silently rewriting the sample's NSE mix: in Guatemala / Sur
+  // Occidente Chico 13 of the 20 leads sitting in Nivel 4 were Nivel 1-3 people, so that
+  // line read 95% while only 7 real Nivel 4 had been recruited and Nivel 2/3 kept
+  // recruiting past their own objectives.
   if (params.isPregnant || params.hasBabyUnder3) {
+    if (ownNseHasRoom) {
+      const decision: QuotaDecision = {
+        qualifies: true,
+        matchedDimension: 'nse',
+        matchedValue: params.segment,
+      }
+      logQuotaCheck(params, decision, logExtra)
+      return decision
+    }
     if (openNseLine) {
       const decision: QuotaDecision = {
         qualifies: true,
@@ -211,9 +231,8 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
     return decision
   }
 
-  // 3. Own NSE line first — books that exact line while it has room.
-  const ownNse = await getQuotaProgressForTarget(country, nseRegion, 'nse', params.segment)
-  if (ownNse != null && ownNse.active && ownNse.available > 0) {
+  // 3. Own NSE line first — books that exact line while it has room (looked up above).
+  if (ownNseHasRoom) {
     const decision: QuotaDecision = { qualifies: true, matchedDimension: 'nse', matchedValue: params.segment }
     logQuotaCheck(params, decision, logExtra)
     return decision

@@ -292,6 +292,7 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
   beforeEach(resetState)
 
   it('qualifies (own dimensions ignored), charged to the highest-volume NSE line with room', async () => {
+    // No line seeded for the lead's own 'Nivel 1' ⇒ nothing of their own to charge to.
     openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 2' }
 
     const result = await checkQuotaAvailability({
@@ -304,6 +305,64 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
     })
 
     expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2' })
+  })
+
+  // 2026-09-25: the exception used to go straight to the region's biggest line even when
+  // the lead's own level still had demand, which rewrote the sample's NSE mix — Guatemala /
+  // Sur Occidente Chico had 13 of the 20 leads in Nivel 4 actually being Nivel 1-3 people.
+  it('books the exception against the lead OWN NSE line when that line still has room', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 2', target: 12, achieved: 6 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 4' } // bigger line, also open
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 2',
+      age: 20,
+      householdSize: 1,
+      isPregnant: false,
+      hasBabyUnder3: true,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2' })
+  })
+
+  it('falls back to the highest-volume line when the lead own NSE line is full', async () => {
+    seedProgress({ ...HN_CENTRO_I, dimensionType: 'nse', dimensionValue: 'Nivel 2', target: 12, achieved: 12 })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 4' }
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 2',
+      age: 20,
+      householdSize: 1,
+      isPregnant: false,
+      hasBabyUnder3: true,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
+  })
+
+  it('falls back to the highest-volume line when the lead own NSE line is deactivated', async () => {
+    seedProgress({
+      ...HN_CENTRO_I,
+      dimensionType: 'nse',
+      dimensionValue: 'Nivel 2',
+      target: 12,
+      achieved: 0,
+      active: false,
+    })
+    openNseLine = { dimensionType: 'nse', dimensionValue: 'Nivel 4' }
+
+    const result = await checkQuotaAvailability({
+      ...HN_CENTRO_I,
+      segment: 'Nivel 2',
+      age: 20,
+      householdSize: 1,
+      isPregnant: true,
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
   })
 
   it('falls back to the unattributed exception marker only for a manual-cap region with no NSE lines', async () => {
