@@ -27,6 +27,10 @@ const NON_COLUMN_SCORING_FIELD_LABELS: Record<NonColumnScoringFieldName, string>
   educationHoh: 'Educación del Jefe de Hogar',
   fullBathrooms: 'Baños Completos en la Vivienda',
   homeInternet: 'Internet en el Hogar',
+  // Pasó de Ficha Hogar a Fase 1 (2026-09-28). La etiqueta la tomaba de
+  // MEXICO_FICHA_HOGAR_QUESTIONS; ahora vive acá. `codigo_pregunta` no cambia — sigue
+  // siendo el nombre del campo — así que el contrato con Kantar se mantiene.
+  internetServiceType: 'Tipo de Servicio de Internet',
   workers14Plus: 'Personas de 14+ Años que Trabajaron',
 }
 
@@ -38,8 +42,11 @@ const NON_COLUMN_SCORING_FIELD_LABELS: Record<NonColumnScoringFieldName, string>
 // thing everywhere (dateOfBirth, petCount, ...) can share one label. But conflictOfInterest
 // has different wording in MEXICO_FICHA_HOGAR_QUESTIONS than in the shared FICHA_HOGAR_QUESTIONS
 // — spreading the whole México list here would silently overwrite CAM/Ecuador's label too, so
-// only internetServiceType (a field that doesn't exist in the shared list at all) is added from
-// it; relationshipToHoh/conflictOfInterest/etc keep the shared list's label for every country.
+// only fields that don't exist in the shared list at all are taken from it;
+// relationshipToHoh/conflictOfInterest/etc keep the shared list's label for every country.
+// internetServiceType was the one such field until 2026-09-28, when it moved to Phase 1 and
+// its label moved to NON_COLUMN_SCORING_FIELD_LABELS above; the filter below is kept because
+// it's the rule, not the single case — the next México-only Ficha Hogar field needs no edit.
 // codigoPostal moved from Phase 1 (survey_profiles.scoring_answers_json) to Ficha Hogar
 // (ficha_hogar_profiles.codigoPostal, spec 015 T031) — kept out of the generic label/code
 // spread below so its pre-existing Kantar sync contract (short label, snake_case code)

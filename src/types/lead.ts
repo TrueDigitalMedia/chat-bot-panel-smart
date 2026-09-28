@@ -200,6 +200,10 @@ export const NON_COLUMN_SCORING_FIELDS = [
   'educationHoh',
   'fullBathrooms',
   'homeInternet',
+  // Movida de la Ficha Hogar a Fase 1 (ajuste cliente 2026-09-28). La columna
+  // ficha_hogar_profiles.internet_service_type queda con los datos ya capturados; los
+  // nuevos van a survey_profiles.scoring_answers_json como el resto de variables NSE.
+  'internetServiceType',
   'workers14Plus',
 ] as const
 
