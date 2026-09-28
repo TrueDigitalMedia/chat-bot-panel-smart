@@ -31,7 +31,7 @@ const BUTTON_PREFIXES = [
   'conflictOfInterest:', 'healthInsurancePsh:', 'monthlyIncome:', 'dwellingFinishes:',
   'floorMaterial:', 'vehicleCount:', 'occupationPsh:', 'internetAccess:',
   // México NSE button questions (spec 015)
-  'educationHoh:', 'fullBathrooms:', 'homeInternet:', 'workers14Plus:',
+  'educationHoh:', 'fullBathrooms:', 'homeInternet:', 'internetServiceType:', 'workers14Plus:',
 ]
 
 // The accept side of every decision gate whose decline can land a lead in

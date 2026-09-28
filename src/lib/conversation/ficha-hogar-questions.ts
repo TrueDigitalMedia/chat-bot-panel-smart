@@ -104,8 +104,12 @@ export const FICHA_HOGAR_QUESTION_COUNT = FICHA_HOGAR_QUESTIONS.length
  * is asked ONLY here — not in Phase 1 (it used to be duplicated there; see mexico.ts) —
  * codigoPostal moved here too (doc §4 P2, right after the screening question; it used to be
  * asked in Phase 1, in the wrong fase entirely) — relationshipToHoh has the full 8-option
- * catalog from the doc instead of a 5-option shortlist, and hasInternet is replaced by
- * internetServiceType (3 options: Propio / Gratuito del gobierno / Compartido) per doc §4 P2b.
+ * catalog from the doc instead of a 5-option shortlist, and hasInternet no se pregunta acá.
+ *
+ * internetServiceType estuvo en esta lista hasta el ajuste del cliente del 2026-09-28:
+ * pasó a Fase 1 (countries/mexico.ts) para quedar pegada a homeInternet y ser la que
+ * aporta los 32 puntos de internet al NSE. `resolveFichaHogarQuestions` reindexa 1..N,
+ * así que sacarla de acá renumera el resto sin más cambios.
  */
 export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
   {
@@ -125,19 +129,6 @@ export const MEXICO_FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
     fieldName: 'codigoPostal',
     text: '¡Perfecto! Empecemos. 🏠\n\nLa primera pregunta es:\n¿Cuál es el código postal de tu domicilio? (5 dígitos)',
     inputType: 'free_text',
-  },
-  {
-    index: 3,
-    fieldName: 'internetServiceType',
-    text: '¿Qué tipo de servicio de internet tienen en casa?',
-    inputType: 'button',
-    buttons: [
-      [
-        { text: 'Propio', callback_data: 'internetServiceType:Propio' },
-        { text: 'Gratuito del gobierno', callback_data: 'internetServiceType:Gratuito del gobierno' },
-      ],
-      [{ text: 'Compartido', callback_data: 'internetServiceType:Compartido' }],
-    ],
   },
   {
     index: 4,

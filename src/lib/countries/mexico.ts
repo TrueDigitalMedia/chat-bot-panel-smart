@@ -77,6 +77,10 @@ const VEHICLE_COUNT_QUESTION: SurveyQuestion = {
   ],
 }
 
+/**
+ * P13. Se sigue preguntando y sincronizando, pero desde el ajuste del cliente del
+ * 2026-09-28 ya NO aporta puntos: los 32 de internet los da INTERNET_SERVICE_TYPE_QUESTION.
+ */
 const HOME_INTERNET_QUESTION: SurveyQuestion = {
   index: 0,
   fieldName: 'homeInternet',
@@ -87,6 +91,27 @@ const HOME_INTERNET_QUESTION: SurveyQuestion = {
       { text: 'Sí tiene', callback_data: 'homeInternet:Sí tiene' },
       { text: 'No tiene', callback_data: 'homeInternet:No tiene' },
     ],
+  ],
+}
+
+/**
+ * P14 — movida desde la Ficha Hogar (Fase 4) a Fase 1 por el ajuste del cliente del
+ * 2026-09-28, para que quede inmediatamente después de P13 y sea ella la que puntúa:
+ * solo "Propio" suma los 32 puntos de internet; gratuito del gobierno y compartido dan 0.
+ * El cliente pidió el cambio porque contar cualquier internet del hogar volvía casi
+ * inalcanzable la cuota de NSE bajo.
+ */
+const INTERNET_SERVICE_TYPE_QUESTION: SurveyQuestion = {
+  index: 0,
+  fieldName: 'internetServiceType',
+  text: '¿Qué tipo de servicio de internet tienen en tu hogar?',
+  inputType: 'button',
+  buttons: [
+    [
+      { text: 'Propio', callback_data: 'internetServiceType:Propio' },
+      { text: 'Gratuito del gobierno', callback_data: 'internetServiceType:Gratuito del gobierno' },
+    ],
+    [{ text: 'Compartido', callback_data: 'internetServiceType:Compartido' }],
   ],
 }
 
@@ -159,6 +184,7 @@ const MEXICO_SCORING_QUESTIONS: SurveyQuestion[] = [
   FULL_BATHROOMS_QUESTION,
   VEHICLE_COUNT_QUESTION,
   HOME_INTERNET_QUESTION,
+  INTERNET_SERVICE_TYPE_QUESTION,
   HOUSEHOLD_SIZE_QUESTION,
   WORKERS_14_PLUS_QUESTION,
   BEDROOMS_QUESTION,

@@ -24,12 +24,12 @@ describe('computeMexicoNse — level-band boundaries', () => {
   it.each([
     [99, 'D/E', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '0', vehicleCount: '1', homeInternet: 'No tiene', workers14Plus: '4 o más', bedrooms: 2 }],
     [100, 'D+', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '0', vehicleCount: '1', homeInternet: 'No tiene', workers14Plus: '3', bedrooms: 4 }],
-    [140, 'D+', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '1', vehicleCount: '1', homeInternet: 'Sí tiene', workers14Plus: '3', bedrooms: 2 }],
-    [141, 'C', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '1', vehicleCount: '0', homeInternet: 'Sí tiene', workers14Plus: '4 o más', bedrooms: 3 }],
+    [140, 'D+', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '1', vehicleCount: '1', homeInternet: 'Sí tiene', internetServiceType: 'Propio', workers14Plus: '3', bedrooms: 2 }],
+    [141, 'C', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '1', vehicleCount: '0', homeInternet: 'Sí tiene', internetServiceType: 'Propio', workers14Plus: '4 o más', bedrooms: 3 }],
     [167, 'C', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '2 o más', vehicleCount: '2 o más', homeInternet: 'No tiene', workers14Plus: '4 o más', bedrooms: 2 }],
-    [168, 'C+', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '0', vehicleCount: '2 o más', homeInternet: 'Sí tiene', workers14Plus: '4 o más', bedrooms: 4 }],
+    [168, 'C+', { educationHoh: 'Sin instrucción escolar', fullBathrooms: '0', vehicleCount: '2 o más', homeInternet: 'Sí tiene', internetServiceType: 'Propio', workers14Plus: '4 o más', bedrooms: 4 }],
     [201, 'C+', { educationHoh: 'Secundaria completa', fullBathrooms: '2 o más', vehicleCount: '2 o más', homeInternet: 'No tiene', workers14Plus: '4 o más', bedrooms: 4 }],
-    [202, 'AB', { educationHoh: 'Primaria completa', fullBathrooms: '2 o más', vehicleCount: '2 o más', homeInternet: 'Sí tiene', workers14Plus: '4 o más', bedrooms: 1 }],
+    [202, 'AB', { educationHoh: 'Primaria completa', fullBathrooms: '2 o más', vehicleCount: '2 o más', homeInternet: 'Sí tiene', internetServiceType: 'Propio', workers14Plus: '4 o más', bedrooms: 1 }],
   ] as const)('sums to %d -> %s', (points, level, answers) => {
     const result = computeMexicoNse(answers)
     expect(result.points).toBe(points)
@@ -80,7 +80,7 @@ describe('computeMexicoNse — per-variable point tables (contract spot checks)'
     ['educationHoh', 'Licenciatura completa', 59],
     ['fullBathrooms', '2 o más', 47],
     ['vehicleCount', '1', 22],
-    ['homeInternet', 'Sí tiene', 32],
+    ['internetServiceType', 'Propio', 32],
     ['workers14Plus', '4 o más', 61],
   ] as const)('%s = %s -> %d', (field, value, expected) => {
     const result = computeMexicoNse({ [field]: value })
@@ -104,7 +104,7 @@ describe('computeMexicoNse — constructed household sweep (SC-002)', () => {
   const households: Record<string, unknown>[] = []
   for (const educationHoh of educationOptions) {
     for (const workers14Plus of workerOptions) {
-      households.push({ educationHoh, workers14Plus, fullBathrooms: '1', vehicleCount: '1', homeInternet: 'Sí tiene', bedrooms: 2 })
+      households.push({ educationHoh, workers14Plus, fullBathrooms: '1', vehicleCount: '1', homeInternet: 'Sí tiene', internetServiceType: 'Propio', bedrooms: 2 })
     }
   }
 
@@ -119,5 +119,45 @@ describe('computeMexicoNse — constructed household sweep (SC-002)', () => {
     else if (points <= 167) expect(level).toBe('C')
     else if (points <= 201) expect(level).toBe('C+')
     else expect(level).toBe('AB')
+  })
+})
+
+// Ajuste del cliente 2026-09-28: homeInternet se sigue preguntando pero ya no puntúa; los
+// 32 puntos de internet los da el tipo de servicio, y solo cuando es propio. El cliente lo
+// pidió porque contar el internet gratuito del gobierno o el compartido con vecinos hacía
+// casi inalcanzable la cuota de NSE bajo.
+describe('computeMexicoNse — el puntaje de internet viene del tipo de servicio', () => {
+  it.each([
+    ['Propio', 32],
+    ['Gratuito del gobierno', 0],
+    ['Compartido', 0],
+  ] as const)('internetServiceType = %s -> %d', (value, expected) => {
+    const result = computeMexicoNse({ internetServiceType: value })
+    expect(result.contributions.internetServiceType).toBe(expected)
+    expect(result.points).toBe(expected)
+  })
+
+  it.each([
+    ['Sí tiene'],
+    ['No tiene'],
+  ] as const)('homeInternet = %s ya no aporta puntos', (value) => {
+    const result = computeMexicoNse({ homeInternet: value })
+    expect(result.contributions.homeInternet).toBe(0)
+    expect(result.points).toBe(0)
+  })
+
+  it('un hogar con internet gratuito del gobierno puntúa 32 menos que uno con servicio propio', () => {
+    const base = {
+      educationHoh: 'Primaria completa',
+      fullBathrooms: '1',
+      vehicleCount: '0',
+      homeInternet: 'Sí tiene',
+      workers14Plus: '3',
+      bedrooms: 3,
+    } as const
+    const propio = computeMexicoNse({ ...base, internetServiceType: 'Propio' })
+    const gratuito = computeMexicoNse({ ...base, internetServiceType: 'Gratuito del gobierno' })
+    expect(propio.points - gratuito.points).toBe(32)
+    expect(gratuito.level).toBe('D+')
   })
 })

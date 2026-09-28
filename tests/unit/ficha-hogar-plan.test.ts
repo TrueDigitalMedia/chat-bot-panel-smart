@@ -20,15 +20,16 @@ describe('resolveFichaHogarQuestions — per-country Ficha Hogar (Fase 4)', () =
     }
   })
 
-  it('México has its own 8-question list — codigoPostal + internetServiceType instead of hasInternet, 8-option relationshipToHoh catalog', () => {
+  // internetServiceType salió de esta lista con el ajuste del cliente del 2026-09-28:
+  // pasó a Fase 1 para aportar los 32 puntos de internet al NSE (ver mexico-nse.test.ts).
+  it('México has its own 7-question list — codigoPostal instead of hasInternet, 8-option relationshipToHoh catalog', () => {
     const qs = resolveFichaHogarQuestions('México')
-    expect(qs).toHaveLength(8)
-    expect(fichaHogarQuestionCount('México')).toBe(8)
+    expect(qs).toHaveLength(7)
+    expect(fichaHogarQuestionCount('México')).toBe(7)
     qs.forEach((q, i) => expect(q.index).toBe(i + 1))
     expect(qs.map((q) => q.fieldName)).toEqual([
       'conflictOfInterest',
       'codigoPostal',
-      'internetServiceType',
       'relationshipToHoh',
       'dateOfBirth',
       'hasHealthCondition',
@@ -36,6 +37,7 @@ describe('resolveFichaHogarQuestions — per-country Ficha Hogar (Fase 4)', () =
       'petCount',
     ])
     expect(qs.map((q) => q.fieldName)).not.toContain('hasInternet')
+    expect(qs.map((q) => q.fieldName)).not.toContain('internetServiceType')
     const relationship = qs.find((q) => q.fieldName === 'relationshipToHoh')
     expect(relationship?.buttons?.flat().map((b) => b.text)).toEqual([
       'Jefe de Familia',
@@ -63,5 +65,6 @@ describe('resolveFichaHogarQuestions — per-country Ficha Hogar (Fase 4)', () =
       'petCount',
     ])
     expect(qs.map((q) => q.fieldName)).not.toContain('hasInternet')
+    expect(qs.map((q) => q.fieldName)).not.toContain('internetServiceType')
   })
 })
