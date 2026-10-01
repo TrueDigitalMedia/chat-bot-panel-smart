@@ -1,6 +1,8 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, type SQL } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { quotaTargets } from '@/lib/db/schema'
+import { getQuotaPeriod } from '@/lib/quotas/quota-periods'
+import { resolvePeriodIds } from '@/lib/quotas/quota-progress'
 import { canonicalCountry } from '@/lib/geo/cam-nse-catalog'
 import {
   isSupportedCountry,
@@ -40,6 +42,9 @@ export type QuotaTargetErrorCode =
   | 'invalid_dimension_type'
   | 'invalid_dimension_value'
   | 'invalid_target_count'
+  | 'invalid_period'
+  | 'period_closed'
+  | 'country_mismatch'
 
 export class QuotaTargetError extends Error {
   code: QuotaTargetErrorCode
@@ -61,7 +66,37 @@ export class QuotaTargetError extends Error {
 export class QuotaTargetConflictError extends Error {}
 export class QuotaTargetNotFoundError extends Error {}
 
+/**
+ * Toda escritura de configuración de cuota pasa por acá: el periodo tiene que existir, estar
+ * ABIERTO y ser del mismo país que la fila. Sin esto, el panel podría reescribir en silencio los
+ * objetivos de un trimestre ya congelado y el corte dejaría de cuadrar con lo que se corrió.
+ *
+ * Exportada porque region-caps.ts aplica exactamente la misma regla a los topes por región.
+ */
+export async function assertPeriodWritable(periodId: string, country: string): Promise<void> {
+  if (!periodId) {
+    throw new QuotaTargetError('invalid_period', 'periodId is required')
+  }
+  const period = await getQuotaPeriod(periodId)
+  if (!period) {
+    throw new QuotaTargetError('invalid_period', `Quota period not found: ${periodId}`)
+  }
+  if (period.status !== 'open') {
+    throw new QuotaTargetError(
+      'period_closed',
+      `El periodo ${period.label} de ${period.country} está cerrado — reabrilo o abrí uno nuevo para editar cuotas`,
+    )
+  }
+  if (period.country !== country) {
+    throw new QuotaTargetError(
+      'country_mismatch',
+      `El periodo ${period.label} es de ${period.country}, no de ${country}`,
+    )
+  }
+}
+
 export interface QuotaTargetInput {
+  periodId: string
   country: string
   region: string
   dimensionType: string
@@ -70,13 +105,16 @@ export interface QuotaTargetInput {
   notes?: string | null
 }
 
-/** Validates and canonicalizes country/region/dimensionType/dimensionValue against the catalogs (research.md R3). */
-function validateAndCanonicalize(input: QuotaTargetInput): {
+/**
+ * Validates and canonicalizes country/region/dimensionType/dimensionValue against the catalogs
+ * (research.md R3) AND checks that the target period is open and belongs to the same country.
+ */
+async function validateAndCanonicalize(input: QuotaTargetInput): Promise<{
   country: string
   region: string
   dimensionType: DimensionType
   dimensionValue: string
-} {
+}> {
   const country = canonicalCountry(input.country) ?? input.country
   if (!isSupportedCountry(country)) {
     throw new QuotaTargetError('invalid_country', `Unrecognized country: ${input.country}`)
@@ -109,10 +147,15 @@ function validateAndCanonicalize(input: QuotaTargetInput): {
     throw new QuotaTargetError('invalid_target_count', 'targetCount must be >= 0')
   }
 
+  await assertPeriodWritable(input.periodId, country)
+
   return { country, region, dimensionType, dimensionValue: input.dimensionValue }
 }
 
 export interface QuotaTargetListFilters {
+  /** One period. Both this and `periodIds` absent ⇒ every OPEN period (see resolvePeriodIds). */
+  periodId?: string
+  periodIds?: string[]
   country?: string
   region?: string
   dimensionType?: string
@@ -121,28 +164,28 @@ export interface QuotaTargetListFilters {
 }
 
 export async function listQuotaTargets(filters: QuotaTargetListFilters = {}) {
-  const conditions = []
+  const periodIds = await resolvePeriodIds(filters)
+  if (periodIds.length === 0) return []
+
+  const conditions: SQL[] = [inArray(quotaTargets.periodId, periodIds)]
   if (filters.country) conditions.push(eq(quotaTargets.country, filters.country))
   if (filters.region) conditions.push(eq(quotaTargets.region, filters.region))
   if (filters.dimensionType) conditions.push(eq(quotaTargets.dimensionType, filters.dimensionType))
   if (filters.dimensionValue) conditions.push(eq(quotaTargets.dimensionValue, filters.dimensionValue))
   if (filters.active !== undefined) conditions.push(eq(quotaTargets.active, filters.active))
 
-  return db
-    .select()
-    .from(quotaTargets)
-    .where(conditions.length ? and(...conditions) : undefined)
+  return db.select().from(quotaTargets).where(and(...conditions))
 }
 
 export async function createQuotaTarget(input: QuotaTargetInput) {
-  const { country, region, dimensionType, dimensionValue } = validateAndCanonicalize(input)
+  const { country, region, dimensionType, dimensionValue } = await validateAndCanonicalize(input)
 
   const [existing] = await db
     .select({ id: quotaTargets.id })
     .from(quotaTargets)
     .where(
       and(
-        eq(quotaTargets.country, country),
+        eq(quotaTargets.periodId, input.periodId),
         eq(quotaTargets.region, region),
         eq(quotaTargets.dimensionType, dimensionType),
         eq(quotaTargets.dimensionValue, dimensionValue),
@@ -151,13 +194,14 @@ export async function createQuotaTarget(input: QuotaTargetInput) {
     .limit(1)
   if (existing) {
     throw new QuotaTargetConflictError(
-      `Quota target already exists for ${country} / ${region} / ${dimensionType} / ${dimensionValue} — use PUT to edit it`,
+      `Quota target already exists for ${country} / ${region} / ${dimensionType} / ${dimensionValue} in this period — use PUT to edit it`,
     )
   }
 
   const [row] = await db
     .insert(quotaTargets)
     .values({
+      periodId: input.periodId,
       country,
       region,
       dimensionType,
@@ -180,6 +224,16 @@ export async function updateQuotaTarget(id: string, patch: QuotaTargetPatch) {
     throw new QuotaTargetError('invalid_target_count', 'targetCount must be >= 0')
   }
 
+  const [current] = await db
+    .select({ periodId: quotaTargets.periodId, country: quotaTargets.country })
+    .from(quotaTargets)
+    .where(eq(quotaTargets.id, id))
+    .limit(1)
+  if (!current) {
+    throw new QuotaTargetNotFoundError(`Quota target not found: ${id}`)
+  }
+  await assertPeriodWritable(current.periodId, current.country)
+
   const [row] = await db
     .update(quotaTargets)
     .set({ ...patch, updatedAt: new Date() })
@@ -192,13 +246,22 @@ export async function updateQuotaTarget(id: string, patch: QuotaTargetPatch) {
   return row
 }
 
-/** Insert-or-update by (country, region, dimensionType, dimensionValue) — used by the Excel importer (US3). */
+/**
+ * Insert-or-update by (periodId, region, dimensionType, dimensionValue) — used by the Excel
+ * importer (US3).
+ *
+ * El `target` del ON CONFLICT tiene que coincidir EXACTAMENTE con el índice único
+ * `quota_targets_period_region_dim_idx`: drizzle emite esa tupla literal en el SQL, así que un
+ * desajuste no lo ve TypeScript, revienta en runtime con "there is no unique or exclusion
+ * constraint matching the ON CONFLICT specification".
+ */
 export async function upsertQuotaTarget(input: QuotaTargetInput) {
-  const { country, region, dimensionType, dimensionValue } = validateAndCanonicalize(input)
+  const { country, region, dimensionType, dimensionValue } = await validateAndCanonicalize(input)
 
   const [row] = await db
     .insert(quotaTargets)
     .values({
+      periodId: input.periodId,
       country,
       region,
       dimensionType,
@@ -207,7 +270,12 @@ export async function upsertQuotaTarget(input: QuotaTargetInput) {
       notes: input.notes ?? null,
     })
     .onConflictDoUpdate({
-      target: [quotaTargets.country, quotaTargets.region, quotaTargets.dimensionType, quotaTargets.dimensionValue],
+      target: [
+        quotaTargets.periodId,
+        quotaTargets.region,
+        quotaTargets.dimensionType,
+        quotaTargets.dimensionValue,
+      ],
       set: { targetCount: input.targetCount ?? 0, updatedAt: new Date() },
     })
     .returning()

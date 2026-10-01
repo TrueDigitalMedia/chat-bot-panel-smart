@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listQuotaProgress } from '@/lib/quotas/quota-progress'
-import { createQuotaTarget, QuotaTargetConflictError, QuotaTargetError } from '@/lib/quotas/quota-targets'
+import { createQuotaTarget } from '@/lib/quotas/quota-targets'
+import { quotaErrorResponse } from '@/lib/quotas/api-errors'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url)
+  // Sin `periodId` el alcance es TODO periodo abierto — el comportamiento histórico de esta ruta,
+  // que antes de spec 018 no tenía noción de periodo (ver resolvePeriodIds).
+  const periodId = searchParams.get('periodId') ?? undefined
   const country = searchParams.get('country') ?? undefined
   const region = searchParams.get('region') ?? undefined
   const dimensionType = searchParams.get('dimensionType') ?? undefined
@@ -11,7 +15,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const activeParam = searchParams.get('active')
   const active = activeParam == null ? undefined : activeParam === 'true'
 
-  const items = await listQuotaProgress({ country, region, dimensionType, dimensionValue, active })
+  const items = await listQuotaProgress({
+    periodId,
+    country,
+    region,
+    dimensionType,
+    dimensionValue,
+    active,
+  })
 
   const summary = items.reduce(
     (acc, item) => {
@@ -31,6 +42,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const row = await createQuotaTarget({
+      periodId: body.periodId,
       country: body.country,
       region: body.region,
       dimensionType: body.dimensionType,
@@ -40,19 +52,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
     return NextResponse.json(row, { status: 201 })
   } catch (err) {
-    if (err instanceof QuotaTargetError) {
-      return NextResponse.json(
-        {
-          error: err.code,
-          ...(err.validRegions ? { validRegions: err.validRegions } : {}),
-          ...(err.validValues ? { validValues: err.validValues } : {}),
-        },
-        { status: 400 },
-      )
-    }
-    if (err instanceof QuotaTargetConflictError) {
-      return NextResponse.json({ error: 'conflict', message: err.message }, { status: 409 })
-    }
+    const response = quotaErrorResponse(err)
+    if (response) return response
     throw err
   }
 }

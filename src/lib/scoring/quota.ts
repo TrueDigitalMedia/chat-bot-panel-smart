@@ -1,6 +1,7 @@
 import { ageBand, householdBand } from '@/lib/quotas/quota-bands'
 import { getQuotaProgressForTarget, getHighestVolumeNseTargetWithRoom } from '@/lib/quotas/quota-progress'
 import { getRegionObjective } from '@/lib/quotas/region-caps'
+import { getOpenPeriod, type QuotaPeriodRow } from '@/lib/quotas/quota-periods'
 import type { DimensionType } from '@/lib/quotas/quota-targets'
 
 interface CheckQuotaAvailabilityParams {
@@ -16,6 +17,7 @@ interface CheckQuotaAvailabilityParams {
 
 /** Why a lead did NOT qualify — for audit/dashboard segmentation (not persisted; logged). */
 export type QuotaDeniedReason =
+  | 'periodo_cerrado'
   | 'region_no_identificada'
   | 'region_fuera_de_muestra'
   | 'region_completa'
@@ -25,12 +27,20 @@ export interface QuotaDecision {
   qualifies: boolean
   matchedDimension: DimensionType | 'exception' | null
   matchedValue: string | null
+  /** El periodo contra cuya cuota calificó — se sella en `leads.quota_period_id`. Null si no calificó. */
+  periodId: string | null
   deniedReason?: QuotaDeniedReason
 }
 
 export interface RegionQuotaStatus {
   open: boolean
-  deniedReason?: 'region_no_identificada' | 'region_fuera_de_muestra' | 'region_completa'
+  deniedReason?:
+    | 'periodo_cerrado'
+    | 'region_no_identificada'
+    | 'region_fuera_de_muestra'
+    | 'region_completa'
+  /** The open period of this country, or null when there is none (⇒ country closed). */
+  period: QuotaPeriodRow | null
   /** null only when `nseRegion` itself was null (never looked up). */
   regionObjective: number | null
   regionAchieved: number | null
@@ -39,7 +49,7 @@ export interface RegionQuotaStatus {
 }
 
 /**
- * The region-objective ceiling alone (PUNTO 1 "primer condicional", steps 0-1 of
+ * The PERIOD gate plus the region-objective ceiling (PUNTO 1 "primer condicional", steps 0-1 of
  * checkQuotaAvailability below) — the hard ceiling for EVERY lead, exception included, so
  * once it says closed nothing later in the survey (NSE segment, edad, integrantes, even the
  * pregnancy/baby exception) can ever turn that into a qualify. Exported so the geo-capture
@@ -49,6 +59,11 @@ export interface RegionQuotaStatus {
  * qualify. checkQuotaAvailability calls this same function for its own steps 0-1, so the
  * early-exit and the end-of-survey decision can never drift apart.
  *
+ * The "no open quota period ⇒ country closed" short-circuit (spec 018) lives HERE rather than in
+ * checkQuotaAvailability on purpose: that way both the end-of-survey decision and the early geo
+ * exit inherit it from the same place and cannot diverge — exactly the invariant the paragraph
+ * above promises.
+ *
  * Deliberately does NOT special-case a null `nseRegion` any differently from a resolved-but-
  * closed one — both already end a lead identically in checkQuotaAvailability. Callers that
  * want to keep asking while the region is merely *unresolved* (Ecuador's Quito/Guayaquil,
@@ -56,21 +71,56 @@ export interface RegionQuotaStatus {
  * gps-capture.ts's applyManualMunicipalityAllowlist) should only call this once `nseRegion`
  * is non-null, not on every intermediate geo answer.
  */
-export async function checkRegionQuota(country: string, nseRegion: string | null): Promise<RegionQuotaStatus> {
-  if (!nseRegion) {
+export async function checkRegionQuota(
+  country: string,
+  nseRegion: string | null,
+  /**
+   * El periodo abierto del país, si el llamador ya lo resolvió. `undefined` = resolvelo vos;
+   * `null` = ya se buscó y NO hay. checkQuotaAvailability lo resuelve una sola vez y lo pasa,
+   * para no pagar la query dos veces en el mismo chequeo.
+   */
+  period?: QuotaPeriodRow | null,
+): Promise<RegionQuotaStatus> {
+  const openPeriod = period === undefined ? await getOpenPeriod(country) : period
+
+  // 0. Sin periodo abierto el país está CERRADO: no califica nadie, excepción de embarazo/bebé
+  // incluida (spec 018, decisión de producto #2). Se evalúa ANTES que la región porque es una
+  // compuerta a nivel país: ninguna región puede estar abierta sin un periodo que la contenga.
+  if (!openPeriod) {
+    console.warn(
+      JSON.stringify({
+        event: 'quota_period_missing',
+        country,
+        region: nseRegion,
+        detail: 'no hay periodo de cuota abierto — ningún lead de este país califica',
+      }),
+    )
     return {
       open: false,
-      deniedReason: 'region_no_identificada',
+      deniedReason: 'periodo_cerrado',
+      period: null,
       regionObjective: null,
       regionAchieved: null,
       regionSource: null,
     }
   }
-  const region = await getRegionObjective(country, nseRegion)
+
+  if (!nseRegion) {
+    return {
+      open: false,
+      deniedReason: 'region_no_identificada',
+      period: openPeriod,
+      regionObjective: null,
+      regionAchieved: null,
+      regionSource: null,
+    }
+  }
+  const region = await getRegionObjective(openPeriod.id, country, nseRegion)
   if (region.objective <= 0) {
     return {
       open: false,
       deniedReason: 'region_fuera_de_muestra',
+      period: openPeriod,
       regionObjective: 0,
       regionAchieved: region.achieved,
       regionSource: region.source,
@@ -80,6 +130,7 @@ export async function checkRegionQuota(country: string, nseRegion: string | null
     return {
       open: false,
       deniedReason: 'region_completa',
+      period: openPeriod,
       regionObjective: region.objective,
       regionAchieved: region.achieved,
       regionSource: region.source,
@@ -87,6 +138,7 @@ export async function checkRegionQuota(country: string, nseRegion: string | null
   }
   return {
     open: true,
+    period: openPeriod,
     regionObjective: region.objective,
     regionAchieved: region.achieved,
     regionSource: region.source,
@@ -108,12 +160,21 @@ const DIMENSION_ORDER: readonly { type: DimensionType; value: (params: CheckQuot
 function logQuotaCheck(
   params: CheckQuotaAvailabilityParams,
   decision: QuotaDecision,
-  extra: { regionObjective: number | null; regionAchieved: number | null; regionBlocked: boolean },
+  extra: {
+    regionObjective: number | null
+    regionAchieved: number | null
+    regionBlocked: boolean
+    period: QuotaPeriodRow | null
+  },
 ): void {
   console.log(
     JSON.stringify({
       event: 'quota_check',
       lead_id: params.leadId ?? null,
+      // Sin estos dos, un consumidor de logs no puede distinguir "cuota agotada" de "no hay
+      // periodo abierto" — dos causas con el mismo lead_status.
+      period_id: extra.period?.id ?? null,
+      period_label: extra.period?.label ?? null,
       country: params.country,
       region: params.nseRegion,
       segment: params.segment,
@@ -135,9 +196,11 @@ function logQuotaCheck(
 
 /**
  * Quota check (PUNTO 1 clarification, 2026-09-10 — supersedes the spec 011 model where the
- * region cap was manual/optional and the pregnancy exception was never blocked).
+ * region cap was manual/optional and the pregnancy exception was never blocked; spec 018 adds
+ * the period gate on top).
  *
- * The client's requested panelist count per country+region is the FIRST and hard ceiling
+ * The country must have an OPEN quota period at all (spec 018) — without one nothing qualifies.
+ * Within it, the client's requested panelist count per country+region is the FIRST and hard ceiling
  * for everyone. Only within a region that still has room:
  *   - the pregnancy / baby-under-36-months exception qualifies without checking any
  *     specific NSE/edad/integrantes cell, and
@@ -150,23 +213,30 @@ function logQuotaCheck(
 export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParams): Promise<QuotaDecision> {
   const { country, nseRegion } = params
 
-  // 0-1. The region (PUNTO 1 "primer condicional") must be identified AND still have room —
-  // the hard ceiling for EVERY lead, exception included. Same check the survey flow already
-  // ran earlier, as soon as `nseRegion` resolved (gps-capture.ts) — repeated here so this
-  // function stays correct standalone, and for the leads whose region wasn't resolvable yet
-  // at that point (Ecuador's Quito/Guayaquil, pending the parroquia/Q5 answer).
-  const regionStatus = await checkRegionQuota(country, nseRegion || null)
-  if (!regionStatus.open) {
+  // El periodo abierto se resuelve UNA sola vez acá y se propaga: una query indexada de una
+  // fila por chequeo completo, no una por helper. A propósito sin caché de módulo — un lambda
+  // caliente seguiría reclutando contra un trimestre que el operador ya cerró.
+  const period = await getOpenPeriod(country)
+
+  // 0-1. The period must be open AND the region (PUNTO 1 "primer condicional") must be
+  // identified AND still have room — the hard ceiling for EVERY lead, exception included. Same
+  // check the survey flow already ran earlier, as soon as `nseRegion` resolved (gps-capture.ts)
+  // — repeated here so this function stays correct standalone, and for the leads whose region
+  // wasn't resolvable yet at that point (Ecuador's Quito/Guayaquil, pending the parroquia/Q5).
+  const regionStatus = await checkRegionQuota(country, nseRegion || null, period)
+  if (!regionStatus.open || !period) {
     const decision: QuotaDecision = {
       qualifies: false,
       matchedDimension: null,
       matchedValue: null,
+      periodId: null,
       deniedReason: regionStatus.deniedReason,
     }
     logQuotaCheck(params, decision, {
       regionObjective: regionStatus.regionObjective,
       regionAchieved: regionStatus.regionAchieved,
       regionBlocked: true,
+      period,
     })
     return decision
   }
@@ -175,16 +245,17 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
     regionObjective: regionStatus.regionObjective,
     regionAchieved: regionStatus.regionAchieved,
     regionBlocked: false,
+    period,
   }
 
   // The country+region+NSE line is ALSO a hard cap: every conditional-qualified lead must
   // be charged to an NSE line that still has room, and no line may pass its own objective.
   // If every NSE line is full the region is done — even the pregnancy/baby exception.
-  const openNseLine = await getHighestVolumeNseTargetWithRoom(country, nseRegion)
+  const openNseLine = await getHighestVolumeNseTargetWithRoom(period.id, country, nseRegion)
 
   // The lead's own NSE line — looked up before the exception branch so a conditional lead
   // is booked against the level they actually are whenever that level still has room.
-  const ownNse = await getQuotaProgressForTarget(country, nseRegion, 'nse', params.segment)
+  const ownNse = await getQuotaProgressForTarget(period.id, country, nseRegion, 'nse', params.segment)
   const ownNseHasRoom = ownNse != null && ownNse.active && ownNse.available > 0
 
   // 2. Pregnancy / baby-under-36-months exception — skips the *demand* check on the lead's
@@ -203,6 +274,7 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
         qualifies: true,
         matchedDimension: 'nse',
         matchedValue: params.segment,
+        periodId: period.id,
       }
       logQuotaCheck(params, decision, logExtra)
       return decision
@@ -212,12 +284,18 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
         qualifies: true,
         matchedDimension: 'nse',
         matchedValue: openNseLine.dimensionValue,
+        periodId: period.id,
       }
       logQuotaCheck(params, decision, logExtra)
       return decision
     }
     if (regionStatus.regionSource === 'cap') {
-      const decision: QuotaDecision = { qualifies: true, matchedDimension: 'exception', matchedValue: null }
+      const decision: QuotaDecision = {
+        qualifies: true,
+        matchedDimension: 'exception',
+        matchedValue: null,
+        periodId: period.id,
+      }
       logQuotaCheck(params, decision, logExtra)
       return decision
     }
@@ -225,6 +303,7 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
       qualifies: false,
       matchedDimension: null,
       matchedValue: null,
+      periodId: null,
       deniedReason: 'region_completa',
     }
     logQuotaCheck(params, decision, { ...logExtra, regionBlocked: true })
@@ -233,7 +312,12 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
 
   // 3. Own NSE line first — books that exact line while it has room (looked up above).
   if (ownNseHasRoom) {
-    const decision: QuotaDecision = { qualifies: true, matchedDimension: 'nse', matchedValue: params.segment }
+    const decision: QuotaDecision = {
+      qualifies: true,
+      matchedDimension: 'nse',
+      matchedValue: params.segment,
+      periodId: period.id,
+    }
     logQuotaCheck(params, decision, logExtra)
     return decision
   }
@@ -247,13 +331,14 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
     const value = dimension.value(params)
     if (value == null) continue
 
-    const progress = await getQuotaProgressForTarget(country, nseRegion, dimension.type, value)
+    const progress = await getQuotaProgressForTarget(period.id, country, nseRegion, dimension.type, value)
     if (progress != null && progress.active && progress.available > 0) {
       if (!openNseLine) break
       const decision: QuotaDecision = {
         qualifies: true,
         matchedDimension: 'nse',
         matchedValue: openNseLine.dimensionValue,
+        periodId: period.id,
       }
       logQuotaCheck(params, decision, logExtra)
       return decision
@@ -264,6 +349,7 @@ export async function checkQuotaAvailability(params: CheckQuotaAvailabilityParam
     qualifies: false,
     matchedDimension: null,
     matchedValue: null,
+    periodId: null,
     deniedReason: openNseLine ? 'sin_cupo' : 'region_completa',
   }
   logQuotaCheck(params, decision, { ...logExtra, regionBlocked: !openNseLine })

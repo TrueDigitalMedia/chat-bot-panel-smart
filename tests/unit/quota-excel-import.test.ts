@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import type { QuotaProgress } from '@/lib/quotas/quota-progress'
 
 interface UpsertCall {
+  periodId: string
   country: string
   region: string
   dimensionType: string
@@ -22,6 +23,24 @@ vi.mock('@/lib/quotas/quota-targets', () => ({
 
 vi.mock('@/lib/quotas/quota-progress', () => ({
   listQuotaProgress: vi.fn(async () => mockedProgress),
+}))
+
+// Spec 018: cada hoja se carga en el periodo ABIERTO de su país. `openPeriodCountries` controla
+// qué países tienen uno, para poder ejercitar el caso "hoja sin periodo abierto".
+const openPeriodCountries = new Set<string>(['Honduras', 'Guatemala', 'Rep. Dominicana', 'Costa Rica', 'El Salvador', 'Nicaragua', 'Panamá', 'Ecuador', 'México'])
+const CLOSED_PERIOD_ID = 'period-cerrado'
+
+vi.mock('@/lib/quotas/quota-periods', () => ({
+  getOpenPeriod: vi.fn(async (country: string) =>
+    openPeriodCountries.has(country)
+      ? { id: `period-${country}`, country, label: 'Q4 2026', status: 'open' }
+      : null,
+  ),
+  getQuotaPeriod: vi.fn(async (id: string) =>
+    id === CLOSED_PERIOD_ID
+      ? { id, country: 'Honduras', label: 'Q3 2026', status: 'closed' }
+      : { id, country: 'Honduras', label: 'Q4 2026', status: 'open' },
+  ),
 }))
 
 import { importQuotaTargetsFromWorkbook } from '@/lib/quotas/excel-import'
@@ -62,6 +81,7 @@ describe('importQuotaTargetsFromWorkbook — per-dimension layout (spec 011)', (
     expect(result.imported).toBe(10)
 
     expect(upsertCalls).toContainEqual({
+      periodId: 'period-Honduras',
       country: 'Honduras',
       region: 'Nor Occidente I',
       dimensionType: 'integrantes',
@@ -69,6 +89,7 @@ describe('importQuotaTargetsFromWorkbook — per-dimension layout (spec 011)', (
       targetCount: 22,
     })
     expect(upsertCalls).toContainEqual({
+      periodId: 'period-Honduras',
       country: 'Honduras',
       region: 'Nor Occidente I',
       dimensionType: 'nse',
@@ -76,6 +97,7 @@ describe('importQuotaTargetsFromWorkbook — per-dimension layout (spec 011)', (
       targetCount: 0,
     })
     expect(upsertCalls).toContainEqual({
+      periodId: 'period-Honduras',
       country: 'Honduras',
       region: 'Nor Occidente I',
       dimensionType: 'edad',
@@ -91,6 +113,7 @@ describe('importQuotaTargetsFromWorkbook — per-dimension layout (spec 011)', (
     const result = await importQuotaTargetsFromWorkbook(buf)
     expect(result.unmatched).toEqual([])
     expect(upsertCalls).toContainEqual({
+      periodId: 'period-Honduras',
       country: 'Honduras',
       region: 'Centro I',
       dimensionType: 'nse',
@@ -182,6 +205,7 @@ describe('round-trip: export(state) → import(that file) reproduces the same ta
     mockedProgress = [
       {
         id: 'a',
+        periodId: 'period-q4',
         country: 'Guatemala',
         region: 'Sur Occidente Chico',
         dimensionType: 'nse',
@@ -196,6 +220,7 @@ describe('round-trip: export(state) → import(that file) reproduces the same ta
       },
       {
         id: 'b',
+        periodId: 'period-q4',
         country: 'Rep. Dominicana',
         region: 'Cibao sin Santiago',
         dimensionType: 'integrantes',
@@ -210,6 +235,7 @@ describe('round-trip: export(state) → import(that file) reproduces the same ta
       },
       {
         id: 'c',
+        periodId: 'period-q4',
         country: 'Costa Rica',
         region: 'Area metropolitana I',
         dimensionType: 'edad',
@@ -240,5 +266,51 @@ describe('round-trip: export(state) → import(that file) reproduces the same ta
       )
       expect(reimported).toMatchObject({ targetCount: original.target })
     }
+  })
+})
+
+// Spec 018 — una hoja cuyo país no tiene periodo abierto NO se carga en silencio en otro
+// trimestre: vuelve reportada en `unmatched`.
+describe('importQuotaTargetsFromWorkbook — alcance por periodo (spec 018)', () => {
+  beforeEach(() => {
+    upsertCalls.length = 0
+    openPeriodCountries.add('Honduras')
+  })
+
+  it('reporta no_open_period y no carga nada cuando el país no tiene periodo abierto', async () => {
+    openPeriodCountries.delete('Honduras')
+    const buf = buildWorkbook({
+      Honduras: [...HONDURAS_HEADER_ROWS, ['', 'Centro I / Honduras', 0, 1, 5, 16, '', 8, 0, 2, 10, 0, 18]],
+    })
+
+    const result = await importQuotaTargetsFromWorkbook(buf)
+
+    expect(result.imported).toBe(0)
+    expect(result.unmatched).toEqual([{ row: 'Honduras', reason: 'no_open_period' }])
+    expect(upsertCalls).toHaveLength(0)
+  })
+
+  it('rechaza un periodId explícito que está cerrado', async () => {
+    const buf = buildWorkbook({
+      Honduras: [...HONDURAS_HEADER_ROWS, ['', 'Centro I / Honduras', 0, 1, 5, 16, '', 8, 0, 2, 10, 0, 18]],
+    })
+
+    const result = await importQuotaTargetsFromWorkbook(buf, { periodId: CLOSED_PERIOD_ID })
+
+    expect(result.imported).toBe(0)
+    expect(result.unmatched).toEqual([{ row: 'Honduras', reason: 'period_closed' }])
+    expect(upsertCalls).toHaveLength(0)
+  })
+
+  it('informa a qué periodo se cargó cada hoja', async () => {
+    const buf = buildWorkbook({
+      Honduras: [...HONDURAS_HEADER_ROWS, ['', 'Centro I / Honduras', 0, 1, 5, 16, '', 8, 0, 2, 10, 0, 18]],
+    })
+
+    const result = await importQuotaTargetsFromWorkbook(buf)
+
+    expect(result.periodsUsed).toEqual([
+      { country: 'Honduras', periodId: 'period-Honduras', label: 'Q4 2026' },
+    ])
   })
 })

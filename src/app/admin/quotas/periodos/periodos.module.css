@@ -1,0 +1,308 @@
+/* Mismo lenguaje visual que quotas.module.css — las dos páginas se leen como una sola sección. */
+.page {
+  --ink: #14201b;
+  --muted: #5c6b64;
+  --line: #d5ddd8;
+  --paper: #f3f6f4;
+  --card: #ffffff;
+  --accent: #0f6b4c;
+  --accent-soft: #e4f3ec;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, #dceee5 0%, transparent 55%),
+    linear-gradient(180deg, #eef3f0 0%, var(--paper) 40%, #e8eeea 100%);
+  color: var(--ink);
+  font-family: var(--font-body), 'Segoe UI', sans-serif;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 3rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.title {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-family: var(--font-display), var(--font-body), serif;
+}
+
+.sub {
+  margin-top: 0.4rem;
+  color: var(--muted);
+  max-width: 44rem;
+  line-height: 1.5;
+  font-size: 0.93rem;
+}
+
+.backLink {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 10px 30px rgba(20, 32, 27, 0.04);
+}
+
+.card span {
+  display: block;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.card strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.7rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 1.75rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.62rem 0.85rem;
+  border-bottom: 1px solid #eef2ef;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 1.5rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.badgeOpen,
+.badgeClosed {
+  display: inline-block;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.badgeOpen {
+  background: var(--accent-soft);
+  color: #0b5038;
+}
+
+.badgeClosed {
+  background: #eceff0;
+  color: #4a5558;
+}
+
+.infoBanner,
+.alertBanner {
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+}
+
+.infoBanner strong,
+.alertBanner strong {
+  color: var(--ink);
+}
+
+.alertBanner {
+  border-color: #e4b9b0;
+  background: #fdf1ee;
+  color: #7a3528;
+}
+
+.alertBanner strong {
+  color: #5f2a20;
+}
+
+.infoBanner a,
+.alertBanner a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.openForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.field input,
+.field select {
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  color: var(--ink);
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  min-width: 9rem;
+}
+
+.primaryBtn,
+.dangerBtn,
+.ghostBtn {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.primaryBtn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dangerBtn {
+  background: #9c3a28;
+  border-color: #9c3a28;
+  color: #fff;
+}
+
+.primaryBtn:disabled,
+.dangerBtn:disabled,
+.ghostBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rowError {
+  color: #9c3a28;
+  font-size: 0.78rem;
+  margin-top: 0.3rem;
+}
+
+.confirmBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border: 1px solid #e4b9b0;
+  border-radius: 10px;
+  background: #fdf1ee;
+  min-width: 15rem;
+}
+
+.confirmBox p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #7a3528;
+}
+
+.confirmBox input {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}

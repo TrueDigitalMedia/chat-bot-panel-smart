@@ -10,29 +10,30 @@
  */
 import { db } from '@/lib/db/client'
 import { quotaTargets, quotaRegionCaps } from '@/lib/db/schema'
-import type { Journey } from './cam-harness'
+import { resetQuotaPeriods, type Journey } from './cam-harness'
 
 /**
  * Deterministic quota config for the regression DB. Values are arbitrary but FIXED — they
  * only need to make C1/C7 qualify and C6 exhaust. Seed once per test file (beforeAll).
  */
 export async function seedQuota(): Promise<void> {
-  await db.delete(quotaTargets)
-  await db.delete(quotaRegionCaps)
+  // Spec 018: toda cuota cuelga de un periodo abierto, y sin periodo abierto el país está cerrado.
+  const periods = await resetQuotaPeriods(['Panamá', 'Nicaragua', 'Guatemala', 'Costa Rica'])
+  const p = (country: string) => periods.get(country)!
   await db.insert(quotaTargets).values([
     // Panamá — open NSE cell so C1 qualifies. Region name must match what
     // cam-nse-catalog.ts actually resolves for stateProvince="Panamá"/municipality="Panamá"
     // ("Centro I", not the district name) — confirmed via the C1 journey's geo_resolve log.
-    { country: 'Panamá', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
+    { periodId: p('Panamá'), country: 'Panamá', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
     // Nicaragua — a cell that we will drive to 0 available so C6 exhausts
-    { country: 'Nicaragua', region: 'Managua', dimensionType: 'nse', dimensionValue: 'Nivel 4', targetCount: 0, active: true },
+    { periodId: p('Nicaragua'), country: 'Nicaragua', region: 'Managua', dimensionType: 'nse', dimensionValue: 'Nivel 4', targetCount: 0, active: true },
     // Guatemala / Costa Rica / Honduras / Rep. Dominicana — generic open NSE cells
-    { country: 'Guatemala', region: 'Guatemala', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
-    { country: 'Costa Rica', region: 'GAM', dimensionType: 'nse', dimensionValue: 'Nivel 2', targetCount: 100, active: true },
+    { periodId: p('Guatemala'), country: 'Guatemala', region: 'Guatemala', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
+    { periodId: p('Costa Rica'), country: 'Costa Rica', region: 'GAM', dimensionType: 'nse', dimensionValue: 'Nivel 2', targetCount: 100, active: true },
   ])
   await db.insert(quotaRegionCaps).values([
-    { country: 'Panamá', region: 'Centro I', capCount: null },
-    { country: 'Nicaragua', region: 'Managua', capCount: 0 },
+    { periodId: p('Panamá'), country: 'Panamá', region: 'Centro I', capCount: null },
+    { periodId: p('Nicaragua'), country: 'Nicaragua', region: 'Managua', capCount: 0 },
   ])
 }
 

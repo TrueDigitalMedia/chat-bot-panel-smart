@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { upsertQuotaTarget } from './quota-targets'
+import { getOpenPeriod, getQuotaPeriod } from './quota-periods'
 import { canonicalCountry, canonicalNseRegion } from '@/lib/geo/cam-nse-catalog'
 
 /**
@@ -12,12 +13,14 @@ function normalizeHeader(input: string): string {
 
 export interface UnmatchedRow {
   row: string
-  reason: 'country_not_recognized' | 'region_not_recognized'
+  reason: 'country_not_recognized' | 'region_not_recognized' | 'no_open_period' | 'period_closed'
 }
 
 export interface ImportResult {
   imported: number
   unmatched: UnmatchedRow[]
+  /** A qué periodo se cargó cada hoja importada — para mostrarlo en el panel. */
+  periodsUsed: { country: string; periodId: string; label: string }[]
 }
 
 // Header labels from `docs/Muestra Faltante por País Julio 2026_True.xlsx` (one sheet per
@@ -55,12 +58,21 @@ function findLabelCol(row: unknown[]): number {
 /**
  * Parses a `docs/Muestra Faltante por País Julio 2026_True.xlsx`-shaped workbook (one sheet
  * per country) and upserts quota_targets, one row per non-empty dimension cell.
+ *
+ * Cada hoja se carga en el periodo ABIERTO de su país (spec 018). Una hoja cuyo país no tiene
+ * periodo abierto se reporta en `unmatched` como `no_open_period` en vez de cargarse en silencio
+ * en un trimestre equivocado. Con `periodId` explícito se fuerza un periodo concreto — que
+ * igualmente tiene que estar abierto y ser de ese país (lo valida upsertQuotaTarget).
  */
-export async function importQuotaTargetsFromWorkbook(buffer: ArrayBuffer | Buffer): Promise<ImportResult> {
+export async function importQuotaTargetsFromWorkbook(
+  buffer: ArrayBuffer | Buffer,
+  options: { periodId?: string } = {},
+): Promise<ImportResult> {
   const wb = XLSX.read(buffer, { type: 'buffer' })
 
   let imported = 0
   const unmatched: UnmatchedRow[] = []
+  const periodsUsed: ImportResult['periodsUsed'] = []
 
   for (const sheetName of wb.SheetNames) {
     const country = canonicalCountry(sheetName)
@@ -68,6 +80,17 @@ export async function importQuotaTargetsFromWorkbook(buffer: ArrayBuffer | Buffe
       unmatched.push({ row: sheetName, reason: 'country_not_recognized' })
       continue
     }
+
+    const period = options.periodId ? await getQuotaPeriod(options.periodId) : await getOpenPeriod(country)
+    if (!period) {
+      unmatched.push({ row: sheetName, reason: 'no_open_period' })
+      continue
+    }
+    if (period.status !== 'open') {
+      unmatched.push({ row: sheetName, reason: 'period_closed' })
+      continue
+    }
+    periodsUsed.push({ country, periodId: period.id, label: period.label })
 
     const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: '' })
     const headerRowIndex = findHeaderRowIndex(rows)
@@ -98,11 +121,11 @@ export async function importQuotaTargetsFromWorkbook(buffer: ArrayBuffer | Buffe
         const cell = row[col]
         if (cell === '' || cell == null) continue
         const targetCount = Number(cell) || 0
-        await upsertQuotaTarget({ country, region, dimensionType, dimensionValue, targetCount })
+        await upsertQuotaTarget({ periodId: period.id, country, region, dimensionType, dimensionValue, targetCount })
         imported++
       }
     }
   }
 
-  return { imported, unmatched }
+  return { imported, unmatched, periodsUsed }
 }

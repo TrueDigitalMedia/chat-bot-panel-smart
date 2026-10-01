@@ -341,3 +341,37 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* Avisos de periodo (spec 018). `.alertBanner` es para lo que detiene el reclutamiento —
+   un país sin periodo abierto, o un periodo cerrado en solo lectura. */
+.infoBanner,
+.alertBanner {
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+}
+
+.infoBanner strong {
+  color: var(--ink);
+}
+
+.alertBanner {
+  border-color: #e4b9b0;
+  background: #fdf1ee;
+  color: #7a3528;
+}
+
+.alertBanner strong {
+  color: #5f2a20;
+}
+
+.infoBanner a,
+.alertBanner a {
+  color: var(--accent);
+  font-weight: 600;
+}

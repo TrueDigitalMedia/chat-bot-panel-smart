@@ -339,7 +339,14 @@ async function rejectIfRegionClosed(
       correlation_id: correlationId,
     }),
   )
-  await transitionLead(lead.id, 'quota_exhausted', 'region_closed_early_exit', correlationId)
+  await transitionLead(
+    lead.id,
+    'quota_exhausted',
+    // Sin periodo abierto el país entero está cerrado, no solo esta región — vale distinguirlo
+    // en el statusReason para poder auditar un cierre de trimestre olvidado (spec 018).
+    status.deniedReason === 'periodo_cerrado' ? 'period_closed_early_exit' : 'region_closed_early_exit',
+    correlationId,
+  )
   await sendText(lead, EXIT_B)
   await sendText(lead, EXIT_B_THANKS)
   return true

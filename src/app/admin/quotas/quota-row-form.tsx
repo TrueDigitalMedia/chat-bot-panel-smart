@@ -11,7 +11,11 @@ function pctClass(pct: number): string {
   return styles.pctHigh
 }
 
-export function QuotaRowForm({ item }: { item: QuotaProgress }) {
+/**
+ * `readOnly` = la fila pertenece a un periodo CERRADO. La API ya lo rechaza con 409
+ * ('period_closed'); deshabilitar acá evita que el operador escriba un número y se coma el error.
+ */
+export function QuotaRowForm({ item, readOnly = false }: { item: QuotaProgress; readOnly?: boolean }) {
   const router = useRouter()
   const [target, setTarget] = useState(item.target)
   const [busy, setBusy] = useState(false)
@@ -51,7 +55,7 @@ export function QuotaRowForm({ item }: { item: QuotaProgress }) {
           value={target}
           onChange={(e) => setTarget(Number(e.target.value))}
           className={styles.targetInput}
-          disabled={busy}
+          disabled={busy || readOnly}
         />
       </td>
       <td>{item.achieved}</td>
@@ -69,7 +73,7 @@ export function QuotaRowForm({ item }: { item: QuotaProgress }) {
         <div className={styles.rowActions}>
           <button
             type="button"
-            disabled={busy || target === item.target}
+            disabled={busy || readOnly || target === item.target}
             onClick={() => save({ targetCount: target })}
             className={styles.saveBtn}
           >
@@ -77,7 +81,7 @@ export function QuotaRowForm({ item }: { item: QuotaProgress }) {
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || readOnly}
             onClick={() => save({ active: !item.active })}
             className={styles.toggleBtn}
           >

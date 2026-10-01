@@ -19,9 +19,12 @@ const DIMENSION_COLUMNS: Array<{ dimensionType: string; dimensionValue: string; 
  * (one sheet per country, dimension columns per region), so it round-trips through
  * `importQuotaTargetsFromWorkbook` (excel-import.ts). Exports `target` (not achieved/available)
  * per cell, matching the import format.
+ *
+ * Sin `periodId` exporta los periodos ABIERTOS (resolvePeriodIds) — el alcance que esta función
+ * tenía antes de que existieran los periodos. Con `periodId` exporta ese corte concreto.
  */
-export async function exportQuotaTargetsToWorkbook(): Promise<Buffer> {
-  const items = await listQuotaProgress()
+export async function exportQuotaTargetsToWorkbook(options: { periodId?: string } = {}): Promise<Buffer> {
+  const items = await listQuotaProgress({ periodId: options.periodId })
 
   const byCountry = new Map<string, Map<string, Map<string, QuotaProgress>>>()
   for (const item of items) {

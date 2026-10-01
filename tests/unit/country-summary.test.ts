@@ -5,6 +5,7 @@ import type { QuotaProgress } from '@/lib/quotas/quota-progress'
 function progress(overrides: Partial<QuotaProgress> = {}): QuotaProgress {
   return {
     id: 'x',
+    periodId: 'period-q4',
     country: 'Guatemala',
     region: 'Centro I',
     dimensionType: 'nse',

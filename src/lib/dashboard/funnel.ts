@@ -34,6 +34,22 @@ export interface FunnelFilters {
   dateFrom?: Date
   dateTo?: Date
   // Deliberately no region/nseLevel — research.md R4 (assigned upstream of NSE/region).
+  //
+  // Y deliberadamente SIN periodo: el embudo cuenta leads en todas las etapas, y un lead que
+  // nunca calificó no tiene `quota_period_id` (se sella solo al calificar). Filtrar el embudo por
+  // periodo vaciaría todas las etapas previas a "Calificaron" y daría conversiones del 100%.
+  // Es una vista de conversión, no un libro mayor de cuota — ver QualifiedCountFilters.
+}
+
+/**
+ * Los conteos de CALIFICADOS sí son period-scoped: alimentan las tarjetas "Conseguidos" y el
+ * gráfico por país, que se leen contra un objetivo de un periodo concreto. Sin esto el panel
+ * mostraría el objetivo de un trimestre junto a los conseguidos de todos.
+ *
+ * Todo lead calificado tiene sello de periodo, así que acá el filtro no pierde a nadie.
+ */
+export interface QualifiedCountFilters extends FunnelFilters {
+  periodIds?: string[]
 }
 
 /**
@@ -43,15 +59,22 @@ export interface FunnelFilters {
  * region's target isn't triple-counted across its OR-matched dimensions), this counts
  * every lead that actually qualified, matching the funnel's own "qualified" stage.
  */
-export async function countQualifiedLeadsTotal(filters: FunnelFilters): Promise<number> {
-  return countLeads(filters, [inArray(leads.leadStatus, QUALIFIED_STATUSES)])
+export async function countQualifiedLeadsTotal(filters: QualifiedCountFilters): Promise<number> {
+  if (filters.periodIds && filters.periodIds.length === 0) return 0
+  return countLeads(filters, [
+    inArray(leads.leadStatus, QUALIFIED_STATUSES),
+    ...(filters.periodIds ? [inArray(leads.quotaPeriodId, filters.periodIds)] : []),
+  ])
 }
 
 /** Same as countQualifiedLeadsTotal, grouped by country — for the per-country chart. */
 export async function countQualifiedLeadsByCountry(
-  filters: Omit<FunnelFilters, 'country'> & { country?: string },
+  filters: QualifiedCountFilters,
 ): Promise<Map<string, number>> {
+  if (filters.periodIds && filters.periodIds.length === 0) return new Map()
+
   const conditions: SQL[] = [inArray(leads.leadStatus, QUALIFIED_STATUSES)]
+  if (filters.periodIds) conditions.push(inArray(leads.quotaPeriodId, filters.periodIds))
   if (filters.channel) conditions.push(eq(leads.channel, filters.channel))
   if (filters.dateFrom) conditions.push(gte(leads.createdAt, filters.dateFrom))
   if (filters.dateTo) conditions.push(lte(leads.createdAt, filters.dateTo))

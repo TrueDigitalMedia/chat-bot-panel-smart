@@ -16,13 +16,27 @@ const VALUES_BY_DIMENSION: Record<Exclude<DimensionType, 'nse'>, readonly string
   integrantes: HOUSEHOLD_BANDS,
 }
 
+export interface PeriodOption {
+  id: string
+  country: string
+  label: string
+  status: 'open' | 'closed'
+}
+
 interface QuotaFiltersFormProps {
   countries: string[]
   regionsByCountry: Record<string, string[]>
   nseLevelsByCountry: Record<string, string[]>
+  /** Todos los periodos, para poder mirar un trimestre ya cortado (en solo lectura). */
+  periods: PeriodOption[]
 }
 
-export function QuotaFiltersForm({ countries, regionsByCountry, nseLevelsByCountry }: QuotaFiltersFormProps) {
+export function QuotaFiltersForm({
+  countries,
+  regionsByCountry,
+  nseLevelsByCountry,
+  periods,
+}: QuotaFiltersFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -51,9 +65,23 @@ export function QuotaFiltersForm({ countries, regionsByCountry, nseLevelsByCount
   }
 
   const hasFilters = searchParams.toString().length > 0
+  // Si hay país elegido, solo sus periodos — un periodo de otro país no diría nada acá.
+  const availablePeriods = selectedCountry ? periods.filter((p) => p.country === selectedCountry) : periods
 
   return (
     <form className={styles.filtersForm} onSubmit={(e) => e.preventDefault()}>
+      <label className={styles.filterField}>
+        Periodo
+        <select value={searchParams.get('periodId') ?? ''} onChange={(e) => update('periodId', e.target.value)}>
+          <option value="">Abiertos</option>
+          {availablePeriods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.country} · {p.label}
+              {p.status === 'closed' ? ' (cerrado)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className={styles.filterField}>
         País
         <select value={selectedCountry} onChange={(e) => update('country', e.target.value)}>

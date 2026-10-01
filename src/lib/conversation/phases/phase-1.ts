@@ -718,7 +718,11 @@ export async function handlePhase1(
     leadId: lead.id,
   })
   if (!quotaDecision.qualifies) {
-    await transitionLead(lead.id, 'quota_exhausted', 'survey_complete_no_quota', correlationId)
+    // 'no_open_quota_period' distingue "el país no tiene periodo abierto" de "la cuota se agotó":
+    // ambos terminan en el mismo leadStatus, y statusReason existe justamente para eso.
+    const reason =
+      quotaDecision.deniedReason === 'periodo_cerrado' ? 'no_open_quota_period' : 'survey_complete_no_quota'
+    await transitionLead(lead.id, 'quota_exhausted', reason, correlationId)
     await sendText(to, EXIT_B)
     await sendText(to, EXIT_B_THANKS)
     return
@@ -729,6 +733,9 @@ export async function handlePhase1(
     .set({
       quotaMatchedDimension: quotaDecision.matchedDimension,
       quotaMatchedValue: quotaDecision.matchedValue,
+      // El periodo (Q) contra cuya cuota calificó — es la única fuente del "conseguidos" por
+      // periodo y el registro per-lead del corte (spec 018). Misma escritura, sin query extra.
+      quotaPeriodId: quotaDecision.periodId,
       updatedAt: new Date(),
     })
     .where(eq(leads.id, lead.id))

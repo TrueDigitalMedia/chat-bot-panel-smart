@@ -74,8 +74,9 @@ vi.mock('@/lib/whatsapp/number-registry', async (orig) => {
 import { db } from '@/lib/db/client'
 import {
   leads, surveyProfiles, flowStates, conversationMessages, consentEvents,
-  reEngagementSchedules, systemCallLogs, quotaTargets, quotaRegionCaps, conversationEvals,
+  reEngagementSchedules, systemCallLogs, quotaTargets, conversationEvals,
 } from '@/lib/db/schema'
+import { resetQuotaPeriods } from '../cam-harness'
 import { processWhatsAppInbound } from '@/lib/whatsapp/handle-inbound'
 import type { ChannelInbound } from '@/types/channel'
 
@@ -118,21 +119,21 @@ async function toName(send: ReturnType<typeof sender>, name: string) {
 // J1 → UC-A/EC1/EC2/EC3/EC6 · J2 → UC-EC5 · J3 → UC-EC4 · J4 → UC-EC7 · J5 → UC-MX1 · J6 → UC-B · J7 → UC-F
 describe('Ecuador + México onboarding — WhatsApp E2E', () => {
   beforeAll(async () => {
-    await db.delete(quotaTargets)
-    await db.delete(quotaRegionCaps)
+    // Spec 018: toda cuota cuelga de un periodo abierto por país.
+    const periods = await resetQuotaPeriods(['Ecuador', 'México'])
     // open NSE cells so a completed survey can qualify
     const ecRegions = ['Cuenca', 'Guayaquil Norte', 'Guayaquil Sur', 'Quito Norte', 'Quito Sur', 'Sierra']
     const mxRegions = ['GUADALAJARA', 'AMCM', 'MONTERREY', 'CENTRO', 'OCCIDENTE']
     await db.insert(quotaTargets).values([
       ...ecRegions.flatMap((region) =>
         (['A', 'B', 'C', 'D', 'E'] as const).map((v) => ({
-          country: 'Ecuador', region, dimensionType: 'nse' as const,
+          periodId: periods.get('Ecuador')!, country: 'Ecuador', region, dimensionType: 'nse' as const,
           dimensionValue: v, targetCount: 500, active: true,
         })),
       ),
       ...mxRegions.flatMap((region) =>
         (['AB', 'C+', 'C', 'D+', 'D/E'] as const).map((v) => ({
-          country: 'México', region, dimensionType: 'nse' as const,
+          periodId: periods.get('México')!, country: 'México', region, dimensionType: 'nse' as const,
           dimensionValue: v, targetCount: 500, active: true,
         })),
       ),

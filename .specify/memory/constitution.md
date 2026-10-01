@@ -1,5 +1,21 @@
 <!--
 SYNC IMPACT REPORT
+Version change: 1.2.0 → 1.3.0
+Modified principles:
+  - IV. Flexible Quota Eligibility → IV. Flexible Quota Eligibility (amended: the
+    "every region MUST be open" and "pregnancy/baby MUST always qualify with no quota
+    limit" bullets are replaced by the ceiling model the code has actually implemented
+    since PUNTO 1 (2026-09-10) and the 2026-09-23 Rep. Dominicana fix, and extended with
+    the quota-period gate of spec 018)
+Added sections: N/A
+Removed sections: N/A
+Rationale: the two bullets described the original spec-011 model, which was deliberately
+  reversed in production after it caused measurable over-delivery (out-of-sample regions
+  recruiting, and the pregnancy/baby exception qualifying leads into regions the operator
+  had already closed). Leaving them in place meant every quota plan had to either fail its
+  own Constitution Check or silently ignore the principle.
+
+PREVIOUS REPORT (1.1.0 → 1.2.0)
 Version change: 1.1.0 → 1.2.0
 Modified principles:
   - IV. Flexible Quota Eligibility → IV. Flexible Quota Eligibility (expanded: quota
@@ -79,12 +95,23 @@ combined key that all conditions must satisfy at once:
 - A lead qualifies if it satisfies **at least one** available quota condition among its independent
   dimensions (NSE level, age band, household size) — matching all dimensions simultaneously MUST NOT
   be required.
-- Every region MUST be open for recruitment; no region may be excluded from matching ahead of time.
-- Each region MUST enforce an aggregate cap on total accepted leads, independent of per-dimension quotas,
-  that blocks new registrations once reached — even if an individual dimension still has room. This
-  exists to prevent over-concentration in a single region.
-- A household reporting a pregnancy or a baby aged 0–36 months MUST always qualify, with no quota limit,
-  regardless of NSE level, age band, or household size.
+- Eligibility is bounded by a **hierarchy of hard ceilings**, evaluated before any dimension is
+  considered (PUNTO 1, 2026-09-10; spec 018):
+  1. The country MUST have an **open quota period**. With none, nothing qualifies.
+  2. Within it, the region MUST have a configured objective that still has room. A region with no
+     configured demand (out of the client's sample) is CLOSED — it MUST NOT recruit. This replaces
+     the earlier "every region MUST be open" rule, which allowed out-of-sample regions to
+     over-deliver.
+  3. Each region's objective is an aggregate cap on total accepted leads, independent of
+     per-dimension quotas, and blocks new registrations once reached even if an individual dimension
+     still has room. This exists to prevent over-concentration in a single region.
+  4. No individual country+region+NSE line may pass its own objective.
+- A household reporting a pregnancy or a baby aged 0–36 months qualifies **without checking demand
+  on its own NSE/age/household cell**, but remains bounded by every ceiling above. It is NOT
+  unlimited: letting it bypass the region objective silently rewrote the sample's NSE mix and kept
+  recruiting into regions the operator had already closed (Rep. Dominicana, fixed 2026-09-23).
+- Closing a quota period MUST freeze a durable record (objective, achieved, missing, %) rather than
+  mutate or discard the configuration it ran with.
 - Quota dimensions, region catalogs, and NSE levels are defined **per country** (see Principle V). A
   lead's NSE level MUST be derived from its own country's scoring system before quota evaluation, and
   quota cells, region caps, and the pregnancy/baby exception MUST be applied within that country's
@@ -181,4 +208,4 @@ source of development principles for the AI Chat Platform.
   Tracking table with explicit justification.
 - Refer to `.specify/` for runtime development guidance and workflow tooling.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-09-03
+**Version**: 1.3.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-10-01

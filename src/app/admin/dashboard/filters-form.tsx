@@ -3,13 +3,21 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import styles from './dashboard.module.css'
 
+export interface DashboardPeriodOption {
+  id: string
+  country: string
+  label: string
+  status: 'open' | 'closed'
+}
+
 interface FiltersFormProps {
   countries: string[]
   nseLevelsByCountry: Record<string, string[]>
   regionsByCountry: Record<string, string[]>
+  periods: DashboardPeriodOption[]
 }
 
-export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry }: FiltersFormProps) {
+export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry, periods }: FiltersFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -32,8 +40,22 @@ export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry }:
 
   const hasFilters = searchParams.toString().length > 0
 
+  const availablePeriods = selectedCountry ? periods.filter((p) => p.country === selectedCountry) : periods
+
   return (
     <form className={styles.filtersForm} onSubmit={(e) => e.preventDefault()}>
+      <label className={styles.filterField}>
+        Periodo
+        <select value={searchParams.get('periodId') ?? ''} onChange={(e) => update('periodId', e.target.value)}>
+          <option value="">Abiertos</option>
+          {availablePeriods.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.country} · {p.label}
+              {p.status === 'closed' ? ' (cerrado)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className={styles.filterField}>
         País
         <select value={selectedCountry} onChange={(e) => update('country', e.target.value)}>
@@ -84,7 +106,7 @@ export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry }:
         </select>
       </label>
       <label className={styles.filterField}>
-        Desde
+        Desde (dentro del periodo)
         <input
           type="date"
           value={searchParams.get('from') ?? ''}
@@ -92,7 +114,7 @@ export function FiltersForm({ countries, nseLevelsByCountry, regionsByCountry }:
         />
       </label>
       <label className={styles.filterField}>
-        Hasta
+        Hasta (dentro del periodo)
         <input type="date" value={searchParams.get('to') ?? ''} onChange={(e) => update('to', e.target.value)} />
       </label>
       {hasFilters ? (

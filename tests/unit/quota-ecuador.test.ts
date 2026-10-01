@@ -10,6 +10,7 @@ import type { RegionObjective } from '@/lib/quotas/region-caps'
 vi.mock('@/lib/db/client', () => ({ db: {} }))
 vi.mock('@/lib/env', () => ({ env: {} }))
 
+const PERIOD_ID = 'period-q4'
 const progressByKey = new Map<string, QuotaProgress>()
 let regionObjective: RegionObjective = { objective: 1000, source: 'cap', achieved: 0, deactivated: false }
 let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
@@ -26,6 +27,7 @@ function seedProgress(
   const available = Math.max(0, p.target - p.achieved)
   progressByKey.set(key(p.country, p.region, p.dimensionType, p.dimensionValue), {
     id: 'x',
+    periodId: PERIOD_ID,
     country: p.country,
     region: p.region,
     dimensionType: p.dimensionType,
@@ -42,15 +44,35 @@ function seedProgress(
 
 vi.mock('@/lib/quotas/quota-progress', () => ({
   getQuotaProgressForTarget: vi.fn(
-    async (country: string, region: string, dimensionType: string, dimensionValue: string) => {
+    async (periodId: string, country: string, region: string, dimensionType: string, dimensionValue: string) => {
+      if (periodId !== PERIOD_ID) return null
       return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
     },
   ),
-  getHighestVolumeNseTargetWithRoom: vi.fn(async () => openNseLine),
+  getHighestVolumeNseTargetWithRoom: vi.fn(async (periodId: string) =>
+    periodId === PERIOD_ID ? openNseLine : null,
+  ),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
   getRegionObjective: vi.fn(async () => regionObjective),
+}))
+
+// Spec 018: el país necesita un periodo abierto para que algo califique.
+vi.mock('@/lib/quotas/quota-periods', () => ({
+  getOpenPeriod: vi.fn(async (country: string) => ({
+    id: PERIOD_ID,
+    country,
+    label: 'Q4 2026',
+    year: 2026,
+    quarter: 4,
+    startsOn: '2026-10-01',
+    endsOn: '2026-12-31',
+    status: 'open',
+    openedAt: new Date('2026-10-01T00:00:00Z'),
+    closedAt: null,
+    notes: null,
+  })),
 }))
 
 import { checkQuotaAvailability } from '@/lib/scoring/quota'
@@ -77,7 +99,9 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'AB' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'AB',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('qualifies via the Ecuador "D/E" NSE dimension', async () => {
@@ -92,7 +116,9 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('own NSE cell exhausted + edad demand → charged to another Ecuador NSE line with room', async () => {
@@ -109,7 +135,9 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'D/E',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('does not qualify when nse, edad, and integrantes are all exhausted for the Ecuador region', async () => {
@@ -131,6 +159,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'region_completa',
+      periodId: null,
     })
   })
 
@@ -152,6 +181,7 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'region_completa',
+      periodId: null,
     })
   })
 
@@ -168,7 +198,9 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null,
+      periodId: PERIOD_ID,
+    })
   })
 
   it('a baby-under-3 Ecuador household attributes to the region\'s highest-volume NSE line instead of going unattributed', async () => {
@@ -183,7 +215,9 @@ describe('checkQuotaAvailability — Ecuador (spec 014 T037, no code change from
       hasBabyUnder3: true,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'C' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'C',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('the pregnancy/baby exception IS blocked once the Ecuador region objective is reached (PUNTO 1)', async () => {

@@ -1,7 +1,8 @@
-import { listQuotaProgress, type QuotaProgress } from '@/lib/quotas/quota-progress'
+import { listQuotaProgress, resolvePeriodIds, type QuotaProgress } from '@/lib/quotas/quota-progress'
 import { buildCountrySummary } from '@/lib/dashboard/country-summary'
 import { getConversionFunnel, countQualifiedLeadsTotal, countQualifiedLeadsByCountry } from '@/lib/dashboard/funnel'
 import { listSupportedCountries, listNseRegionsForSupportedCountry, getCountryConfig } from '@/lib/countries/registry'
+import { listQuotaPeriods } from '@/lib/quotas/quota-periods'
 import { isChannel } from '@/types/channel'
 import { FiltersForm } from './filters-form'
 import { RefreshPoller } from './refresh-poller'
@@ -14,6 +15,7 @@ function pctColorClass(pct: number): string {
 }
 
 interface DashboardSearchParams {
+  periodId?: string
   country?: string
   region?: string
   dimensionValue?: string
@@ -36,7 +38,11 @@ export default async function DashboardPage({
   // dimensions (spec 011); keeping it scoped to NSE preserves its historical meaning
   // (Objetivo/Conseguidos totals stay comparable to before) instead of summing three
   // independent OR-matched dimensions into one misleading number.
+  // Sin periodId el alcance son los periodos ABIERTOS. `from`/`to` se INTERSECTAN con la ventana
+  // del periodo, no la reemplazan: son dos conceptos temporales distintos (spec 018 §3.3).
+  const periodId = params.periodId || undefined
   const items = await listQuotaProgress({
+    periodId,
     country: params.country || undefined,
     region: params.region || undefined,
     dimensionType: 'nse',
@@ -57,7 +63,16 @@ export default async function DashboardPage({
   // edad, integrantes, or the pregnancy/baby exception — not just the ones attributed
   // to an nse quota cell. The per-region/NSE table further below stays nse-only on
   // purpose (it's tracking each specific cell's remaining capacity).
-  const qualifiedFilters = { country: params.country || undefined, channel, dateFrom, dateTo }
+  // Los conseguidos se restringen a los MISMOS periodos que los objetivos de arriba; si no, el
+  // panel compararía el objetivo de un trimestre contra los calificados de todos.
+  const periodIds = await resolvePeriodIds({ periodId, country: params.country || undefined })
+  const qualifiedFilters = {
+    periodIds,
+    country: params.country || undefined,
+    channel,
+    dateFrom,
+    dateTo,
+  }
   const totalAchieved = await countQualifiedLeadsTotal(qualifiedFilters)
   const totalTarget = items.reduce((sum, item) => sum + item.target, 0)
   const summary = {
@@ -78,6 +93,12 @@ export default async function DashboardPage({
   const nseLevelsByCountry = Object.fromEntries(
     catalogCountries.map((c) => [c, [...getCountryConfig(c).nseLevels]]),
   )
+  const periodOptions = (await listQuotaPeriods()).map((p) => ({
+    id: p.id,
+    country: p.country,
+    label: p.label,
+    status: p.status,
+  }))
 
   const sortedByRegion = [...items].sort(
     (a, b) =>
@@ -106,6 +127,7 @@ export default async function DashboardPage({
           countries={catalogCountries}
           nseLevelsByCountry={nseLevelsByCountry}
           regionsByCountry={regionsByCountry}
+          periods={periodOptions}
         />
       </div>
 

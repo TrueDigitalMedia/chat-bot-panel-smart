@@ -9,6 +9,7 @@ import { toProgress, type QuotaTargetRow } from '@/lib/quotas/quota-progress'
 function baseRow(overrides: Partial<QuotaTargetRow> = {}): QuotaTargetRow {
   return {
     id: 'target-1',
+    periodId: 'period-q4',
     country: 'Guatemala',
     region: 'Sur Occidente Chico',
     dimensionType: 'nse',

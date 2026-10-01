@@ -2,7 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, MessageSquare, ClipboardList, LogOut, BookOpen, History, DoorOpen, Phone } from 'lucide-react'
+import {
+  LayoutDashboard,
+  MessageSquare,
+  ClipboardList,
+  CalendarRange,
+  LogOut,
+  BookOpen,
+  History,
+  DoorOpen,
+  Phone,
+} from 'lucide-react'
 import { logout } from '@/lib/auth/actions'
 import {
   Sidebar,
@@ -20,6 +30,7 @@ import {
 const NAV_ITEMS = [
   { label: 'Conversaciones', href: '/admin/conversations', icon: MessageSquare },
   { label: 'Cuotas de reclutamiento', href: '/admin/quotas', icon: ClipboardList },
+  { label: 'Periodos y cortes', href: '/admin/quotas/periodos', icon: CalendarRange },
   { label: 'Dashboard de leads', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Salas de chat', href: '/admin/rooms', icon: DoorOpen },
   { label: 'Números WhatsApp', href: '/admin/whatsapp-numbers', icon: Phone },
@@ -27,8 +38,24 @@ const NAV_ITEMS = [
   { label: 'Wiki del sistema', href: '/admin/wiki', icon: BookOpen },
 ] as const
 
+/**
+ * El href MÁS LARGO que matchea la ruta actual, y solo ese, queda resaltado.
+ *
+ * Un `pathname.startsWith(item.href)` por item resaltaba dos entradas a la vez en cuanto una ruta
+ * quedó anidada bajo otra: en /admin/quotas/periodos se encendían "Cuotas de reclutamiento" y
+ * "Periodos y cortes" juntas. Reordenar la lista no lo arregla — cada item evalúa por su cuenta.
+ */
+function activeHref(pathname: string): string | null {
+  return (
+    NAV_ITEMS.map((item) => item.href)
+      .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+      .sort((a, b) => b.length - a.length)[0] ?? null
+  )
+}
+
 export function AdminSidebar() {
   const pathname = usePathname()
+  const active = activeHref(pathname)
 
   return (
     <Sidebar collapsible="icon">
@@ -45,7 +72,7 @@ export function AdminSidebar() {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
-                    isActive={pathname.startsWith(item.href)}
+                    isActive={active === item.href}
                     tooltip={item.label}
                   >
                     <item.icon />

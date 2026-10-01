@@ -25,6 +25,24 @@ async function seedMexicoQuotaExample(): Promise<void> {
   const { upsertQuotaTarget } = await import('@/lib/quotas/quota-targets')
   const { createRegionCap, RegionCapConflictError } = await import('@/lib/quotas/region-caps')
   const { AGE_BANDS, HOUSEHOLD_BANDS } = await import('@/lib/quotas/dimension-catalog')
+  const { getOpenPeriod, openQuotaPeriod } = await import('@/lib/quotas/quota-periods')
+
+  // Toda cuota cuelga de un periodo (spec 018). Se reusa el abierto del país si ya hay uno,
+  // para que el seed siga siendo idempotente y no choque con el índice de "un abierto por país".
+  const now = new Date()
+  const year = now.getUTCFullYear()
+  const quarter = Math.floor(now.getUTCMonth() / 3) + 1
+  const period =
+    (await getOpenPeriod('México')) ??
+    (await openQuotaPeriod({
+      country: 'México',
+      quarter,
+      year,
+      startsOn: new Date(Date.UTC(year, (quarter - 1) * 3, 1)).toISOString().slice(0, 10),
+      endsOn: new Date(Date.UTC(year, quarter * 3, 0)).toISOString().slice(0, 10),
+      notes: 'Example quota period (seed)',
+    }))
+  console.log(`  periodo: ${period.label} (${period.startsOn} → ${period.endsOn})`)
 
   const nseLevels = getCountryConfig('México').nseLevels // ['AB','C+','C','D+','D/E']
 
@@ -32,6 +50,7 @@ async function seedMexicoQuotaExample(): Promise<void> {
   for (const region of MEXICO_REGIONS) {
     for (const dimensionValue of nseLevels) {
       await upsertQuotaTarget({
+        periodId: period.id,
         country: 'México',
         region,
         dimensionType: 'nse',
@@ -43,6 +62,7 @@ async function seedMexicoQuotaExample(): Promise<void> {
     }
     for (const dimensionValue of AGE_BANDS) {
       await upsertQuotaTarget({
+        periodId: period.id,
         country: 'México',
         region,
         dimensionType: 'edad',
@@ -54,6 +74,7 @@ async function seedMexicoQuotaExample(): Promise<void> {
     }
     for (const dimensionValue of HOUSEHOLD_BANDS) {
       await upsertQuotaTarget({
+        periodId: period.id,
         country: 'México',
         region,
         dimensionType: 'integrantes',
@@ -69,7 +90,7 @@ async function seedMexicoQuotaExample(): Promise<void> {
   let capsCreated = 0
   for (const region of MEXICO_REGIONS) {
     try {
-      await createRegionCap({ country: 'México', region, capCount: null, notes: 'No cap — example config' })
+      await createRegionCap({ periodId: period.id, country: 'México', region, capCount: null, notes: 'No cap — example config' })
       capsCreated++
     } catch (err) {
       if (err instanceof RegionCapConflictError) continue // already seeded — idempotent re-run
