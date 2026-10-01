@@ -103,4 +103,22 @@ describe('applyManualMunicipalityAllowlist — early quota-exhausted exit (PUNTO
     expect(transitionLead).not.toHaveBeenCalled()
     expect(sendText).not.toHaveBeenCalled()
   })
+
+  // Spec 018 — sin periodo abierto el país entero está cerrado. La salida temprana lo hereda de
+  // checkRegionQuota (es la razón de que el corto-circuito viva ahí y no en
+  // checkQuotaAvailability), y lo distingue en el statusReason para poder auditar un cierre de
+  // trimestre olvidado.
+  it('sale temprano con period_closed_early_exit cuando el país no tiene periodo abierto', async () => {
+    checkRegionQuota.mockResolvedValue({ open: false, deniedReason: 'periodo_cerrado' })
+    const result = await applyManualMunicipalityAllowlist(LEAD, {
+      country: 'Honduras',
+      stateProvince: 'Cortés',
+      municipality: 'San Pedro Sula',
+      geoSource: 'text_exact',
+      correlationId: 'c5',
+    })
+    expect(result.rejected).toBe(true)
+    expect(transitionLead).toHaveBeenCalledWith('lead1', 'quota_exhausted', 'period_closed_early_exit', 'c5')
+    expect(sendText).toHaveBeenCalledTimes(2)
+  })
 })

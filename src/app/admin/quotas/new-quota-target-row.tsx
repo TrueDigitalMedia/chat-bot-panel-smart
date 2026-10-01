@@ -22,9 +22,20 @@ interface NewQuotaTargetRowProps {
   countries: string[]
   regionsByCountry: Record<string, string[]>
   nseLevelsByCountry: Record<string, string[]>
+  /**
+   * Periodo abierto de cada país. El periodo se DERIVA del país elegido, a propósito sin agregar
+   * un `<select>` más: los specs de Playwright de esta tabla eligen los selects por posición
+   * (`select` nth(0)–nth(3)), así que una columna nueva acá los rompería.
+   */
+  openPeriodIdByCountry: Record<string, string>
 }
 
-export function NewQuotaTargetRow({ countries, regionsByCountry, nseLevelsByCountry }: NewQuotaTargetRowProps) {
+export function NewQuotaTargetRow({
+  countries,
+  regionsByCountry,
+  nseLevelsByCountry,
+  openPeriodIdByCountry,
+}: NewQuotaTargetRowProps) {
   const router = useRouter()
   const [country, setCountry] = useState('')
   const [region, setRegion] = useState('')
@@ -42,8 +53,14 @@ export function NewQuotaTargetRow({ countries, regionsByCountry, nseLevelsByCoun
         ? VALUES_BY_DIMENSION[dimensionType]
         : []
 
+  const periodId = country ? openPeriodIdByCountry[country] : undefined
+
   async function create() {
     if (!country || !region || !dimensionType || !dimensionValue) return
+    if (!periodId) {
+      setError(`${country} no tiene un periodo de cuota abierto — abrilo primero`)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -51,6 +68,7 @@ export function NewQuotaTargetRow({ countries, regionsByCountry, nseLevelsByCoun
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          periodId,
           country,
           region,
           dimensionType,
@@ -60,7 +78,11 @@ export function NewQuotaTargetRow({ countries, regionsByCountry, nseLevelsByCoun
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error === 'conflict' ? 'Ya existe esa cuota (edítala en la tabla)' : 'Error al crear')
+        setError(
+          data.error === 'conflict'
+            ? 'Ya existe esa cuota en este periodo (edítala en la tabla)'
+            : (data.message ?? 'Error al crear'),
+        )
         return
       }
       setCountry('')

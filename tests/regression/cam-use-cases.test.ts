@@ -37,21 +37,21 @@ vi.mock('@/lib/tdm-registration/oauth', () => ({ getTdmAccessToken: vi.fn(async 
 
 import { db } from '@/lib/db/client'
 import { quotaTargets, quotaRegionCaps } from '@/lib/db/schema'
-import { resetLeadTables, runJourney, outbox } from './cam-harness'
+import { resetLeadTables, resetQuotaPeriods, runJourney, outbox } from './cam-harness'
 import type { Turn } from './cam-harness'
 
 /* --- per-file quota config (own beforeAll; the golden-master file re-seeds its own) --- */
 async function seed() {
-  await db.delete(quotaTargets)
-  await db.delete(quotaRegionCaps)
+  const periods = await resetQuotaPeriods(['Panamá', 'Nicaragua', 'Costa Rica'])
+  const p = (country: string) => periods.get(country)!
   await db.insert(quotaTargets).values([
     // Panamá / Centro I — open Nivel 1 so the high-SES happy path qualifies
-    { country: 'Panamá', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
+    { periodId: p('Panamá'), country: 'Panamá', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
     // Nicaragua / Sur I — Nivel 4 full (0), Nivel 1 open (for the pregnancy-exception attribution)
-    { country: 'Nicaragua', region: 'Sur I', dimensionType: 'nse', dimensionValue: 'Nivel 4', targetCount: 0, active: true },
-    { country: 'Nicaragua', region: 'Sur I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
+    { periodId: p('Nicaragua'), country: 'Nicaragua', region: 'Sur I', dimensionType: 'nse', dimensionValue: 'Nivel 4', targetCount: 0, active: true },
+    { periodId: p('Nicaragua'), country: 'Nicaragua', region: 'Sur I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
     // Costa Rica / Area metropolitana I — open
-    { country: 'Costa Rica', region: 'Area metropolitana I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
+    { periodId: p('Costa Rica'), country: 'Costa Rica', region: 'Area metropolitana I', dimensionType: 'nse', dimensionValue: 'Nivel 1', targetCount: 100, active: true },
   ])
 }
 

@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import { upsertQuotaTarget } from '@/lib/quotas/quota-targets'
 import { createRegionCap, RegionCapConflictError } from '@/lib/quotas/region-caps'
+import { ensureOpenPeriod } from '../support/quota-period'
 
 // Feature 015 (México onboarding) — T017/T023/T028/T032. Same shallow-smoke convention as
 // every other tests/e2e/*.spec.ts here (see ecuador-onboarding.spec.ts's header): the
@@ -149,9 +150,10 @@ test.describe('México onboarding — part 3 (T028): 6 NSE questions, survey com
 
 test.describe('México onboarding — part 4 (T032): quota decision + registration handoff', () => {
   async function seed(region: string, capCount: number | null): Promise<void> {
-    await upsertQuotaTarget({ country: 'México', region, dimensionType: 'nse', dimensionValue: 'D+', targetCount: 5 })
+    const period = await ensureOpenPeriod('México')
+    await upsertQuotaTarget({ periodId: period.id, country: 'México', region, dimensionType: 'nse', dimensionValue: 'D+', targetCount: 5 })
     if (capCount !== null) {
-      await createRegionCap({ country: 'México', region, capCount }).catch((e) => {
+      await createRegionCap({ periodId: period.id, country: 'México', region, capCount }).catch((e) => {
         if (!(e instanceof RegionCapConflictError)) throw e
       })
     }

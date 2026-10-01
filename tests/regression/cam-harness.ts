@@ -30,6 +30,9 @@ import {
   conversationEvals,
   panelSmartSyncAttempts,
   leadMessageVariantUsage,
+  quotaPeriods,
+  quotaTargets,
+  quotaRegionCaps,
 } from '@/lib/db/schema'
 import { upsertLead } from '@/lib/db/leads'
 import { logConversationMessage } from '@/lib/db/conversation-messages'
@@ -55,7 +58,41 @@ export async function resetLeadTables(): Promise<void> {
   await db.delete(panelSmartSyncAttempts)
   await db.delete(leadMessageVariantUsage)
   await db.delete(leads)
-  // quota_targets / quota_region_caps are seeded once per file — see cam-journeys.ts seedQuota()
+  // quota_periods / quota_targets / quota_region_caps are seeded once per file — see
+  // cam-journeys.ts seedQuota() and resetQuotaPeriods() below.
+}
+
+/**
+ * Wipes the quota config and opens one period per country (spec 018 — every quota row and every
+ * qualifying lead hangs off a period), returning country → periodId for the inserts that follow.
+ *
+ * Deletion order matters: `quota_targets`/`quota_region_caps` have a NOT NULL FK to
+ * `quota_periods`, so they go first. `leads.quota_period_id` is ON DELETE SET NULL, so stale
+ * leads never block this.
+ */
+export async function resetQuotaPeriods(countries: readonly string[]): Promise<Map<string, string>> {
+  await db.delete(quotaTargets)
+  await db.delete(quotaRegionCaps)
+  await db.delete(quotaPeriods)
+
+  // Fechas fijas: son descriptivas (nada en el motor de decisión las lee) y así los snapshots
+  // no dependen de cuándo se corre la suite.
+  const rows = await db
+    .insert(quotaPeriods)
+    .values(
+      countries.map((country) => ({
+        country,
+        label: 'Q-regresion',
+        year: 2026,
+        quarter: 1,
+        startsOn: '2026-01-01',
+        endsOn: '2026-12-31',
+        status: 'open',
+      })),
+    )
+    .returning({ id: quotaPeriods.id, country: quotaPeriods.country })
+
+  return new Map(rows.map((r) => [r.country, r.id]))
 }
 
 /* ------------------------------------------------------------------ */
@@ -99,6 +136,8 @@ const STRIP_KEYS = new Set([
   'tdmRegistrationRequestedAt',
   'panelSmartLastSyncAt',
   'createdAtUtc',
+  // UUID aleatorio por corrida del seed (spec 018) — sin esto cada ejecución produciría un diff.
+  'quotaPeriodId',
 ])
 
 function scrub<T extends Record<string, unknown>>(row: T | undefined | null): Record<string, unknown> | null {

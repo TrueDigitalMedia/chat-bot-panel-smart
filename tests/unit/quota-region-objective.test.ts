@@ -1,9 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { leads, quotaRegionCaps, quotaTargets } from '@/lib/db/schema'
 
+const eqCalls: [unknown, unknown][] = []
+
+vi.mock('drizzle-orm', async () => {
+  const actual = await vi.importActual<typeof import('drizzle-orm')>('drizzle-orm')
+  return {
+    ...actual,
+    eq: (...args: [unknown, unknown]) => {
+      eqCalls.push(args)
+      return actual.eq(...(args as Parameters<typeof actual.eq>))
+    },
+  }
+})
+
 vi.mock('@/lib/quotas/quota-progress', () => ({
   QUALIFIED_STATUSES: ['link_sent', 'waiting_for_code'],
+  resolvePeriodIds: vi.fn(async () => [PERIOD_ID]),
 }))
+
+vi.mock('@/lib/quotas/quota-periods', () => ({
+  getQuotaPeriod: vi.fn(async (id: string) => ({ id, country: 'Honduras', label: 'Q4 2026', status: 'open' })),
+}))
+
+const PERIOD_ID = 'period-q4'
 
 /** What the three queries inside getRegionObjective should see, per test. */
 const state = {
@@ -64,7 +84,7 @@ describe('getRegionObjective — a deactivated region is closed', () => {
     ]
 
     const { getRegionObjective } = await import('@/lib/quotas/region-caps')
-    expect(await getRegionObjective('Rep. Dominicana', 'Santiago')).toEqual({
+    expect(await getRegionObjective(PERIOD_ID, 'Rep. Dominicana', 'Santiago')).toEqual({
       objective: 100,
       source: 'cap',
       achieved: 16,
@@ -85,7 +105,7 @@ describe('getRegionObjective — a deactivated region is closed', () => {
     ]
 
     const { getRegionObjective } = await import('@/lib/quotas/region-caps')
-    expect(await getRegionObjective('Rep. Dominicana', 'Santiago')).toEqual({
+    expect(await getRegionObjective(PERIOD_ID, 'Rep. Dominicana', 'Santiago')).toEqual({
       objective: 0,
       source: 'none',
       achieved: 16,
@@ -103,7 +123,7 @@ describe('getRegionObjective — a deactivated region is closed', () => {
     ]
 
     const { getRegionObjective } = await import('@/lib/quotas/region-caps')
-    expect(await getRegionObjective('Honduras', 'Centro I')).toEqual({
+    expect(await getRegionObjective(PERIOD_ID, 'Honduras', 'Centro I')).toEqual({
       objective: 18,
       source: 'nse_sum',
       achieved: 4,
@@ -113,7 +133,7 @@ describe('getRegionObjective — a deactivated region is closed', () => {
 
   it('is closed when there are no NSE lines and no cap', async () => {
     const { getRegionObjective } = await import('@/lib/quotas/region-caps')
-    expect(await getRegionObjective('Honduras', 'Centro I')).toEqual({
+    expect(await getRegionObjective(PERIOD_ID, 'Honduras', 'Centro I')).toEqual({
       objective: 0,
       source: 'none',
       achieved: 0,
@@ -126,11 +146,46 @@ describe('getRegionObjective — a deactivated region is closed', () => {
     state.achieved = 3
 
     const { getRegionObjective } = await import('@/lib/quotas/region-caps')
-    expect(await getRegionObjective('Honduras', 'Centro I')).toEqual({
+    expect(await getRegionObjective(PERIOD_ID, 'Honduras', 'Centro I')).toEqual({
       objective: 20,
       source: 'cap',
       achieved: 3,
       deactivated: false,
     })
+  })
+})
+
+// Spec 018 — la regresión más probable de todo el cambio: que una línea de OTRO periodo se cuele
+// en el objetivo del periodo en curso. El fake de drizzle de este archivo no filtra por periodo
+// (solo mira de qué tabla se lee), así que esto se verifica espiando qué condiciones `eq` recibe
+// realmente — el mismo patrón de quota-progress-filters.test.ts.
+describe('getRegionObjective — está acotado al periodo', () => {
+  beforeEach(() => {
+    state.capCount = null
+    state.achieved = 0
+    state.nseLines = []
+    eqCalls.length = 0
+  })
+
+  it('devuelve cerrado sin consultar nada cuando falta el periodo', async () => {
+    const { getRegionObjective } = await import('@/lib/quotas/region-caps')
+    expect(await getRegionObjective('', 'Honduras', 'Centro I')).toEqual({
+      objective: 0,
+      source: 'none',
+      achieved: 0,
+      deactivated: false,
+    })
+    expect(eqCalls).toHaveLength(0)
+  })
+
+  it('filtra por period_id en las tres consultas: tope, conseguidos y líneas NSE', async () => {
+    state.capCount = 50
+    const { getRegionObjective } = await import('@/lib/quotas/region-caps')
+    await getRegionObjective(PERIOD_ID, 'Honduras', 'Centro I')
+
+    const periodColumns = eqCalls.filter(([, value]) => value === PERIOD_ID).map(([column]) => column)
+    expect(periodColumns).toContain(quotaRegionCaps.periodId)
+    expect(periodColumns).toContain(quotaTargets.periodId)
+    expect(periodColumns).toContain(leads.quotaPeriodId)
   })
 })

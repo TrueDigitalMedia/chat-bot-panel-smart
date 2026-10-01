@@ -148,6 +148,13 @@
       "when": 1789900000000,
       "tag": "0036_mexico_ficha_hogar_codigo_postal",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0037_quota_periods",
+      "breakpoints": true
     }
   ]
 }

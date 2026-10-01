@@ -7,9 +7,21 @@ import styles from './quotas.module.css'
 interface ImportResult {
   imported: number
   unmatched: Array<{ row: string; reason: string }>
+  periodsUsed: Array<{ country: string; periodId: string; label: string }>
 }
 
-export function ImportForm() {
+const UNMATCHED_LABELS: Record<string, string> = {
+  country_not_recognized: 'país no reconocido',
+  region_not_recognized: 'región no reconocida',
+  no_open_period: 'sin periodo de cuota abierto — abrilo primero',
+  period_closed: 'el periodo indicado está cerrado',
+}
+
+/**
+ * `periodId` fuerza un periodo concreto; sin él, cada hoja va al periodo ABIERTO de su país y una
+ * hoja cuyo país no tiene periodo abierto vuelve en `unmatched`, nunca cargada en otro trimestre.
+ */
+export function ImportForm({ periodId }: { periodId?: string } = {}) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -23,6 +35,7 @@ export function ImportForm() {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      if (periodId) formData.append('periodId', periodId)
       const res = await fetch('/api/admin/quotas/import', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) {
@@ -58,7 +71,10 @@ export function ImportForm() {
       {result ? (
         <span className={styles.muted}>
           {result.imported} importadas
-          {result.unmatched.length > 0 ? ` · ${result.unmatched.length} no reconocidas` : ''}
+          {result.periodsUsed.length > 0
+            ? ` en ${result.periodsUsed.map((p) => `${p.country} ${p.label}`).join(', ')}`
+            : ''}
+          {result.unmatched.length > 0 ? ` · ${result.unmatched.length} no cargadas` : ''}
         </span>
       ) : null}
       {error ? <span className={styles.rowError}>{error}</span> : null}
@@ -66,7 +82,7 @@ export function ImportForm() {
         <ul className={styles.unmatchedList}>
           {result.unmatched.map((u) => (
             <li key={u.row}>
-              {u.row} — {u.reason}
+              {u.row} — {UNMATCHED_LABELS[u.reason] ?? u.reason}
             </li>
           ))}
         </ul>

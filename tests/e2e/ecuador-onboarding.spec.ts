@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import { upsertQuotaTarget } from '@/lib/quotas/quota-targets'
 import { createRegionCap, RegionCapConflictError } from '@/lib/quotas/region-caps'
+import { ensureOpenPeriod } from '../support/quota-period'
 
 // Feature 014 (Ecuador onboarding) — T023/T030/T035/T039. Same shallow-smoke convention as
 // the other tests/e2e/phase-*.spec.ts files (see phase-4-discard.spec.ts's comment): drives
@@ -220,9 +221,10 @@ test.describe('Ecuador onboarding — part 4 (T039): quota decision + registrati
    *  exercise of the Phase-7 Ecuador quota-write path (quota-targets.ts / region-caps.ts
    *  validation against the Ecuador catalog) against the live DB. */
   async function seedEcuadorQuota(region: string, capCount: number | null): Promise<void> {
-    await upsertQuotaTarget({ country: 'Ecuador', region, dimensionType: 'nse', dimensionValue: 'C', targetCount: 5 })
+    const period = await ensureOpenPeriod('Ecuador')
+    await upsertQuotaTarget({ periodId: period.id, country: 'Ecuador', region, dimensionType: 'nse', dimensionValue: 'C', targetCount: 5 })
     if (capCount !== null) {
-      await createRegionCap({ country: 'Ecuador', region, capCount }).catch((err) => {
+      await createRegionCap({ periodId: period.id, country: 'Ecuador', region, capCount }).catch((err) => {
         if (!(err instanceof RegionCapConflictError)) throw err // already seeded — fine
       })
     }

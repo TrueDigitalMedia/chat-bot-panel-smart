@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   pgTable,
   uuid,
@@ -7,16 +8,113 @@ import {
   text,
   jsonb,
   timestamp,
+  date,
   pgEnum,
   integer,
   index,
   uniqueIndex,
+  foreignKey,
 } from 'drizzle-orm/pg-core'
+
+/**
+ * Un periodo de cuota (Q1-Q4) por país — el "corte" que se abre con fecha de inicio/fin y se
+ * cierra congelando objetivo vs. conseguidos (spec 018). Toda la configuración de cuota
+ * (`quota_targets`, `quota_region_caps`) y todo lead que califica cuelgan de un periodo.
+ *
+ * Reglas duras:
+ *  - A lo sumo UN periodo `open` por país — garantizado por el índice único parcial, no solo
+ *    por el pre-chequeo de la aplicación (ver quota-periods.ts).
+ *  - Sin periodo abierto, el país está CERRADO: ningún lead nuevo califica, excepción de
+ *    embarazo/bebé incluida (decisión de producto, spec 018 §2).
+ *  - `starts_on`/`ends_on` son metadata DESCRIPTIVA: el motor de decisión no las lee nunca.
+ *    Los "conseguidos" se cuentan por `leads.quota_period_id`, no por ventana de fechas, para
+ *    que editar las fechas no re-atribuya leads de un corte ya cerrado.
+ */
+export const quotaPeriods = pgTable(
+  'quota_periods',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    country: varchar('country', { length: 50 }).notNull(),
+    /** Etiqueta elegida por el operador, p. ej. "Q4 2026" o "Q4 2026 (recarga)". */
+    label: varchar('label', { length: 40 }).notNull(),
+    year: smallint('year').notNull(),
+    quarter: smallint('quarter').notNull(),
+    startsOn: date('starts_on').notNull(),
+    endsOn: date('ends_on').notNull(),
+    /** 'open' | 'closed'. */
+    status: varchar('status', { length: 16 }).notNull().default('open'),
+    openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Lo que realmente impone "a lo sumo un periodo abierto por país".
+    uniqueIndex('quota_periods_one_open_per_country_idx')
+      .on(t.country)
+      .where(sql`status = 'open'`),
+    uniqueIndex('quota_periods_country_label_idx').on(t.country, t.label),
+    // Redundante con la PK, pero es la clave referenciable de las FK compuestas
+    // (period_id, country) de quota_targets / quota_region_caps.
+    uniqueIndex('quota_periods_id_country_idx').on(t.id, t.country),
+  ],
+)
+
+/**
+ * El corte congelado de un periodo cerrado (spec 018). Una fila por región (`scope: 'region'`)
+ * y una por celda de dimensión (`scope: 'cell'`) — mismas columnas, por eso una sola tabla con
+ * discriminador en vez de dos.
+ *
+ * `dimension_type`/`dimension_value` usan '' (no NULL) en las filas de región: con NULL el
+ * índice único no choca (en Postgres los NULL son distintos entre sí) y un cierre reintentado
+ * insertaría filas duplicadas.
+ *
+ * Σ de las filas `cell` NO tiene por qué igualar la fila `region`: los leads que califican por
+ * la excepción de embarazo/bebé cuentan en la región y en ninguna celda.
+ */
+export const quotaPeriodSnapshots = pgTable(
+  'quota_period_snapshots',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    periodId: uuid('period_id')
+      .notNull()
+      .references(() => quotaPeriods.id, { onDelete: 'cascade' }),
+    /** 'region' | 'cell'. */
+    scope: varchar('scope', { length: 10 }).notNull(),
+    country: varchar('country', { length: 50 }).notNull(),
+    region: varchar('region', { length: 100 }).notNull(),
+    dimensionType: varchar('dimension_type', { length: 20 }).notNull().default(''),
+    dimensionValue: varchar('dimension_value', { length: 20 }).notNull().default(''),
+    objective: integer('objective').notNull(),
+    achieved: integer('achieved').notNull(),
+    missing: integer('missing').notNull(),
+    progressPct: integer('progress_pct').notNull(),
+    /** 'cap' | 'nse_sum' | 'none' — solo filas scope='region'. */
+    source: varchar('source', { length: 10 }),
+    deactivated: boolean('deactivated').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('quota_period_snapshots_cell_idx').on(
+      t.periodId,
+      t.scope,
+      t.region,
+      t.dimensionType,
+      t.dimensionValue,
+    ),
+  ],
+)
 
 export const quotaTargets = pgTable(
   'quota_targets',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    /** El periodo (Q) al que pertenece esta línea — la misma celda puede existir en Q1 y Q2. */
+    periodId: uuid('period_id')
+      .notNull()
+      .references(() => quotaPeriods.id, { onDelete: 'cascade' }),
+    /** Denormalizado del periodo; la FK compuesta (period_id, country) garantiza que coincidan. */
     country: varchar('country', { length: 50 }).notNull(),
     region: varchar('region', { length: 100 }).notNull(),
     /** 'nse' | 'edad' | 'integrantes' — see specs/011-flexible-quota-matching/data-model.md. */
@@ -29,12 +127,18 @@ export const quotaTargets = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('quota_targets_country_region_dim_idx').on(
-      t.country,
+    uniqueIndex('quota_targets_period_region_dim_idx').on(
+      t.periodId,
       t.region,
       t.dimensionType,
       t.dimensionValue,
     ),
+    // Guarda la denormalización de `country`: no puede apuntar a un periodo de otro país.
+    foreignKey({
+      name: 'quota_targets_period_country_fk',
+      columns: [t.periodId, t.country],
+      foreignColumns: [quotaPeriods.id, quotaPeriods.country],
+    }),
   ],
 )
 
@@ -42,6 +146,9 @@ export const quotaRegionCaps = pgTable(
   'quota_region_caps',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    periodId: uuid('period_id')
+      .notNull()
+      .references(() => quotaPeriods.id, { onDelete: 'cascade' }),
     country: varchar('country', { length: 50 }).notNull(),
     region: varchar('region', { length: 100 }).notNull(),
     /** NULL = sin tope (no bloquea por saturación). */
@@ -50,7 +157,14 @@ export const quotaRegionCaps = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('quota_region_caps_country_region_idx').on(t.country, t.region)],
+  (t) => [
+    uniqueIndex('quota_region_caps_period_region_idx').on(t.periodId, t.region),
+    foreignKey({
+      name: 'quota_region_caps_period_country_fk',
+      columns: [t.periodId, t.country],
+      foreignColumns: [quotaPeriods.id, quotaPeriods.country],
+    }),
+  ],
 )
 
 export const leadStatusEnum = pgEnum('lead_status', [
@@ -90,6 +204,14 @@ export const leads = pgTable(
     /** Qué dimensión calificó al lead: 'nse' | 'edad' | 'integrantes' | 'exception' | NULL. */
     quotaMatchedDimension: varchar('quota_matched_dimension', { length: 20 }),
     quotaMatchedValue: varchar('quota_matched_value', { length: 20 }),
+    /** El periodo (Q) contra cuya cuota calificó este lead — sellado una vez, al calificar,
+     *  junto con quota_matched_dimension/value. NULL mientras el lead no haya calificado.
+     *  Es la única fuente del "conseguidos" por periodo (y el registro per-lead del corte):
+     *  deliberadamente NO se cuenta por ventana de fechas, porque editar las fechas de un
+     *  periodo re-atribuiría leads de un corte ya cerrado. */
+    quotaPeriodId: uuid('quota_period_id').references(() => quotaPeriods.id, {
+      onDelete: 'set null',
+    }),
     score: smallint('score'),
     optInAccepted: boolean('opt_in_accepted').notNull().default(false),
     d1Accepted: boolean('d1_accepted').notNull().default(false),
@@ -131,7 +253,15 @@ export const leads = pgTable(
      *  non-WhatsApp leads and pre-017 rows → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
     whatsappPhoneNumberId: varchar('whatsapp_phone_number_id', { length: 40 }),
   },
-  (t) => [uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId)],
+  (t) => [
+    uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId),
+    index('leads_quota_period_status_idx').on(t.quotaPeriodId, t.leadStatus),
+    index('leads_quota_period_dim_idx').on(
+      t.quotaPeriodId,
+      t.quotaMatchedDimension,
+      t.quotaMatchedValue,
+    ),
+  ],
 )
 
 export const surveyProfiles = pgTable('survey_profiles', {

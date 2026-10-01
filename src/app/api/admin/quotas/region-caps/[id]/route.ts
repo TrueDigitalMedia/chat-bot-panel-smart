@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { RegionCapNotFoundError, updateRegionCap } from '@/lib/quotas/region-caps'
-import { QuotaTargetError } from '@/lib/quotas/quota-targets'
+import { updateRegionCap } from '@/lib/quotas/region-caps'
+import { quotaErrorResponse } from '@/lib/quotas/api-errors'
 
 export async function PUT(
   request: NextRequest,
@@ -16,12 +16,8 @@ export async function PUT(
     })
     return NextResponse.json(row)
   } catch (err) {
-    if (err instanceof QuotaTargetError) {
-      return NextResponse.json({ error: err.code }, { status: 400 })
-    }
-    if (err instanceof RegionCapNotFoundError) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
-    }
+    const response = quotaErrorResponse(err)
+    if (response) return response
     throw err
   }
 }

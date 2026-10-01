@@ -6,6 +6,7 @@ import { quotaTargets } from '@/lib/db/schema'
 const state: {
   rows: Array<{
     id: string
+    periodId: string
     country: string
     region: string
     dimensionType: string
@@ -21,11 +22,13 @@ const state: {
 let nextId = 1
 let lastUpdateSet: Record<string, unknown> | null = null
 
-// The duplicate-check SELECT filters by `and(eq(country), eq(region), eq(dimensionType),
+// The duplicate-check SELECT filters by `and(eq(periodId), eq(region), eq(dimensionType),
 // eq(dimensionValue))` — evaluate that for real against `state.rows` (via the real `eq`/`and`
 // SQL builders) instead of blindly returning every row, so sequential creates for DIFFERENT
 // dimensions in the same test aren't misreported as duplicates.
 const COLUMN_FIELD = new Map<unknown, keyof (typeof state.rows)[number]>()
+COLUMN_FIELD.set(quotaTargets.id, 'id')
+COLUMN_FIELD.set(quotaTargets.periodId, 'periodId')
 COLUMN_FIELD.set(quotaTargets.country, 'country')
 COLUMN_FIELD.set(quotaTargets.region, 'region')
 COLUMN_FIELD.set(quotaTargets.dimensionType, 'dimensionType')
@@ -50,6 +53,24 @@ function matchesRow(row: (typeof state.rows)[number], condition: unknown): boole
   return true
 }
 
+// Spec 018: toda cuota cuelga de un periodo, y quota-targets.ts valida que esté ABIERTO y sea
+// del mismo país. Un id por país (`period-<país>`) alcanza para todos los casos felices.
+const CLOSED_PERIOD_ID = 'period-cerrado'
+const periodId = (country: string) => `period-${country}`
+
+vi.mock('@/lib/quotas/quota-periods', () => ({
+  getQuotaPeriod: vi.fn(async (id: string) => {
+    if (id === CLOSED_PERIOD_ID) {
+      return { id, country: 'Guatemala', label: 'Q3 2026', status: 'closed' }
+    }
+    if (!id.startsWith('period-')) return null
+    return { id, country: id.slice('period-'.length), label: 'Q4 2026', status: 'open' }
+  }),
+}))
+
+// listQuotaTargets resuelve el alcance por acá; estos tests solo ejercitan create/update/upsert.
+vi.mock('@/lib/quotas/quota-progress', () => ({ resolvePeriodIds: vi.fn(async () => []) }))
+
 vi.mock('@/lib/db/client', () => {
   const selectChain = () => ({
     from: () => ({
@@ -68,6 +89,7 @@ vi.mock('@/lib/db/client', () => {
       select: () => selectChain(),
       insert: () => ({
         values: (values: {
+          periodId: string
           country: string
           region: string
           dimensionType: string
@@ -88,7 +110,7 @@ vi.mock('@/lib/db/client', () => {
               returning: () => {
                 const existing = state.rows.find(
                   (r) =>
-                    r.country === row.country &&
+                    r.periodId === row.periodId &&
                     r.region === row.region &&
                     r.dimensionType === row.dimensionType &&
                     r.dimensionValue === row.dimensionValue,
@@ -131,37 +153,38 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
   it('rejects a region not in the geo catalog for the given country', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Region Inventada', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Region Inventada', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('rejects an unrecognized country', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Narnia', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
+      createQuotaTarget({ periodId: periodId('Narnia'), country: 'Narnia', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('rejects an invalid dimensionType', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'peso', dimensionValue: 'x' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'peso', dimensionValue: 'x' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('rejects a dimensionValue not valid for the given dimensionType', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 9' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 9' }),
     ).rejects.toThrow(QuotaTargetError)
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'edad', dimensionValue: 'Nivel 2' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'edad', dimensionValue: 'Nivel 2' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('accepts a valid country/region/dimensionType/dimensionValue combination for each dimension', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
     const nse = await createQuotaTarget({
+      periodId: periodId('Guatemala'),
       country: 'Guatemala',
       region: 'Centro I',
       dimensionType: 'nse',
@@ -171,6 +194,7 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
     expect(nse).toMatchObject({ country: 'Guatemala', dimensionType: 'nse', dimensionValue: 'Nivel 2', targetCount: 50 })
 
     const edad = await createQuotaTarget({
+      periodId: periodId('Guatemala'),
       country: 'Guatemala',
       region: 'Centro I',
       dimensionType: 'edad',
@@ -180,6 +204,7 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
     expect(edad).toMatchObject({ dimensionType: 'edad', dimensionValue: '50+' })
 
     const integrantes = await createQuotaTarget({
+      periodId: periodId('Guatemala'),
       country: 'Guatemala',
       region: 'Centro I',
       dimensionType: 'integrantes',
@@ -191,7 +216,7 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
 
   it('normalizes country aliases (e.g. "Panama" without accent) before validating', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
-    const row = await createQuotaTarget({ country: 'Panama', region: 'Norte', dimensionType: 'nse', dimensionValue: 'Nivel 2' })
+    const row = await createQuotaTarget({ periodId: periodId('Panamá'), country: 'Panama', region: 'Norte', dimensionType: 'nse', dimensionValue: 'Nivel 2' })
     expect(row.country).toBe('Panamá')
   })
 
@@ -199,6 +224,7 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
       createQuotaTarget({
+        periodId: periodId('Guatemala'),
         country: 'Guatemala',
         region: 'Centro I',
         dimensionType: 'nse',
@@ -214,6 +240,7 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
     // reads from this same in-memory state.
     state.rows.push({
       id: 'existing',
+      periodId: periodId('Guatemala'),
       country: 'Guatemala',
       region: 'Centro I',
       dimensionType: 'nse',
@@ -225,16 +252,16 @@ describe('quota-targets validation (data-model.md dimension catalogs)', () => {
       updatedAt: new Date(),
     })
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' }),
     ).rejects.toThrow(QuotaTargetConflictError)
   })
 
   it('the same region+value does NOT conflict across different dimensionTypes', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
     // 'Nivel 2' as an nse value vs. some other dimensionType — different key, no conflict.
-    await createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' })
+    await createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'nse', dimensionValue: 'Nivel 2' })
     await expect(
-      createQuotaTarget({ country: 'Guatemala', region: 'Centro I', dimensionType: 'edad', dimensionValue: 'Hasta 34' }),
+      createQuotaTarget({ periodId: periodId('Guatemala'), country: 'Guatemala', region: 'Centro I', dimensionType: 'edad', dimensionValue: 'Hasta 34' }),
     ).resolves.toMatchObject({ dimensionType: 'edad' })
   })
 })
@@ -251,32 +278,34 @@ describe('quota-targets validation — Ecuador (spec 014 US5)', () => {
   it('accepts a valid Ecuador region + NSE level (A/B/C/D/E, not CAM Nivel 1-4)', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
     const row = await createQuotaTarget({
+      periodId: periodId('Ecuador'),
       country: 'Ecuador',
       region: 'Guayaquil Norte',
       dimensionType: 'nse',
       dimensionValue: 'B',
       targetCount: 30,
     })
-    expect(row).toMatchObject({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionValue: 'B' })
+    expect(row).toMatchObject({ periodId: periodId('Ecuador'), country: 'Ecuador', region: 'Guayaquil Norte', dimensionValue: 'B' })
   })
 
   it('rejects a CAM-style dimensionValue ("Nivel 1") for Ecuador', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Ecuador', region: 'Guayaquil Norte', dimensionType: 'nse', dimensionValue: 'Nivel 1' }),
+      createQuotaTarget({ periodId: periodId('Ecuador'), country: 'Ecuador', region: 'Guayaquil Norte', dimensionType: 'nse', dimensionValue: 'Nivel 1' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('rejects a region not in the Ecuador catalog', async () => {
     const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
     await expect(
-      createQuotaTarget({ country: 'Ecuador', region: 'Región Inventada', dimensionType: 'nse', dimensionValue: 'B' }),
+      createQuotaTarget({ periodId: periodId('Ecuador'), country: 'Ecuador', region: 'Región Inventada', dimensionType: 'nse', dimensionValue: 'B' }),
     ).rejects.toThrow(QuotaTargetError)
   })
 
   it('accepts Ecuador on the shared edad/integrantes dimensions (FR-012 — same bands as every country)', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
     const row = await createQuotaTarget({
+      periodId: periodId('Ecuador'),
       country: 'Ecuador',
       region: 'Cuenca',
       dimensionType: 'edad',
@@ -288,14 +317,36 @@ describe('quota-targets validation — Ecuador (spec 014 US5)', () => {
 
   it('normalizes "ecuador"/"EC" to the canonical "Ecuador" before validating', async () => {
     const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
-    const row = await createQuotaTarget({ country: 'ec', region: 'Cuenca', dimensionType: 'nse', dimensionValue: 'C' })
+    const row = await createQuotaTarget({ periodId: periodId('Ecuador'), country: 'ec', region: 'Cuenca', dimensionType: 'nse', dimensionValue: 'C' })
     expect(row.country).toBe('Ecuador')
   })
 })
 
+function seedRow(overrides: Partial<(typeof state.rows)[number]> = {}) {
+  const row = {
+    id: 'existing-id',
+    periodId: periodId('Guatemala'),
+    country: 'Guatemala',
+    region: 'Centro I',
+    dimensionType: 'nse',
+    dimensionValue: 'Nivel 2',
+    targetCount: 50,
+    active: true,
+    notes: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+  state.rows.push(row)
+  return row
+}
+
 describe('updateQuotaTarget bumps updatedAt on every call (spec 005 FR-010)', () => {
   beforeEach(() => {
     lastUpdateSet = null
+    state.rows = []
+    // updateQuotaTarget carga la fila para validar su periodo antes de escribir (spec 018).
+    seedRow()
   })
 
   it('includes an updatedAt Date in the patch sent to the database', async () => {
@@ -312,5 +363,102 @@ describe('updateQuotaTarget bumps updatedAt on every call (spec 005 FR-010)', ()
     await updateQuotaTarget('existing-id', { active: false })
     expect(lastUpdateSet).toMatchObject({ active: false })
     expect(lastUpdateSet!.updatedAt).toBeInstanceOf(Date)
+  })
+})
+
+// Spec 018 — ninguna escritura de configuración puede entrar en un periodo cerrado, ni cruzar
+// países: si no, el panel reescribiría en silencio los objetivos de un trimestre ya congelado y el
+// corte dejaría de cuadrar con lo que realmente se corrió.
+describe('quota-targets — validación de periodo (spec 018)', () => {
+  beforeEach(() => {
+    state.rows = []
+    nextId = 1
+    lastUpdateSet = null
+  })
+
+  it('rechaza crear en un periodo inexistente con invalid_period', async () => {
+    const { createQuotaTarget, QuotaTargetError } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      createQuotaTarget({
+        periodId: 'no-existe',
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_period' })
+    await expect(
+      createQuotaTarget({
+        periodId: '',
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+      }),
+    ).rejects.toBeInstanceOf(QuotaTargetError)
+  })
+
+  it('rechaza crear en un periodo CERRADO con period_closed', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      createQuotaTarget({
+        periodId: CLOSED_PERIOD_ID,
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+      }),
+    ).rejects.toMatchObject({ code: 'period_closed' })
+  })
+
+  it('rechaza un periodo de otro país con country_mismatch', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      createQuotaTarget({
+        periodId: periodId('Honduras'),
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+      }),
+    ).rejects.toMatchObject({ code: 'country_mismatch' })
+  })
+
+  it('rechaza el upsert del importador de Excel contra un periodo cerrado', async () => {
+    const { upsertQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    await expect(
+      upsertQuotaTarget({
+        periodId: CLOSED_PERIOD_ID,
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+        targetCount: 10,
+      }),
+    ).rejects.toMatchObject({ code: 'period_closed' })
+  })
+
+  it('rechaza editar una línea que vive en un periodo cerrado', async () => {
+    const { updateQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    seedRow({ periodId: CLOSED_PERIOD_ID })
+    await expect(updateQuotaTarget('existing-id', { targetCount: 99 })).rejects.toMatchObject({
+      code: 'period_closed',
+    })
+    expect(lastUpdateSet).toBeNull()
+  })
+
+  it('la misma celda puede existir en dos periodos distintos sin conflicto', async () => {
+    const { createQuotaTarget } = await import('@/lib/quotas/quota-targets')
+    seedRow({ id: 'q3', periodId: CLOSED_PERIOD_ID })
+    // Misma país/región/dimensión/valor, otro periodo: tiene que poder crearse.
+    await expect(
+      createQuotaTarget({
+        periodId: periodId('Guatemala'),
+        country: 'Guatemala',
+        region: 'Centro I',
+        dimensionType: 'nse',
+        dimensionValue: 'Nivel 2',
+      }),
+    ).resolves.toMatchObject({ periodId: periodId('Guatemala'), dimensionValue: 'Nivel 2' })
   })
 })

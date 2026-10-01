@@ -26,8 +26,14 @@ vi.mock('drizzle-orm', async () => {
   }
 })
 
+const PERIOD_ID = 'period-q4'
+
+// Spec 018: sin mock, resolvePeriodIds() iría a la DB a buscar los periodos abiertos.
+vi.mock('@/lib/quotas/quota-periods', () => ({ listOpenPeriodIds: vi.fn(async () => [PERIOD_ID]) }))
+
 let targetRows: Array<{
   id: string
+  periodId: string
   country: string
   region: string
   dimensionType: string
@@ -50,6 +56,7 @@ vi.mock('@/lib/db/client', () => ({
               columns
                 ? Promise.resolve(
                     targetRows.map((t) => ({
+                      periodId: t.periodId,
                       country: t.country,
                       region: t.region,
                       dimensionType: t.dimensionType,
@@ -76,6 +83,7 @@ describe('listQuotaProgress — channel/date-range filters (T011, additive to sp
     targetRows = [
       {
         id: 't1',
+        periodId: PERIOD_ID,
         country: 'Guatemala',
         region: 'Centro I',
         dimensionType: 'nse',

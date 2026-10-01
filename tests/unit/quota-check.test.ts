@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { QuotaProgress } from '@/lib/quotas/quota-progress'
 import type { RegionObjective } from '@/lib/quotas/region-caps'
+import type { QuotaPeriodRow } from '@/lib/quotas/quota-periods'
 
 // `db/client.ts` calls `neon(process.env.POSTGRES_URL!)` at module load — mock it so unit
 // tests don't need a real connection string just to import quota.ts's dependency chain.
@@ -20,6 +21,31 @@ let regionObjective: RegionObjective = objective({ objective: 1000, source: 'cap
 /** The highest-volume NSE line in the region that STILL HAS ROOM (null = all lines full). */
 let openNseLine: { dimensionType: string; dimensionValue: string } | null = null
 
+const PERIOD_ID = 'period-q4'
+function periodFixture(country: string): QuotaPeriodRow {
+  return {
+    id: PERIOD_ID,
+    country,
+    label: 'Q4 2026',
+    year: 2026,
+    quarter: 4,
+    startsOn: '2026-10-01',
+    endsOn: '2026-12-31',
+    status: 'open',
+    openedAt: new Date('2026-10-01T00:00:00Z'),
+    closedAt: null,
+    notes: null,
+  }
+}
+/**
+ * El periodo abierto del país. null = no hay ⇒ el país entero está cerrado (spec 018).
+ *
+ * El spy va por `vi.hoisted` porque `vi.mock` se iza por encima de las declaraciones del archivo
+ * (mismo patrón que quota-region-early-exit.test.ts).
+ */
+let openPeriod: QuotaPeriodRow | null = periodFixture('Honduras')
+const { getOpenPeriod } = vi.hoisted(() => ({ getOpenPeriod: vi.fn() }))
+
 function key(country: string, region: string, dimensionType: string, dimensionValue: string): string {
   return `${country}|${region}|${dimensionType}|${dimensionValue}`
 }
@@ -32,6 +58,7 @@ function seedProgress(
   const available = Math.max(0, p.target - p.achieved)
   progressByKey.set(key(p.country, p.region, p.dimensionType, p.dimensionValue), {
     id: 'x',
+    periodId: PERIOD_ID,
     country: p.country,
     region: p.region,
     dimensionType: p.dimensionType,
@@ -48,16 +75,24 @@ function seedProgress(
 
 vi.mock('@/lib/quotas/quota-progress', () => ({
   getQuotaProgressForTarget: vi.fn(
-    async (country: string, region: string, dimensionType: string, dimensionValue: string) => {
+    async (periodId: string, country: string, region: string, dimensionType: string, dimensionValue: string) => {
+      // Una celda de OTRO periodo no debe filtrarse — la regresión más probable de spec 018.
+      if (periodId !== PERIOD_ID) return null
       return progressByKey.get(key(country, region, dimensionType, dimensionValue)) ?? null
     },
   ),
-  getHighestVolumeNseTargetWithRoom: vi.fn(async () => openNseLine),
+  getHighestVolumeNseTargetWithRoom: vi.fn(async (periodId: string) =>
+    periodId === PERIOD_ID ? openNseLine : null,
+  ),
 }))
 
 vi.mock('@/lib/quotas/region-caps', () => ({
-  getRegionObjective: vi.fn(async () => regionObjective),
+  getRegionObjective: vi.fn(async (periodId: string) =>
+    periodId === PERIOD_ID ? regionObjective : objective({ objective: 0, source: 'none', achieved: 0 }),
+  ),
 }))
+
+vi.mock('@/lib/quotas/quota-periods', () => ({ getOpenPeriod }))
 
 import { checkQuotaAvailability, checkRegionQuota, describeQuotaMatch } from '@/lib/scoring/quota'
 
@@ -68,6 +103,11 @@ function resetState() {
   progressByKey.clear()
   regionObjective = objective({ objective: 1000, source: 'cap', achieved: 0 })
   openNseLine = null
+  openPeriod = periodFixture('Honduras')
+  getOpenPeriod.mockReset()
+  getOpenPeriod.mockImplementation(async (country: string) =>
+    openPeriod ? { ...openPeriod, country } : null,
+  )
 }
 
 describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO 1)', () => {
@@ -91,6 +131,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'region_fuera_de_muestra',
+      periodId: null,
     })
   })
 
@@ -110,6 +151,7 @@ describe('checkQuotaAvailability — region objective is the hard ceiling (PUNTO
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'region_no_identificada',
+      periodId: null,
     })
   })
 
@@ -189,7 +231,9 @@ describe('checkQuotaAvailability — per NSE line is ALSO a hard cap (PUNTO 1, E
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('an NSE lead whose own line is FULL does not qualify by NSE (line stays at its objective)', async () => {
@@ -222,7 +266,9 @@ describe('checkQuotaAvailability — per NSE line is ALSO a hard cap (PUNTO 1, E
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 1' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 1',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('own NSE line full + edad has demand but NO NSE line has room → does not qualify', async () => {
@@ -261,6 +307,7 @@ describe('checkQuotaAvailability — per NSE line is ALSO a hard cap (PUNTO 1, E
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'sin_cupo',
+      periodId: null,
     })
   })
 
@@ -304,7 +351,9 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2',
+      periodId: PERIOD_ID,
+    })
   })
 
   // 2026-09-25: the exception used to go straight to the region's biggest line even when
@@ -323,7 +372,9 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       hasBabyUnder3: true,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 2',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('falls back to the highest-volume line when the lead own NSE line is full', async () => {
@@ -339,7 +390,9 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       hasBabyUnder3: true,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('falls back to the highest-volume line when the lead own NSE line is deactivated', async () => {
@@ -362,7 +415,9 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       hasBabyUnder3: false,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4' })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'nse', matchedValue: 'Nivel 4',
+      periodId: PERIOD_ID,
+    })
   })
 
   it('falls back to the unattributed exception marker only for a manual-cap region with no NSE lines', async () => {
@@ -378,7 +433,9 @@ describe('checkQuotaAvailability — pregnancy / baby-under-3 exception', () => 
       hasBabyUnder3: true,
     })
 
-    expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null })
+    expect(result).toEqual({ qualifies: true, matchedDimension: 'exception', matchedValue: null,
+      periodId: PERIOD_ID,
+    })
   })
 
   // Regression (2026-09-23): Rep. Dominicana Santiago / Sureste were deactivated in the admin
@@ -444,7 +501,6 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
     for (const c of cases) {
       const r = await checkQuotaAvailability({
         country: 'Panamá',
-        region: 'Centro I',
         nseRegion: 'Centro I',
         segment: 'Nivel 4',
         ...c,
@@ -459,7 +515,6 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
 
     const r = await checkQuotaAvailability({
       country: 'El Salvador',
-      region: 'Centro I',
       nseRegion: 'Centro I',
       segment: 'Nivel 1',
       age: 30,
@@ -473,6 +528,7 @@ describe('checkQuotaAvailability — prod scenarios (dump 2026-09-10, docs/whats
       matchedDimension: null,
       matchedValue: null,
       deniedReason: 'region_fuera_de_muestra',
+      periodId: null,
     })
   })
 })
@@ -489,6 +545,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
     const status = await checkRegionQuota('Honduras', 'Centro I')
     expect(status).toEqual({
       open: true,
+      period: expect.objectContaining({ id: PERIOD_ID, status: 'open' }),
       regionObjective: 1000,
       regionAchieved: 5,
       regionSource: 'cap',
@@ -500,6 +557,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
     const status = await checkRegionQuota('Honduras', 'Centro I')
     expect(status).toEqual({
       open: false,
+      period: expect.objectContaining({ id: PERIOD_ID, status: 'open' }),
       deniedReason: 'region_completa',
       regionObjective: 20,
       regionAchieved: 20,
@@ -512,6 +570,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
     const status = await checkRegionQuota('El Salvador', 'Centro I')
     expect(status).toEqual({
       open: false,
+      period: expect.objectContaining({ id: PERIOD_ID, status: 'open' }),
       deniedReason: 'region_fuera_de_muestra',
       regionObjective: 0,
       regionAchieved: 9,
@@ -523,6 +582,7 @@ describe('checkRegionQuota — the early-exit region-only check (PUNTO 1)', () =
     const status = await checkRegionQuota('Honduras', null)
     expect(status).toEqual({
       open: false,
+      period: expect.objectContaining({ id: PERIOD_ID, status: 'open' }),
       deniedReason: 'region_no_identificada',
       regionObjective: null,
       regionAchieved: null,
@@ -568,5 +628,104 @@ describe('describeQuotaMatch', () => {
 
   it('returns null when there is no match', () => {
     expect(describeQuotaMatch(null, null)).toBeNull()
+  })
+})
+
+// Spec 018 — sin periodo abierto el país entero está cerrado. Es la misma clase de bug que el
+// incidente de Rep. Dominicana del 2026-09-23: la excepción de embarazo/bebé NO puede ganarle a
+// una compuerta que ya cerró, así que se verifica explícitamente con una lead embarazada.
+describe('checkQuotaAvailability — sin periodo de cuota abierto (spec 018)', () => {
+  beforeEach(resetState)
+
+  it('no califica a nadie y da periodo_cerrado', async () => {
+    openPeriod = null
+    seedProgress({ ...HN_NOR_OCC_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 100, achieved: 0 })
+
+    const result = await checkQuotaAvailability({
+      country: HN_NOR_OCC_I.country,
+      nseRegion: HN_NOR_OCC_I.nseRegion,
+      segment: 'Nivel 1',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result).toEqual({
+      qualifies: false,
+      matchedDimension: null,
+      matchedValue: null,
+      periodId: null,
+      deniedReason: 'periodo_cerrado',
+    })
+  })
+
+  it('tampoco califica por la excepción de embarazo o bebé', async () => {
+    openPeriod = null
+    for (const exception of [
+      { isPregnant: true, hasBabyUnder3: false },
+      { isPregnant: false, hasBabyUnder3: true },
+    ]) {
+      const result = await checkQuotaAvailability({
+        country: HN_NOR_OCC_I.country,
+        nseRegion: HN_NOR_OCC_I.nseRegion,
+        segment: 'Nivel 1',
+        age: 30,
+        householdSize: 3,
+        ...exception,
+      })
+      expect(result.qualifies).toBe(false)
+      expect(result.deniedReason).toBe('periodo_cerrado')
+      expect(result.periodId).toBeNull()
+    }
+  })
+
+  it('checkRegionQuota coincide: cerrado, sin periodo y sin consultar el objetivo de región', async () => {
+    openPeriod = null
+    const status = await checkRegionQuota('Honduras', 'Nor Occidente I')
+    expect(status).toEqual({
+      open: false,
+      deniedReason: 'periodo_cerrado',
+      period: null,
+      regionObjective: null,
+      regionAchieved: null,
+      regionSource: null,
+    })
+  })
+
+  it('resuelve el periodo abierto UNA sola vez por chequeo completo', async () => {
+    seedProgress({ ...HN_NOR_OCC_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 100, achieved: 0 })
+
+    await checkQuotaAvailability({
+      country: HN_NOR_OCC_I.country,
+      nseRegion: HN_NOR_OCC_I.nseRegion,
+      segment: 'Nivel 1',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    // checkQuotaAvailability lo resuelve y se lo pasa a checkRegionQuota; si alguna vez vuelve a
+    // resolverlo por su cuenta, cada chequeo de cuota pagaría una query extra por lead.
+    expect(getOpenPeriod).toHaveBeenCalledTimes(1)
+  })
+
+  it('una celda de OTRO periodo no otorga cupo', async () => {
+    // La celda está sembrada en PERIOD_ID; el país abre un periodo distinto.
+    seedProgress({ ...HN_NOR_OCC_I, dimensionType: 'nse', dimensionValue: 'Nivel 1', target: 100, achieved: 0 })
+    openPeriod = { ...periodFixture('Honduras'), id: 'otro-periodo' }
+
+    const result = await checkQuotaAvailability({
+      country: HN_NOR_OCC_I.country,
+      nseRegion: HN_NOR_OCC_I.nseRegion,
+      segment: 'Nivel 1',
+      age: 30,
+      householdSize: 3,
+      isPregnant: false,
+      hasBabyUnder3: false,
+    })
+
+    expect(result.qualifies).toBe(false)
   })
 })

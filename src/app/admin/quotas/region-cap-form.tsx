@@ -13,9 +13,19 @@ interface RegionCapFormProps {
   caps: RegionCapItem[]
   countries: string[]
   regionsByCountry: Record<string, string[]>
+  /** Periodo abierto por país — el tope se carga al periodo del país elegido (spec 018). */
+  openPeriodIdByCountry: Record<string, string>
+  /** El periodo seleccionado está cerrado: solo lectura (la API responde 409 igualmente). */
+  readOnly?: boolean
 }
 
-export function RegionCapForm({ caps, countries, regionsByCountry }: RegionCapFormProps) {
+export function RegionCapForm({
+  caps,
+  countries,
+  regionsByCountry,
+  openPeriodIdByCountry,
+  readOnly = false,
+}: RegionCapFormProps) {
   const router = useRouter()
   const sorted = [...caps].sort((a, b) => a.country.localeCompare(b.country) || a.region.localeCompare(b.region))
 
@@ -33,16 +43,31 @@ export function RegionCapForm({ caps, countries, regionsByCountry }: RegionCapFo
         </thead>
         <tbody>
           {sorted.map((cap) => (
-            <RegionCapRowForm key={cap.id} cap={cap} onSaved={() => router.refresh()} />
+            <RegionCapRowForm key={cap.id} cap={cap} readOnly={readOnly} onSaved={() => router.refresh()} />
           ))}
-          <NewRegionCapRow countries={countries} regionsByCountry={regionsByCountry} onSaved={() => router.refresh()} />
+          {readOnly ? null : (
+            <NewRegionCapRow
+              countries={countries}
+              regionsByCountry={regionsByCountry}
+              openPeriodIdByCountry={openPeriodIdByCountry}
+              onSaved={() => router.refresh()}
+            />
+          )}
         </tbody>
       </table>
     </div>
   )
 }
 
-function RegionCapRowForm({ cap, onSaved }: { cap: RegionCapItem; onSaved: () => void }) {
+function RegionCapRowForm({
+  cap,
+  readOnly,
+  onSaved,
+}: {
+  cap: RegionCapItem
+  readOnly: boolean
+  onSaved: () => void
+}) {
   const [capCount, setCapCount] = useState<string>(cap.capCount == null ? '' : String(cap.capCount))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -80,13 +105,13 @@ function RegionCapRowForm({ cap, onSaved }: { cap: RegionCapItem; onSaved: () =>
           value={capCount}
           onChange={(e) => setCapCount(e.target.value)}
           className={styles.targetInput}
-          disabled={busy}
+          disabled={busy || readOnly}
         />
       </td>
       <td>{cap.achieved}</td>
       <td>
         <div className={styles.rowActions}>
-          <button type="button" disabled={busy} onClick={() => void save()} className={styles.saveBtn}>
+          <button type="button" disabled={busy || readOnly} onClick={() => void save()} className={styles.saveBtn}>
             Guardar
           </button>
         </div>
@@ -99,10 +124,12 @@ function RegionCapRowForm({ cap, onSaved }: { cap: RegionCapItem; onSaved: () =>
 function NewRegionCapRow({
   countries,
   regionsByCountry,
+  openPeriodIdByCountry,
   onSaved,
 }: {
   countries: string[]
   regionsByCountry: Record<string, string[]>
+  openPeriodIdByCountry: Record<string, string>
   onSaved: () => void
 }) {
   const [country, setCountry] = useState('')
@@ -113,8 +140,14 @@ function NewRegionCapRow({
 
   const availableRegions = country ? (regionsByCountry[country] ?? []) : []
 
+  const periodId = country ? openPeriodIdByCountry[country] : undefined
+
   async function create() {
     if (!country || !region) return
+    if (!periodId) {
+      setError(`${country} no tiene un periodo de cuota abierto — abrilo primero`)
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -122,6 +155,7 @@ function NewRegionCapRow({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          periodId,
           country,
           region,
           capCount: capCount === '' ? null : Number(capCount),
@@ -129,7 +163,11 @@ function NewRegionCapRow({
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error === 'conflict' ? 'Ya existe un tope para esa región' : 'Error al crear')
+        setError(
+          data.error === 'conflict'
+            ? 'Ya existe un tope para esa región en este periodo'
+            : (data.message ?? 'Error al crear'),
+        )
         return
       }
       setCountry('')

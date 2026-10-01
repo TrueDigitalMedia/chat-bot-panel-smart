@@ -15,6 +15,7 @@
 7. [Gaps entre la fórmula SCL-CAM y la implementación actual](#7-gaps-entre-la-fórmula-scl-cam-y-la-implementación-actual)
 8. [Sistema de cuotas actual (Kantar Quotas Test)](#8-sistema-de-cuotas-actual-kantar-quotas-test)
    - 8.1 [Cuotas flexibles por dimensión (2026-07-20)](#81-cuotas-flexibles-por-dimensión-2026-07-20)
+   - 8.2 [Periodos de cuota y cortes (Q1–Q4) (2026-10-01)](#82-periodos-de-cuota-y-cortes-q1q4-2026-10-01)
 9. [Plan: Panel Administrativo de Cuotas](#9-plan-panel-administrativo-de-cuotas)
 10. [Plan: Dashboard de Leads](#10-plan-dashboard-de-leads)
 11. [Estado de implementación por feature](#11-estado-de-implementación-por-feature)
@@ -413,6 +414,73 @@ Reemplaza a `docs/Kantar Quotas Test.xlsx` (§8) como insumo de cuotas:
 
 - `docs/Muestra Faltante por País Julio 2026_True.xlsx` — cuotas faltantes por país/región/dimensión (hojas: Dominicana, Costa Rica, El Salvador, Guatemala, Honduras, Nicaragua, Panamá, Ecuador, México)
 - `docs/Muestra Regiones NSE CAM.xlsx` — catálogo departamento/municipio → región por país
+
+---
+
+## 8.2 Periodos de cuota y cortes (Q1–Q4) (2026-10-01)
+
+Spec `specs/018-quota-periods/`. Migración `0037_quota_periods.sql`.
+
+### El problema que resuelve
+
+Hasta acá las cuotas no tenían dimensión temporal: `quota_targets` y `quota_region_caps` guardaban
+un objetivo único por `(país, región, dimensión)` sin fecha, y los **conseguidos** se calculaban en
+vivo como un `count(*)` de leads en `QUALIFIED_STATUSES`, sin ventana. La única forma de "cerrar"
+una cuota era editar `cap_count` o apagar el flag `active`, y eso **destruía el histórico**: no
+quedaba registro de con qué objetivo se corrió el trimestre ni de qué leads entraron en él.
+
+### El modelo
+
+- **`quota_periods`** — un periodo (Q1–Q4) **por país**, con `starts_on`/`ends_on`, `status`
+  (`open`/`closed`) y `label` (p. ej. "Q4 2026"). Un índice único parcial garantiza **a lo sumo un
+  periodo abierto por país**.
+- **`quota_targets.period_id`** y **`quota_region_caps.period_id`** — toda la configuración cuelga
+  de un periodo. Los índices únicos pasaron de `(país, región, dimensión, valor)` a
+  `(period_id, región, dimensión, valor)`, así la misma celda puede existir en Q1 y en Q2.
+- **`leads.quota_period_id`** — se sella **al calificar**, en la misma escritura que
+  `quota_matched_dimension`/`quota_matched_value`. Es la única fuente de los conseguidos por
+  periodo y, a la vez, el registro per-lead del corte.
+- **`quota_period_snapshots`** — el corte congelado al cerrar: una fila por región
+  (`scope: 'region'`) y una por celda (`scope: 'cell'`), con objetivo / conseguidos / faltante / %.
+
+### Reglas de negocio
+
+1. **Sin periodo abierto, el país está CERRADO**: ningún lead nuevo califica, ni por la excepción
+   de embarazo o bebé menor a 36 meses. El corto-circuito vive en `checkRegionQuota`, así que la
+   salida temprana de geo (`gps-capture.ts`) y la decisión de fin de encuesta no pueden divergir.
+   Se distingue en `leads.status_reason` (`no_open_quota_period` / `period_closed_early_exit`) y en
+   el log `quota_period_missing`.
+2. **Un Q nuevo arranca vacío**: no se copian las líneas del anterior ni se arrastra el faltante.
+   Hasta que se carguen objetivos, todas las regiones de ese país leen CERRADA — semántica buscada,
+   no un bug (es la regla "región sin objetivo configurado = cerrada" de §8.1 aplicada al Q nuevo).
+3. **Los conseguidos se cuentan por el sello, nunca por ventana de fechas.** Las fechas del periodo
+   son descriptivas: editarlas no re-atribuye ningún lead, y un lead que empezó la encuesta en Q1 y
+   calificó en Q2 consume la cuota de Q2, que es la que realmente usó.
+4. **Cerrar es idempotente y no destructivo**: se escribe el snapshot y después se cambia el
+   estado (si el proceso muere en el medio, reintentar es seguro). No apaga `active` ni toca el
+   sello de los leads. `reopen` existe y **borra** el corte guardado.
+5. **Σ de las filas `cell` ≠ fila `region`**: los leads que entran por la excepción cuentan en la
+   región y en ninguna celda. Por eso el snapshot guarda los dos niveles por separado.
+6. `active` y `status` conviven a distinta granularidad: *desactivar las líneas* cierra una región,
+   *cerrar el periodo* cierra el país. En la tabla por región, "CERRADA" significa ahora tres cosas
+   —sin config, desactivada, o sin periodo— distinguidas en la etiqueta.
+
+### Panel
+
+- `/admin/quotas/periodos` — libro mayor: abrir cuota, ver estado, **cerrar corte** (confirmación
+  por tipeo de la etiqueta) y reabrir.
+- `/admin/quotas/periodos/[id]` — el corte: objetivo / conseguidos / faltante / % alcanzado, por
+  región y por línea, más **descarga CSV de los leads del corte**. Si el periodo sigue abierto se
+  muestra como *corte preliminar*.
+- `/admin/quotas` y `/admin/dashboard` ganaron un filtro `?periodId` (por defecto: los periodos
+  abiertos) y un aviso rojo por país sin periodo abierto. Un periodo cerrado se ve en solo lectura.
+
+### Corte inicial de la DB (2026-10-01)
+
+La migración creó **un periodo abierto "Q4 2026" por cada uno de los 9 países**, le asignó las 372
+líneas y 42 topes existentes, y selló los **1443 leads calificados** (ninguno quedó sin sello; 0
+leads con país NULL). El comportamiento del bot no cambió: la configuración entera quedó dentro de
+un único periodo abierto por país.
 
 ---
 

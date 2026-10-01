@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  updateQuotaTarget,
-  QuotaTargetError,
-  QuotaTargetNotFoundError,
-} from '@/lib/quotas/quota-targets'
+import { updateQuotaTarget } from '@/lib/quotas/quota-targets'
+import { quotaErrorResponse } from '@/lib/quotas/api-errors'
 
 export async function PUT(
   request: NextRequest,
@@ -13,6 +10,8 @@ export async function PUT(
   const body = await request.json()
 
   try {
+    // Un target de un periodo CERRADO no se puede editar — updateQuotaTarget tira
+    // 'period_closed', que el mapeo compartido traduce a 409.
     const row = await updateQuotaTarget(id, {
       ...(body.targetCount !== undefined ? { targetCount: body.targetCount } : {}),
       ...(body.active !== undefined ? { active: body.active } : {}),
@@ -20,12 +19,8 @@ export async function PUT(
     })
     return NextResponse.json(row)
   } catch (err) {
-    if (err instanceof QuotaTargetError) {
-      return NextResponse.json({ error: err.code }, { status: 400 })
-    }
-    if (err instanceof QuotaTargetNotFoundError) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 })
-    }
+    const response = quotaErrorResponse(err)
+    if (response) return response
     throw err
   }
 }
