@@ -5,6 +5,14 @@ import { OpenPeriodForm } from './open-period-form'
 import { PeriodActions } from './period-actions'
 import styles from './periodos.module.css'
 
+/**
+ * Sin esto Next prerenderiza la página en el build y Vercel sirve ese HTML para siempre: el panel
+ * quedaba mostrando las cifras del momento del deploy (un periodo ya cerrado seguía leyendo
+ * ABIERTO y los conseguidos no se movían). Todo lo que hay acá sale de la base en cada visita,
+ * así que la página tiene que ser dinámica — igual que /admin/conversations.
+ */
+export const dynamic = 'force-dynamic'
+
 export default async function QuotaPeriodsPage() {
   const periods = await listQuotaPeriodsWithProgress()
   const countries = listSupportedCountries()
