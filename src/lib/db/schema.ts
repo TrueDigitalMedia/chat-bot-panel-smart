@@ -313,6 +313,15 @@ export const fichaHogarProfiles = pgTable(
       .references(() => leads.id),
     questionIndex: smallint('question_index').notNull().default(0),
     conflictOfInterest: boolean('conflict_of_interest'),
+    /**
+     * Ya se le repreguntó el conflicto de interés a este lead. El primer "sí" NO descalifica:
+     * se vuelve a preguntar enumerando los sectores y solo el segundo "sí" descarta — la
+     * pregunta sobre-dispara (25% de descartes contra una incidencia real de un dígito: el
+     * "negocio de alimentos" se lleva puesta a cualquiera con una tienda o un comedor).
+     * Vive en la base y no en el callback del botón porque el lead puede contestar escribiendo,
+     * y sin esta marca un "sí" tipeado volvería a caer en la primera rama para siempre.
+     */
+    conflictOfInterestReasked: boolean('conflict_of_interest_reasked').notNull().default(false),
     hasInternet: boolean('has_internet'),
     /** México only — moved here from the Phase-1 survey to match the doc's Fase 4 P2
      *  (it's asked right after the sensitive-industry screening). Ecuador/CAM leave this null. */

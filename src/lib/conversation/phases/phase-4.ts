@@ -17,6 +17,7 @@ import { persistTreintaPanelist } from '@/lib/treinta/persist-panelist'
 import { describeQuotaMatch } from '@/lib/scoring/quota'
 import { resolveFichaHogarQuestions, fichaHogarQuestionCount } from '../ficha-hogar-plan'
 import { getCountryConfig } from '@/lib/countries/registry'
+import { CONFLICT_OF_INTEREST_RECONFIRM } from '../ficha-hogar-questions'
 import { matchButtonChoice } from '../match-button-choice'
 import { interpretButtonAnswer } from '../interpret-button-answer'
 import type { ChannelRecipient } from '@/types/channel'
@@ -37,6 +38,17 @@ export async function sendFichaHogarQuestion(
   } else {
     await sendText(to, text)
   }
+}
+
+/**
+ * La repregunta del conflicto de interés — ver CONFLICT_OF_INTEREST_RECONFIRM.
+ *
+ * Se manda con los mismos callbacks que la pregunta original, así que el lead sigue parado en
+ * la misma pregunta (`question_index` no se mueve): lo único que cambió es que la próxima
+ * respuesta afirmativa sí descalifica.
+ */
+async function sendConflictOfInterestReconfirm(to: ChannelRecipient): Promise<void> {
+  await sendInlineKeyboard(to, CONFLICT_OF_INTEREST_RECONFIRM.text, CONFLICT_OF_INTEREST_RECONFIRM.buttons)
 }
 
 async function getOrCreateFichaHogarProfile(leadId: string) {
@@ -138,11 +150,20 @@ export async function handleFichaHogar(
       if (interpreted) resolvedCallback = interpreted
     }
     if (!resolvedCallback?.startsWith(`${question.fieldName}:`)) {
+      // Con la repregunta de conflicto de interés en el aire, la pregunta pendiente es ESA y no
+      // la original: reenviar la original dejaría al lead en un bucle contestando lo mismo.
+      const reconfirmPending =
+        question.fieldName === 'conflictOfInterest' && profile.conflictOfInterestReasked
+      const pendingText = reconfirmPending ? CONFLICT_OF_INTEREST_RECONFIRM.text : question.text
       const { tryHandleFichaHogarCorrectionRequest } = await import('../ficha-hogar-correction')
-      if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, question.text)) {
+      if (await tryHandleFichaHogarCorrectionRequest(lead, messageText, correlationId, pendingText)) {
         return
       }
-      const answered = await maybeAnswerFaq(lead, messageText, correlationId, question.text)
+      const answered = await maybeAnswerFaq(lead, messageText, correlationId, pendingText)
+      if (reconfirmPending) {
+        if (!answered) await sendConflictOfInterestReconfirm(to)
+        return
+      }
       await sendFichaHogarQuestion(to, idx, country, { retry: !answered })
       return
     }
@@ -187,7 +208,26 @@ export async function handleFichaHogar(
     }
   }
 
-  // Q1 (conflictOfInterest) discard gate — before persisting/advancing further
+  // Q1 (conflictOfInterest) discard gate — before persisting/advancing further.
+  //
+  // El primer "sí" NO descalifica: se repregunta enumerando los sectores y solo el segundo
+  // descarta. La pregunta sobre-dispara — descartaba un 25% de los que llegan a la ficha
+  // (36% en Nicaragua y Rep. Dominicana) contra una incidencia real de un dígito — y esos
+  // falsos positivos son la fuga más cara del tramo final, porque se van después de haber
+  // pagado la pauta, la encuesta completa y el registro.
+  if (
+    question.fieldName === 'conflictOfInterest' &&
+    fieldValue === true &&
+    !profile.conflictOfInterestReasked
+  ) {
+    await db
+      .update(fichaHogarProfiles)
+      .set({ conflictOfInterestReasked: true, updatedAt: new Date() })
+      .where(eq(fichaHogarProfiles.leadId, lead.id))
+    await sendConflictOfInterestReconfirm(to)
+    return
+  }
+
   if (question.fieldName === 'conflictOfInterest' && fieldValue === true) {
     await db
       .update(fichaHogarProfiles)

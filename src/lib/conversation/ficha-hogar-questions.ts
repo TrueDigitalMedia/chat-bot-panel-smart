@@ -9,11 +9,65 @@ export interface FichaHogarQuestion {
   buttons?: InlineKeyboardButton[][]
 }
 
+/** Los cuatro sectores que descalifican, tal como los enumera el cliente. */
+const CONFLICT_OF_INTEREST_SECTORS = [
+  '1. Agencia de publicidad',
+  '2. Empresa de investigación de mercados',
+  '3. Radio, periódico o televisión',
+  '4. Dueño/a de una industria o negocio de alimentos, bebidas, higiene personal, limpieza del hogar, ropa o calzado',
+].join('\n')
+
+const CONFLICT_OF_INTEREST_SECTORS_TEXT = [
+  'Antes de comenzar, necesito confirmar una cosa.',
+  '',
+  '¿Trabajas tú o alguna persona de tu hogar en alguno de estos sectores?',
+  CONFLICT_OF_INTEREST_SECTORS,
+  '',
+  'Responde Sí si aplica alguno, o No si ninguno aplica.',
+].join('\n')
+
+/**
+ * La repregunta: el primer "sí" ya no descalifica (ver el gate en phases/phase-4.ts).
+ *
+ * Existe porque la pregunta sobre-dispara — un 25% de los que llegan a la ficha contestaban que
+ * sí, contra una incidencia real de un dígito. El cuarto sector es el que se lleva puesta a la
+ * gente: dice "dueño/a", pero quien trabaja en un súper o en un comedor lo lee como propio. Por
+ * eso la repregunta vuelve a enumerar los sectores y aclara ese punto en vez de limitarse a
+ * preguntar "¿estás seguro?".
+ *
+ * Los callbacks son los MISMOS que los de la pregunta original a propósito: así el lead que
+ * contesta escribiendo "si" en lugar de tocar el botón entra por el mismo camino de siempre
+ * (matchButtonChoice / interpretButtonAnswer), y lo único que distingue un intento del otro es
+ * `ficha_hogar_profiles.conflict_of_interest_reasked`.
+ */
+export const CONFLICT_OF_INTEREST_RECONFIRM: {
+  text: string
+  buttons: InlineKeyboardButton[][]
+} = {
+  text: [
+    'Solo para estar seguros, porque esa respuesta deja la participación afuera.',
+    '',
+    '¿Tú o alguien de tu hogar trabaja realmente en alguno de estos sectores?',
+    CONFLICT_OF_INTEREST_SECTORS,
+    '',
+    'Ojo: en el punto 4 la pregunta es por ser dueño/a del negocio. Trabajar en un supermercado, un restaurante o una tienda no cuenta.',
+  ].join('\n'),
+  buttons: [
+    [
+      { text: 'Sí, confirmo', callback_data: 'conflictOfInterest:true' },
+      { text: 'No, me equivoqué', callback_data: 'conflictOfInterest:false' },
+    ],
+  ],
+}
+
 export const FICHA_HOGAR_QUESTIONS: FichaHogarQuestion[] = [
   {
     index: 1,
     fieldName: 'conflictOfInterest',
-    text: '¿Trabajas tú o alguien en tu hogar en publicidad, investigación de mercados, medios de comunicación o la industria alimentaria?',
+    // Enumerar los sectores en vez de resumirlos ("la industria alimentaria") baja los falsos
+    // positivos: con el texto resumido CAM descartaba 24-36% de los que llegan a la ficha,
+    // contra 11% de Ecuador, que ya los enumeraba. Es el texto que usa el cliente.
+    text: CONFLICT_OF_INTEREST_SECTORS_TEXT,
     inputType: 'button',
     buttons: [
       [
