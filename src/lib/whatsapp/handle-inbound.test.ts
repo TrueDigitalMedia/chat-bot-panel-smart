@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   upsertLead,
+  recordLeadAdReferral,
   logConversationMessage,
   wasProviderMessageAlreadyProcessed,
   routeMessage,
@@ -10,6 +11,7 @@ const {
   applyNumberScope,
 } = vi.hoisted(() => ({
   upsertLead: vi.fn(),
+  recordLeadAdReferral: vi.fn(),
   logConversationMessage: vi.fn(),
   wasProviderMessageAlreadyProcessed: vi.fn(),
   routeMessage: vi.fn(),
@@ -18,7 +20,7 @@ const {
   applyNumberScope: vi.fn(),
 }))
 
-vi.mock('@/lib/db/leads', () => ({ upsertLead }))
+vi.mock('@/lib/db/leads', () => ({ upsertLead, recordLeadAdReferral }))
 vi.mock('@/lib/db/conversation-messages', () => ({ logConversationMessage, wasProviderMessageAlreadyProcessed }))
 vi.mock('@/lib/conversation/flow-router', () => ({ routeMessage }))
 vi.mock('@/lib/whatsapp/pending-choices', () => ({ getPendingWaChoices, clearPendingWaChoices }))
@@ -44,6 +46,7 @@ beforeEach(() => {
   logConversationMessage.mockResolvedValue(undefined)
   routeMessage.mockResolvedValue(undefined)
   applyNumberScope.mockResolvedValue({ outcome: 'generic', country: null })
+  recordLeadAdReferral.mockResolvedValue(undefined)
 })
 
 describe('processWhatsAppInbound — webhook redelivery idempotency', () => {
@@ -78,5 +81,45 @@ describe('processWhatsAppInbound — webhook redelivery idempotency', () => {
 
     expect(wasProviderMessageAlreadyProcessed).not.toHaveBeenCalled()
     expect(routeMessage).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('processWhatsAppInbound — atribución de anuncios click-to-WhatsApp', () => {
+  const referral = {
+    sourceId: '120210000000000',
+    sourceType: 'ad',
+    ctwaClid: 'ARAx9Qclid',
+    headline: '¿Querés ser panelista?',
+  }
+
+  it('guarda el referral en meta del mensaje y lo sella en el lead', async () => {
+    await processWhatsAppInbound(makeInbound({ adReferral: referral }), { messageId: 'wamid.AD1' })
+
+    expect(recordLeadAdReferral).toHaveBeenCalledWith('lead-1', referral)
+    expect(logConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ messageId: 'wamid.AD1', referral }),
+      }),
+    )
+  })
+
+  it('no toca la atribución cuando el webhook no trae referral', async () => {
+    await processWhatsAppInbound(makeInbound(), { messageId: 'wamid.SINAD' })
+
+    expect(recordLeadAdReferral).not.toHaveBeenCalled()
+    expect(logConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ meta: { messageId: 'wamid.SINAD' } }),
+    )
+  })
+
+  it('un fallo al guardar la atribución no frena la conversación', async () => {
+    recordLeadAdReferral.mockRejectedValue(new Error('column "ad_source_id" does not exist'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await processWhatsAppInbound(makeInbound({ adReferral: referral }), { messageId: 'wamid.AD2' })
+
+    expect(routeMessage).toHaveBeenCalledTimes(1)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 })

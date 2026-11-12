@@ -49,6 +49,15 @@ export interface Lead {
   /** Meta phone_number_id this WhatsApp lead is bound to — the number the bot replies from (spec 017).
    *  Null for non-WhatsApp / pre-017 leads → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
   whatsappPhoneNumberId: string | null
+  /** Atribución click-to-WhatsApp (Meta Ads), sellada en el primer toque con referral y
+   *  nunca sobrescrita. Null para los leads que no entraron por un anuncio. */
+  adSourceId: string | null
+  adSourceType: string | null
+  adSourceUrl: string | null
+  adCtwaClid: string | null
+  adHeadline: string | null
+  adBody: string | null
+  adReferredAt: Date | null
 }
 
 export interface SurveyProfile {

@@ -1,7 +1,40 @@
-import type { ChannelInbound } from '@/types/channel'
+import type { AdReferral, ChannelInbound } from '@/types/channel'
 import { stripWhatsAppAddress } from '@/lib/whatsapp/phone'
 
 export type TwilioWhatsAppForm = Record<string, string>
+
+/**
+ * Quita las keys cuyo valor quedó en undefined y devuelve undefined si no sobrevivió
+ * ninguna, para que un webhook sin atribución no deje un objeto vacío colgando en
+ * `adReferral` (que haría que todo el pipeline crea que hubo anuncio). Compartida con el
+ * normalizador de Meta: las dos fuentes tienen que decidir "no hay referral" igual.
+ */
+export function compactReferral(referral: AdReferral): AdReferral | undefined {
+  const entries = Object.entries(referral).filter(([, value]) => value !== undefined)
+  return entries.length > 0 ? (Object.fromEntries(entries) as AdReferral) : undefined
+}
+
+/**
+ * Lee la atribución de anuncio click-to-WhatsApp del form de Twilio (campos `Referral*`).
+ * Los campos vacíos o en blanco se descartan: Twilio manda la key igual aunque Meta no
+ * haya puesto valor.
+ */
+export function extractTwilioReferral(form: TwilioWhatsAppForm): AdReferral | undefined {
+  const pick = (key: string): string | undefined => {
+    const value = (form[key] ?? '').trim()
+    return value || undefined
+  }
+
+  return compactReferral({
+    sourceId: pick('ReferralSourceId'),
+    sourceType: pick('ReferralSourceType'),
+    sourceUrl: pick('ReferralSourceUrl'),
+    ctwaClid: pick('ReferralCtwaClid'),
+    headline: pick('ReferralHeadline'),
+    body: pick('ReferralBody'),
+    mediaUrl: pick('ReferralMediaUrl'),
+  })
+}
 
 /**
  * Normalize Twilio WhatsApp form POST into ChannelInbound.
@@ -50,5 +83,6 @@ export function normalizeTwilioInbound(
     callbackData,
     location,
     whatsappPhoneNumberId: toNumberId,
+    adReferral: extractTwilioReferral(form),
   }
 }
