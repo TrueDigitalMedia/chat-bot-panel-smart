@@ -1,5 +1,6 @@
-import type { ChannelInbound } from '@/types/channel'
+import type { AdReferral, ChannelInbound } from '@/types/channel'
 import { toE164 } from '@/lib/whatsapp/phone'
+import { compactReferral } from '@/lib/whatsapp/providers/twilio/normalize-inbound'
 
 export interface MetaWebhookPayload {
   object?: string
@@ -22,7 +23,7 @@ export interface MetaInboundEnvelope {
   displayPhoneNumber?: string
 }
 
-interface MetaInboundMessage {
+export interface MetaInboundMessage {
   from?: string
   id?: string
   timestamp?: string
@@ -35,6 +36,43 @@ interface MetaInboundMessage {
   }
   location?: { latitude?: number; longitude?: number }
   button?: { payload?: string; text?: string }
+  /** Atribución del anuncio click-to-WhatsApp: Meta la adjunta solo al primer mensaje
+   *  que el lead manda después de tocar el anuncio. */
+  referral?: {
+    source_id?: string
+    source_type?: string
+    source_url?: string
+    ctwa_clid?: string
+    headline?: string
+    body?: string
+    image_url?: string
+    video_url?: string
+  }
+}
+
+/**
+ * Pasa `messages[].referral` de Meta Cloud API a `AdReferral`. El medio del anuncio llega
+ * en `image_url` o en `video_url` según el creativo; los dos caen en el mismo `mediaUrl`.
+ * Reusa compactReferral para que "no hay referral" signifique lo mismo que en Twilio.
+ */
+export function extractMetaReferral(message: MetaInboundMessage): AdReferral | undefined {
+  const referral = message.referral
+  if (!referral) return undefined
+
+  const pick = (value?: string): string | undefined => {
+    const trimmed = (value ?? '').trim()
+    return trimmed || undefined
+  }
+
+  return compactReferral({
+    sourceId: pick(referral.source_id),
+    sourceType: pick(referral.source_type),
+    sourceUrl: pick(referral.source_url),
+    ctwaClid: pick(referral.ctwa_clid),
+    headline: pick(referral.headline),
+    body: pick(referral.body),
+    mediaUrl: pick(referral.image_url) ?? pick(referral.video_url),
+  })
 }
 
 export function extractMetaMessages(payload: MetaWebhookPayload): MetaInboundEnvelope[] {
@@ -104,5 +142,6 @@ export function normalizeMetaInbound(
     callbackData,
     location,
     whatsappPhoneNumberId: phoneNumberId,
+    adReferral: extractMetaReferral(message),
   }
 }

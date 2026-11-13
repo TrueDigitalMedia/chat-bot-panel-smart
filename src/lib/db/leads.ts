@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db } from './client'
 import {
   leads,
@@ -11,7 +11,7 @@ import {
   treintaPanelistEmbeddings,
   consentEvents,
 } from './schema'
-import type { Channel } from '@/types/channel'
+import type { AdReferral, Channel } from '@/types/channel'
 import type { Lead } from '@/types/lead'
 
 type ConsentType = 'opt_in' | 'terms' | 're_engagement' | 'opt_out'
@@ -319,4 +319,45 @@ export async function resetLeadConversation(leadId: string): Promise<Lead> {
     .where(eq(flowStates.leadId, leadId))
 
   return lead as Lead
+}
+
+/**
+ * Sella la atribución del anuncio click-to-WhatsApp del que vino el lead (Meta Ads).
+ *
+ * Es atribución de PRIMER TOQUE: el WHERE exige que las dos claves de join sigan en NULL,
+ * así que el primer referral que llegue gana y ningún anuncio posterior se la roba. Meta
+ * adjunta el referral solo al primer mensaje después de tocar el anuncio, pero un lead que
+ * vuelve meses después por otro anuncio mandaría uno nuevo, y reescribirlo haría que el
+ * lead se contara contra la campaña equivocada.
+ *
+ * Sin sourceId ni ctwaClid no hay nada con qué unir en Meta, así que no se escribe nada
+ * (headline/body sueltos no sirven para atribuir).
+ */
+export async function recordLeadAdReferral(
+  leadId: string,
+  referral: AdReferral,
+): Promise<void> {
+  if (!referral.sourceId && !referral.ctwaClid) return
+
+  await db
+    .update(leads)
+    .set({
+      // Recortados al ancho de su columna: Meta no documenta un máximo y un id más largo
+      // reventaría el INSERT entero (y con él la conversación, si esto no estuviera en un
+      // try/catch aguas arriba).
+      adSourceId: referral.sourceId?.slice(0, 64) ?? null,
+      adSourceType: referral.sourceType?.slice(0, 20) ?? null,
+      adSourceUrl: referral.sourceUrl ?? null,
+      adCtwaClid: referral.ctwaClid ?? null,
+      adHeadline: referral.headline ?? null,
+      adBody: referral.body ?? null,
+      adReferredAt: new Date(),
+    })
+    .where(
+      and(
+        eq(leads.id, leadId),
+        isNull(leads.adSourceId),
+        isNull(leads.adCtwaClid),
+      ),
+    )
 }

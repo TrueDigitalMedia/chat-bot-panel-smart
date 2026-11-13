@@ -1,6 +1,6 @@
 import { and, count, eq } from 'drizzle-orm'
 import type { ChannelInbound } from '@/types/channel'
-import { upsertLead } from '@/lib/db/leads'
+import { recordLeadAdReferral, upsertLead } from '@/lib/db/leads'
 import { logConversationMessage, wasProviderMessageAlreadyProcessed } from '@/lib/db/conversation-messages'
 import { db } from '@/lib/db/client'
 import { conversationMessages } from '@/lib/db/schema'
@@ -34,6 +34,26 @@ export async function processWhatsAppInbound(
   const lead = await upsertLead('whatsapp', inbound.channelUserId, undefined, {
     phoneNumberId: inbound.whatsappPhoneNumberId,
   })
+
+  // Atribución click-to-WhatsApp (Meta Ads). Va a dos lados a propósito:
+  //  - a `meta.referral` de conversation_messages, en cada toque que lo traiga, como
+  //    bitácora cruda de lo que mandó el proveedor;
+  //  - a las columnas leads.ad_* vía recordLeadAdReferral, que sella solo el primer toque.
+  // El try/catch es deliberado: un fallo de atribución (columna faltante, timeout) jamás
+  // puede frenar la conversación del lead, que es lo único que no se puede recuperar después.
+  let referralLogMeta = logMeta
+  if (inbound.adReferral) {
+    referralLogMeta = { ...logMeta, referral: inbound.adReferral }
+    try {
+      await recordLeadAdReferral(lead.id, inbound.adReferral)
+    } catch (error) {
+      console.error('[whatsapp:in] no se pudo guardar la atribución del anuncio', {
+        correlationId,
+        leadId: lead.id,
+        error,
+      })
+    }
+  }
 
   // spec 017 — a brand-new conversation on a country-scoped business number is pre-set to
   // that country here (before routeMessage), so the existing survey-plan skip logic
@@ -73,7 +93,7 @@ export async function processWhatsAppInbound(
     hasLocation: Boolean(resolved.location),
     hasCallback: Boolean(resolved.callbackData),
     textPreview: resolved.text?.slice(0, 80) || null,
-    ...logMeta,
+    ...referralLogMeta,
   })
 
   if (resolved.callbackData) {
@@ -83,7 +103,7 @@ export async function processWhatsAppInbound(
       channel: 'whatsapp',
       contentType: 'callback',
       body: resolved.callbackData,
-      meta: logMeta,
+      meta: referralLogMeta,
       providerMessageId,
     })
   } else if (resolved.location) {
@@ -93,7 +113,7 @@ export async function processWhatsAppInbound(
       channel: 'whatsapp',
       contentType: 'system',
       body: 'location_shared',
-      meta: { ...logMeta, hasLocation: true },
+      meta: { ...referralLogMeta, hasLocation: true },
       providerMessageId,
     })
   } else if (resolved.text) {
@@ -103,7 +123,7 @@ export async function processWhatsAppInbound(
       channel: 'whatsapp',
       contentType: 'text',
       body: resolved.text,
-      meta: logMeta,
+      meta: referralLogMeta,
       providerMessageId,
     })
   }

@@ -4,6 +4,8 @@ import {
   normalizeTwilioInbound,
   normalizeMetaInbound,
   extractMetaMessages,
+  extractTwilioReferral,
+  extractMetaReferral,
 } from '@/lib/whatsapp/normalize-inbound'
 import { buildNumberedChoices } from '@/lib/whatsapp/buttons'
 import { toE164, toMetaRecipient } from '@/lib/whatsapp/phone'
@@ -134,5 +136,123 @@ describe('whatsapp buttons', () => {
     expect(choices['sí']).toBe('d3:yes')
     expect(bodySuffix).toContain('1) Sí')
     expect(bodySuffix).toContain('2) No')
+  })
+})
+
+describe('whatsapp ad referral (click-to-WhatsApp)', () => {
+  it('extrae los campos Referral* del form de Twilio', () => {
+    const referral = extractTwilioReferral({
+      From: 'whatsapp:+50255551234',
+      Body: 'hola',
+      ReferralSourceId: '  120210000000000  ',
+      ReferralSourceType: 'ad',
+      ReferralSourceUrl: 'https://fb.me/anuncio',
+      ReferralCtwaClid: 'ARAx9Qclid',
+      ReferralHeadline: '¿Querés ser panelista?',
+      ReferralBody: 'Registrate hoy',
+      ReferralMediaUrl: 'https://cdn.meta/creativo.jpg',
+    })
+
+    expect(referral).toEqual({
+      sourceId: '120210000000000',
+      sourceType: 'ad',
+      sourceUrl: 'https://fb.me/anuncio',
+      ctwaClid: 'ARAx9Qclid',
+      headline: '¿Querés ser panelista?',
+      body: 'Registrate hoy',
+      mediaUrl: 'https://cdn.meta/creativo.jpg',
+    })
+  })
+
+  it('descarta los campos Referral* vacíos en vez de guardarlos en blanco', () => {
+    const referral = extractTwilioReferral({
+      From: 'whatsapp:+50255551234',
+      ReferralSourceId: '120210000000000',
+      ReferralSourceType: '   ',
+      ReferralHeadline: '',
+    })
+
+    expect(referral).toEqual({ sourceId: '120210000000000' })
+  })
+
+  it('adReferral queda undefined cuando el webhook de Twilio no trae campos Referral*', () => {
+    const inbound = normalizeTwilioInbound({
+      From: 'whatsapp:+50255551234',
+      Body: 'hola',
+      MessageSid: 'SM5',
+    })
+
+    expect(inbound.adReferral).toBeUndefined()
+  })
+
+  it('normalizeTwilioInbound cuelga la atribución en adReferral', () => {
+    const inbound = normalizeTwilioInbound({
+      From: 'whatsapp:+50255551234',
+      Body: 'hola',
+      MessageSid: 'SM6',
+      ReferralSourceId: '120210000000000',
+      ReferralCtwaClid: 'ARAx9Qclid',
+    })
+
+    expect(inbound.adReferral).toEqual({
+      sourceId: '120210000000000',
+      ctwaClid: 'ARAx9Qclid',
+    })
+  })
+
+  it('extrae messages[].referral de Meta, con image_url como mediaUrl', () => {
+    const referral = extractMetaReferral({
+      from: '50255551234',
+      type: 'text',
+      text: { body: 'hola' },
+      referral: {
+        source_id: '120210000000000',
+        source_type: 'ad',
+        source_url: 'https://fb.me/anuncio',
+        ctwa_clid: 'ARAx9Qclid',
+        headline: '¿Querés ser panelista?',
+        body: 'Registrate hoy',
+        image_url: 'https://cdn.meta/creativo.jpg',
+      },
+    })
+
+    expect(referral).toEqual({
+      sourceId: '120210000000000',
+      sourceType: 'ad',
+      sourceUrl: 'https://fb.me/anuncio',
+      ctwaClid: 'ARAx9Qclid',
+      headline: '¿Querés ser panelista?',
+      body: 'Registrate hoy',
+      mediaUrl: 'https://cdn.meta/creativo.jpg',
+    })
+  })
+
+  it('usa video_url como mediaUrl cuando el creativo es video', () => {
+    const referral = extractMetaReferral({
+      from: '50255551234',
+      referral: { source_id: '120210000000000', video_url: 'https://cdn.meta/creativo.mp4' },
+    })
+
+    expect(referral).toEqual({
+      sourceId: '120210000000000',
+      mediaUrl: 'https://cdn.meta/creativo.mp4',
+    })
+  })
+
+  it('normalizeMetaInbound cuelga la atribución, y la deja undefined sin referral', () => {
+    const conReferral = normalizeMetaInbound({
+      from: '50255551234',
+      type: 'text',
+      text: { body: 'hola' },
+      referral: { source_id: '120210000000000', source_type: 'ad' },
+    })
+    expect(conReferral?.adReferral).toEqual({ sourceId: '120210000000000', sourceType: 'ad' })
+
+    const sinReferral = normalizeMetaInbound({
+      from: '50255551234',
+      type: 'text',
+      text: { body: 'hola' },
+    })
+    expect(sinReferral?.adReferral).toBeUndefined()
   })
 })

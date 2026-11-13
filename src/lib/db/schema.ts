@@ -252,9 +252,22 @@ export const leads = pgTable(
      *  from the inbound webhook's value.metadata.phone_number_id; never re-bound. Null for
      *  non-WhatsApp leads and pre-017 rows → outbound falls back to WHATSAPP_PHONE_NUMBER_ID. */
     whatsappPhoneNumberId: varchar('whatsapp_phone_number_id', { length: 40 }),
+    /** Atribución click-to-WhatsApp (Meta Ads). Se sella en el primer toque que traiga
+     *  referral y nunca se sobrescribe: es atribución de primer toque, igual que
+     *  acquisitionSource. Null para leads que no entraron por un anuncio. */
+    adSourceId: varchar('ad_source_id', { length: 64 }),
+    adSourceType: varchar('ad_source_type', { length: 20 }),
+    adSourceUrl: text('ad_source_url'),
+    /** Click ID de click-to-WhatsApp — lo que une al lead con el reporte de Meta Ads. */
+    adCtwaClid: text('ad_ctwa_clid'),
+    adHeadline: text('ad_headline'),
+    adBody: text('ad_body'),
+    /** Cuándo se selló la atribución (no cuándo se hizo click: Meta no lo manda). */
+    adReferredAt: timestamp('ad_referred_at', { withTimezone: true }),
   },
   (t) => [
     uniqueIndex('leads_channel_user_idx').on(t.channel, t.channelUserId),
+    index('leads_ad_source_id_idx').on(t.adSourceId),
     index('leads_quota_period_status_idx').on(t.quotaPeriodId, t.leadStatus),
     index('leads_quota_period_dim_idx').on(
       t.quotaPeriodId,
