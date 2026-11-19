@@ -412,4 +412,77 @@ describe('previewPanelSmartSync', () => {
 
     expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'codigo_postal')).toBe(false)
   })
+
+  it('manda los campos de atribución del anuncio cuando el lead entró por un anuncio', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{
+        ...LEAD_ROW,
+        adSourceId: '120256181296770350',
+        adSourceType: 'ad',
+        adSourceUrl: 'https://fb.me/anuncio',
+        adCtwaClid: 'ARAx9Qclid',
+        adHeadline: 'Cada compra del mes cuenta.',
+        adBody: 'Registrate hoy',
+        adReferredAt: new Date('2026-11-13T15:49:30.210Z'),
+        panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
+      }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'ad_source_id',
+      pregunta: 'ID del Anuncio (Meta)',
+      respuesta: '120256181296770350',
+    })
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'ad_ctwa_clid',
+      pregunta: 'Click ID de Click-to-WhatsApp',
+      respuesta: 'ARAx9Qclid',
+    })
+    // La fecha va como ISO completo, igual que fecha_primer_mensaje.
+    expect(preview.payload?.responses).toContainEqual({
+      codigo_pregunta: 'ad_referred_at',
+      pregunta: 'Fecha de Atribución del Anuncio',
+      respuesta: '2026-11-13T15:49:30.210Z',
+    })
+    expect(
+      preview.payload?.responses.filter((r) => r.codigo_pregunta.startsWith('ad_')),
+    ).toHaveLength(7)
+  })
+
+  it('manda solo los campos de atribución presentes (Meta no siempre manda ctwa_clid)', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{
+        ...LEAD_ROW,
+        adSourceId: '120256181296770350',
+        adSourceType: 'ad',
+        adCtwaClid: null,
+        adReferredAt: new Date('2026-11-13T15:49:30.210Z'),
+        panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' },
+      }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'ad_source_id')).toBe(true)
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'ad_ctwa_clid')).toBe(false)
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta === 'ad_headline')).toBe(false)
+  })
+
+  it('no agrega ninguna fila ad_* para un lead que no vino de un anuncio', async () => {
+    isPanelSmartSyncEnabled.mockReturnValue(true)
+    dbMock.select
+      .mockReturnValueOnce(selectChain([{ ...LEAD_ROW, panelSmartSyncedAnswersJson: { fullName: 'Ana López', cars: '2 o más' } }]))
+      .mockReturnValueOnce(selectChain([PROFILE_ROW]))
+      .mockReturnValueOnce(selectChain([]))
+
+    const preview = await previewPanelSmartSync('lead-1', { force: true })
+
+    expect(preview.payload?.responses.some((r) => r.codigo_pregunta.startsWith('ad_'))).toBe(false)
+  })
 })
