@@ -293,6 +293,35 @@ async function computePendingSync(leadId: string, opts?: { force?: boolean }): P
     })
   }
 
+  // Atribución del anuncio click-to-WhatsApp que trajo al lead (migración 0039). No son
+  // preguntas de la encuesta: se sellan en el primer toque desde el referral del webhook y
+  // nunca cambian, así que van como campos del lead igual que `telefono` o `nse_region`.
+  //
+  // Se mandan en cada sync, no por diff: son inmutables, y como Kantar hace upsert por
+  // (lead_id, codigo_pregunta) reenviarlos es idempotente. Eso además repara solo a los
+  // leads que ya se sincronizaron antes de que existiera la atribución — no hace falta un
+  // backfill aparte. Los leads que no vienen de un anuncio tienen todo en NULL y no suman
+  // ninguna fila al payload.
+  const AD_REFERRAL_RESPONSES: Array<[string, string, unknown]> = [
+    ['ad_source_id', 'ID del Anuncio (Meta)', lead.adSourceId],
+    ['ad_source_type', 'Tipo de Origen del Anuncio', lead.adSourceType],
+    ['ad_source_url', 'URL del Anuncio', lead.adSourceUrl],
+    ['ad_ctwa_clid', 'Click ID de Click-to-WhatsApp', lead.adCtwaClid],
+    ['ad_headline', 'Titular del Anuncio', lead.adHeadline],
+    ['ad_body', 'Cuerpo del Anuncio', lead.adBody],
+    // Cuándo se selló la atribución, no cuándo se hizo click: Meta no manda el click.
+    // ISO completo, igual que fecha_primer_mensaje / fecha_ultimo_mensaje.
+    ['ad_referred_at', 'Fecha de Atribución del Anuncio', lead.adReferredAt],
+  ]
+  for (const [codigo, pregunta, value] of AD_REFERRAL_RESPONSES) {
+    if (!hasValue(value)) continue
+    responses.push({
+      codigo_pregunta: codigo,
+      pregunta,
+      respuesta: value instanceof Date ? value.toISOString() : String(value),
+    })
+  }
+
   // Non-CAM raw NSE point total (survey_profiles.nse_points, migration 0029). CAM leads
   // already send their point total via `score` above; `lead.score` stays null for Ecuador
   // and México (their NSE levels use different point scales), so without this the
